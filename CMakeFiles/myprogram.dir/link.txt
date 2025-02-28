@@ -1,0 +1,1 @@
+/usr/bin/cc CMakeFiles/myprogram.dir/src/main.c.o -o myprogram 
