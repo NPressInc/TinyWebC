@@ -1,4 +1,4 @@
-valgrind --leak-check=full ./tinyweb
+valgrind --leak-check=full --track-origins=yes  ./tinyweb
 
 gcc main.c -o tinyweb
 

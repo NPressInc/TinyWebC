@@ -1,3 +1,0 @@
-/home/william/Documents/tinyweb/CTinyWeb/CMakeFiles/tinyweb.dir
-/home/william/Documents/tinyweb/CTinyWeb/CMakeFiles/edit_cache.dir
-/home/william/Documents/tinyweb/CTinyWeb/CMakeFiles/rebuild_cache.dir

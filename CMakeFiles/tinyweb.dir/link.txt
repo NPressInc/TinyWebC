@@ -1,1 +1,0 @@
-/usr/bin/cc CMakeFiles/tinyweb.dir/src/main.c.o CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.o -o tinyweb  -lmicrohttpd /usr/lib/x86_64-linux-gnu/libcjson.so.1.7.17 -lm 
