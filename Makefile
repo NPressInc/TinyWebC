@@ -177,53 +177,149 @@ src/packages/comm/blockChainQueryApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.s
 .PHONY : src/packages/comm/blockChainQueryApi.c.s
 
-src/packages/structures/merkleTree/merkleTree.o: src/packages/structures/merkleTree/merkleTree.c.o
-.PHONY : src/packages/structures/merkleTree/merkleTree.o
+src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/block.c.o
+.PHONY : src/packages/structures/blockChain/block.o
 
 # target to build an object file
-src/packages/structures/merkleTree/merkleTree.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/merkleTree/merkleTree.c.o
-.PHONY : src/packages/structures/merkleTree/merkleTree.c.o
+src/packages/structures/blockChain/block.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.o
+.PHONY : src/packages/structures/blockChain/block.c.o
 
-src/packages/structures/merkleTree/merkleTree.i: src/packages/structures/merkleTree/merkleTree.c.i
-.PHONY : src/packages/structures/merkleTree/merkleTree.i
+src/packages/structures/blockChain/block.i: src/packages/structures/blockChain/block.c.i
+.PHONY : src/packages/structures/blockChain/block.i
 
 # target to preprocess a source file
-src/packages/structures/merkleTree/merkleTree.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/merkleTree/merkleTree.c.i
-.PHONY : src/packages/structures/merkleTree/merkleTree.c.i
+src/packages/structures/blockChain/block.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.i
+.PHONY : src/packages/structures/blockChain/block.c.i
 
-src/packages/structures/merkleTree/merkleTree.s: src/packages/structures/merkleTree/merkleTree.c.s
-.PHONY : src/packages/structures/merkleTree/merkleTree.s
+src/packages/structures/blockChain/block.s: src/packages/structures/blockChain/block.c.s
+.PHONY : src/packages/structures/blockChain/block.s
 
 # target to generate assembly for a file
-src/packages/structures/merkleTree/merkleTree.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/merkleTree/merkleTree.c.s
-.PHONY : src/packages/structures/merkleTree/merkleTree.c.s
+src/packages/structures/blockChain/block.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.s
+.PHONY : src/packages/structures/blockChain/block.c.s
 
-src/packages/structures/merkleTree/merkleTreeNode.o: src/packages/structures/merkleTree/merkleTreeNode.c.o
-.PHONY : src/packages/structures/merkleTree/merkleTreeNode.o
+src/packages/structures/blockChain/blockchain.o: src/packages/structures/blockChain/blockchain.c.o
+.PHONY : src/packages/structures/blockChain/blockchain.o
 
 # target to build an object file
-src/packages/structures/merkleTree/merkleTreeNode.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/merkleTree/merkleTreeNode.c.o
-.PHONY : src/packages/structures/merkleTree/merkleTreeNode.c.o
+src/packages/structures/blockChain/blockchain.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.o
+.PHONY : src/packages/structures/blockChain/blockchain.c.o
 
-src/packages/structures/merkleTree/merkleTreeNode.i: src/packages/structures/merkleTree/merkleTreeNode.c.i
-.PHONY : src/packages/structures/merkleTree/merkleTreeNode.i
+src/packages/structures/blockChain/blockchain.i: src/packages/structures/blockChain/blockchain.c.i
+.PHONY : src/packages/structures/blockChain/blockchain.i
 
 # target to preprocess a source file
-src/packages/structures/merkleTree/merkleTreeNode.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/merkleTree/merkleTreeNode.c.i
-.PHONY : src/packages/structures/merkleTree/merkleTreeNode.c.i
+src/packages/structures/blockChain/blockchain.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.i
+.PHONY : src/packages/structures/blockChain/blockchain.c.i
 
-src/packages/structures/merkleTree/merkleTreeNode.s: src/packages/structures/merkleTree/merkleTreeNode.c.s
-.PHONY : src/packages/structures/merkleTree/merkleTreeNode.s
+src/packages/structures/blockChain/blockchain.s: src/packages/structures/blockChain/blockchain.c.s
+.PHONY : src/packages/structures/blockChain/blockchain.s
 
 # target to generate assembly for a file
-src/packages/structures/merkleTree/merkleTreeNode.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/merkleTree/merkleTreeNode.c.s
-.PHONY : src/packages/structures/merkleTree/merkleTreeNode.c.s
+src/packages/structures/blockChain/blockchain.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.s
+.PHONY : src/packages/structures/blockChain/blockchain.c.s
+
+src/packages/structures/blockChain/internalTransaction.o: src/packages/structures/blockChain/internalTransaction.c.o
+.PHONY : src/packages/structures/blockChain/internalTransaction.o
+
+# target to build an object file
+src/packages/structures/blockChain/internalTransaction.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.o
+.PHONY : src/packages/structures/blockChain/internalTransaction.c.o
+
+src/packages/structures/blockChain/internalTransaction.i: src/packages/structures/blockChain/internalTransaction.c.i
+.PHONY : src/packages/structures/blockChain/internalTransaction.i
+
+# target to preprocess a source file
+src/packages/structures/blockChain/internalTransaction.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.i
+.PHONY : src/packages/structures/blockChain/internalTransaction.c.i
+
+src/packages/structures/blockChain/internalTransaction.s: src/packages/structures/blockChain/internalTransaction.c.s
+.PHONY : src/packages/structures/blockChain/internalTransaction.s
+
+# target to generate assembly for a file
+src/packages/structures/blockChain/internalTransaction.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.s
+.PHONY : src/packages/structures/blockChain/internalTransaction.c.s
+
+src/packages/structures/blockChain/merkleTree.o: src/packages/structures/blockChain/merkleTree.c.o
+.PHONY : src/packages/structures/blockChain/merkleTree.o
+
+# target to build an object file
+src/packages/structures/blockChain/merkleTree.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.o
+.PHONY : src/packages/structures/blockChain/merkleTree.c.o
+
+src/packages/structures/blockChain/merkleTree.i: src/packages/structures/blockChain/merkleTree.c.i
+.PHONY : src/packages/structures/blockChain/merkleTree.i
+
+# target to preprocess a source file
+src/packages/structures/blockChain/merkleTree.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.i
+.PHONY : src/packages/structures/blockChain/merkleTree.c.i
+
+src/packages/structures/blockChain/merkleTree.s: src/packages/structures/blockChain/merkleTree.c.s
+.PHONY : src/packages/structures/blockChain/merkleTree.s
+
+# target to generate assembly for a file
+src/packages/structures/blockChain/merkleTree.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.s
+.PHONY : src/packages/structures/blockChain/merkleTree.c.s
+
+src/packages/structures/blockChain/merkleTreeNode.o: src/packages/structures/blockChain/merkleTreeNode.c.o
+.PHONY : src/packages/structures/blockChain/merkleTreeNode.o
+
+# target to build an object file
+src/packages/structures/blockChain/merkleTreeNode.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
+.PHONY : src/packages/structures/blockChain/merkleTreeNode.c.o
+
+src/packages/structures/blockChain/merkleTreeNode.i: src/packages/structures/blockChain/merkleTreeNode.c.i
+.PHONY : src/packages/structures/blockChain/merkleTreeNode.i
+
+# target to preprocess a source file
+src/packages/structures/blockChain/merkleTreeNode.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
+.PHONY : src/packages/structures/blockChain/merkleTreeNode.c.i
+
+src/packages/structures/blockChain/merkleTreeNode.s: src/packages/structures/blockChain/merkleTreeNode.c.s
+.PHONY : src/packages/structures/blockChain/merkleTreeNode.s
+
+# target to generate assembly for a file
+src/packages/structures/blockChain/merkleTreeNode.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
+.PHONY : src/packages/structures/blockChain/merkleTreeNode.c.s
+
+src/packages/structures/blockChain/transaction.o: src/packages/structures/blockChain/transaction.c.o
+.PHONY : src/packages/structures/blockChain/transaction.o
+
+# target to build an object file
+src/packages/structures/blockChain/transaction.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.o
+.PHONY : src/packages/structures/blockChain/transaction.c.o
+
+src/packages/structures/blockChain/transaction.i: src/packages/structures/blockChain/transaction.c.i
+.PHONY : src/packages/structures/blockChain/transaction.i
+
+# target to preprocess a source file
+src/packages/structures/blockChain/transaction.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.i
+.PHONY : src/packages/structures/blockChain/transaction.c.i
+
+src/packages/structures/blockChain/transaction.s: src/packages/structures/blockChain/transaction.c.s
+.PHONY : src/packages/structures/blockChain/transaction.s
+
+# target to generate assembly for a file
+src/packages/structures/blockChain/transaction.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.s
+.PHONY : src/packages/structures/blockChain/transaction.c.s
 
 src/structs/group/group.o: src/structs/group/group.c.o
 .PHONY : src/structs/group/group.o
@@ -360,12 +456,24 @@ help:
 	@echo "... src/packages/comm/blockChainQueryApi.o"
 	@echo "... src/packages/comm/blockChainQueryApi.i"
 	@echo "... src/packages/comm/blockChainQueryApi.s"
-	@echo "... src/packages/structures/merkleTree/merkleTree.o"
-	@echo "... src/packages/structures/merkleTree/merkleTree.i"
-	@echo "... src/packages/structures/merkleTree/merkleTree.s"
-	@echo "... src/packages/structures/merkleTree/merkleTreeNode.o"
-	@echo "... src/packages/structures/merkleTree/merkleTreeNode.i"
-	@echo "... src/packages/structures/merkleTree/merkleTreeNode.s"
+	@echo "... src/packages/structures/blockChain/block.o"
+	@echo "... src/packages/structures/blockChain/block.i"
+	@echo "... src/packages/structures/blockChain/block.s"
+	@echo "... src/packages/structures/blockChain/blockchain.o"
+	@echo "... src/packages/structures/blockChain/blockchain.i"
+	@echo "... src/packages/structures/blockChain/blockchain.s"
+	@echo "... src/packages/structures/blockChain/internalTransaction.o"
+	@echo "... src/packages/structures/blockChain/internalTransaction.i"
+	@echo "... src/packages/structures/blockChain/internalTransaction.s"
+	@echo "... src/packages/structures/blockChain/merkleTree.o"
+	@echo "... src/packages/structures/blockChain/merkleTree.i"
+	@echo "... src/packages/structures/blockChain/merkleTree.s"
+	@echo "... src/packages/structures/blockChain/merkleTreeNode.o"
+	@echo "... src/packages/structures/blockChain/merkleTreeNode.i"
+	@echo "... src/packages/structures/blockChain/merkleTreeNode.s"
+	@echo "... src/packages/structures/blockChain/transaction.o"
+	@echo "... src/packages/structures/blockChain/transaction.i"
+	@echo "... src/packages/structures/blockChain/transaction.s"
 	@echo "... src/structs/group/group.o"
 	@echo "... src/structs/group/group.i"
 	@echo "... src/structs/group/group.s"

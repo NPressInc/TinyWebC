@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cjson/cJSON.h>
+#include <stddef.h>  // For size_t
+#include <stdint.h>
 
 #define PORT 8080
 

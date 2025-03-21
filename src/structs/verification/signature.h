@@ -1,7 +1,8 @@
 #ifndef TW_SIGNATURE_H
 #define TW_SIGNATURE_H
 
-#include <sodium.h>
+#include <stddef.h>  // For size_t
+#include <stdint.h>
 
 typedef struct TW_Signature TW_Signature;
 
