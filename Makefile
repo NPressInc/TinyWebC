@@ -177,6 +177,54 @@ src/packages/comm/blockChainQueryApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.s
 .PHONY : src/packages/comm/blockChainQueryApi.c.s
 
+src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
+.PHONY : src/packages/encryption/encryption.o
+
+# target to build an object file
+src/packages/encryption/encryption.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.o
+.PHONY : src/packages/encryption/encryption.c.o
+
+src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
+.PHONY : src/packages/encryption/encryption.i
+
+# target to preprocess a source file
+src/packages/encryption/encryption.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.i
+.PHONY : src/packages/encryption/encryption.c.i
+
+src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
+.PHONY : src/packages/encryption/encryption.s
+
+# target to generate assembly for a file
+src/packages/encryption/encryption.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.s
+.PHONY : src/packages/encryption/encryption.c.s
+
+src/packages/encryption/tests.o: src/packages/encryption/tests.c.o
+.PHONY : src/packages/encryption/tests.o
+
+# target to build an object file
+src/packages/encryption/tests.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/tests.c.o
+.PHONY : src/packages/encryption/tests.c.o
+
+src/packages/encryption/tests.i: src/packages/encryption/tests.c.i
+.PHONY : src/packages/encryption/tests.i
+
+# target to preprocess a source file
+src/packages/encryption/tests.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/tests.c.i
+.PHONY : src/packages/encryption/tests.c.i
+
+src/packages/encryption/tests.s: src/packages/encryption/tests.c.s
+.PHONY : src/packages/encryption/tests.s
+
+# target to generate assembly for a file
+src/packages/encryption/tests.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/tests.c.s
+.PHONY : src/packages/encryption/tests.c.s
+
 src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/block.c.o
 .PHONY : src/packages/structures/blockChain/block.o
 
@@ -456,6 +504,12 @@ help:
 	@echo "... src/packages/comm/blockChainQueryApi.o"
 	@echo "... src/packages/comm/blockChainQueryApi.i"
 	@echo "... src/packages/comm/blockChainQueryApi.s"
+	@echo "... src/packages/encryption/encryption.o"
+	@echo "... src/packages/encryption/encryption.i"
+	@echo "... src/packages/encryption/encryption.s"
+	@echo "... src/packages/encryption/tests.o"
+	@echo "... src/packages/encryption/tests.i"
+	@echo "... src/packages/encryption/tests.s"
 	@echo "... src/packages/structures/blockChain/block.o"
 	@echo "... src/packages/structures/blockChain/block.i"
 	@echo "... src/packages/structures/blockChain/block.s"

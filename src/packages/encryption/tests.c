@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sodium.h>
-#include "packages/encryption/encryption.h"
+#include "encryption.h"
 
 void print_hex(const char* label, const unsigned char* data, size_t len) {
     printf("%s: ", label);

@@ -4,7 +4,7 @@
 #include <stddef.h>  // For size_t
 #include <stdint.h>
 
-#define PUBKEY_SIZE 32         // ECC public key size
+#define PUBKEY_SIZE 33         // ECC public key size
 #define SIG_SIZE 64            // Signature size
 #define MAX_RECIPIENTS 8       // Max recipients for group messages
 #define MAX_PAYLOAD_SIZE_EXTERNAL 1024   // Max payload size

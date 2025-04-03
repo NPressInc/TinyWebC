@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define PUBKEY_SIZE 32
+#define PUBKEY_SIZE 33
 #define SIG_SIZE 64
 #define HASH_SIZE 32
 #define MAX_PEERS 8
