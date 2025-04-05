@@ -3,3 +3,5 @@ CMakeFiles
 build
 tinyweb
 CMakeCache.txt
+
+*.bin
