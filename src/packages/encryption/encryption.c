@@ -27,11 +27,11 @@ int save_private_key(const char *filename, const char *passphrase)
     unsigned char nonce[NONCE_SIZE];
     unsigned char key[SECRET_SIZE];
     unsigned char ciphertext[SECRET_SIZE + MAC_SIZE];
-    unsigned char salt[crypto_pwhash_SALTBYTES];  // Generate random salt
-    
+    unsigned char salt[crypto_pwhash_SALTBYTES]; // Generate random salt
+
     randombytes_buf(nonce, NONCE_SIZE);
-    randombytes_buf(salt, crypto_pwhash_SALTBYTES);  // Generate random salt
-    
+    randombytes_buf(salt, crypto_pwhash_SALTBYTES); // Generate random salt
+
     if (crypto_pwhash(key, SECRET_SIZE, passphrase, strlen(passphrase), salt,
                       crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE,
                       crypto_pwhash_ALG_DEFAULT) != 0)
@@ -46,8 +46,8 @@ int save_private_key(const char *filename, const char *passphrase)
     }
 
     FILE *fp = fopen(filename, "wb");
-    if (!fp || 
-        fwrite(salt, 1, crypto_pwhash_SALTBYTES, fp) != crypto_pwhash_SALTBYTES ||  // Write salt first
+    if (!fp ||
+        fwrite(salt, 1, crypto_pwhash_SALTBYTES, fp) != crypto_pwhash_SALTBYTES || // Write salt first
         fwrite(nonce, 1, NONCE_SIZE, fp) != NONCE_SIZE ||
         fwrite(ciphertext, 1, SECRET_SIZE + MAC_SIZE, fp) != SECRET_SIZE + MAC_SIZE)
     {
@@ -71,8 +71,8 @@ int load_private_key(const char *filename, const char *passphrase)
 
     unsigned char nonce[NONCE_SIZE];
     unsigned char ciphertext[SECRET_SIZE + MAC_SIZE];
-    unsigned char salt[crypto_pwhash_SALTBYTES];  // Read salt first
-    
+    unsigned char salt[crypto_pwhash_SALTBYTES]; // Read salt first
+
     if (fread(salt, 1, crypto_pwhash_SALTBYTES, fp) != crypto_pwhash_SALTBYTES ||
         fread(nonce, 1, NONCE_SIZE, fp) != NONCE_SIZE ||
         fread(ciphertext, 1, SECRET_SIZE + MAC_SIZE, fp) != SECRET_SIZE + MAC_SIZE)
@@ -185,28 +185,46 @@ void free_encrypted_payload(EncryptedPayload *encrypted)
 }
 
 unsigned char *decrypt_payload(const EncryptedPayload *encrypted, size_t *plaintext_len,
-                               const unsigned char *recipient_privkey, size_t recipient_index)
+                               const unsigned char *recipient_privkey, const unsigned char *recipient_publickey,
+                               const unsigned char *recipient_pubkeys)
 {
-    if (!encrypted || recipient_index >= encrypted->num_recipients)
+    if (!encrypted || !recipient_privkey || !recipient_publickey || !recipient_pubkeys)
     {
-        fprintf(stderr, "Invalid encrypted payload or recipient index\n");
+        fprintf(stderr, "Invalid encrypted payload or keys\n");
         return NULL;
     }
 
-    // Step 1: Decrypt the symmetric key using the recipient's private key
+    // Step 1: Find the index of the matching recipient public key
+    size_t recipient_index = 0;
+    int found = 0;
+    for (size_t i = 0; i < encrypted->num_recipients; i++)
+    {
+        if (memcmp(recipient_publickey, &recipient_pubkeys[i * PUBKEY_SIZE], PUBKEY_SIZE) == 0)
+        {
+            recipient_index = i;
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        fprintf(stderr, "Recipient public key not found in the list\n");
+        return NULL;
+    }
+
+    // Step 2: Decrypt the symmetric key using the recipient's private key at the matched index
     unsigned char symmetric_key[crypto_secretbox_KEYBYTES];
     const unsigned char *encrypted_key = &encrypted->encrypted_keys[recipient_index * encrypted->encrypted_key_len];
     if (crypto_box_open_easy(symmetric_key, encrypted_key, encrypted->encrypted_key_len,
-                             encrypted->nonce,
-                             encrypted->ephemeral_pubkey,
-                             recipient_privkey) != 0)
+                             encrypted->nonce, encrypted->ephemeral_pubkey, recipient_privkey) != 0)
     {
         fprintf(stderr, "Failed to decrypt symmetric key\n");
         sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
         return NULL;
     }
 
-    // Step 2: Decrypt the ciphertext using the symmetric key
+    // Step 3: Decrypt the ciphertext using the symmetric key
     *plaintext_len = encrypted->ciphertext_len - crypto_secretbox_MACBYTES;
     unsigned char *plaintext = malloc(*plaintext_len);
     if (!plaintext)

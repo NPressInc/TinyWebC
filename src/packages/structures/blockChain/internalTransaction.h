@@ -53,7 +53,7 @@ void tw_create_internal_transaction(TW_InternalTransaction* txn, TW_InternalTran
                                    const unsigned char* payload, uint16_t payload_len, 
                                    const unsigned char* signature);
 
-size_t TW_InternalTransaction_to_bytes(TW_InternalTransaction* txn, unsigned char** buffer);
+size_t TW_InternalTransaction_serialize(TW_InternalTransaction* txn, unsigned char** buffer);
 TW_InternalTransaction* TW_InternalTransaction_deserialize(const unsigned char* buffer, size_t buffer_size);
 
 void tw_destroy_internal_transaction(TW_InternalTransaction* txn);

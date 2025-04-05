@@ -54,7 +54,7 @@ void TW_Block_buildMerkleTree(TW_Block* block) {
 
     for (int32_t i = 0; i < block->entry_count; i++) {
         if (block->is_internal) {
-            data_sizes[i] = TW_InternalTransaction_to_bytes(&block->entries[i].int_txn, &entry_data[i]);
+            data_sizes[i] = TW_InternalTransaction_serialize(&block->entries[i].int_txn, &entry_data[i]);
         } else {
             data_sizes[i] = TW_Transaction_to_bytes(&block->entries[i].txn, &entry_data[i]);
         }
@@ -151,7 +151,7 @@ size_t TW_Block_serialize(TW_Block* block, unsigned char** buffer) {
     for (int32_t i = 0; i < block->entry_count; i++) {
         unsigned char* entry_buf;
         if (block->is_internal) {
-            entry_sizes[i] = TW_InternalTransaction_to_bytes(&block->entries[i].int_txn, &entry_buf);
+            entry_sizes[i] = TW_InternalTransaction_serialize(&block->entries[i].int_txn, &entry_buf);
         } else {
             entry_sizes[i] = TW_Transaction_to_bytes(&block->entries[i].txn, &entry_buf);
         }
@@ -191,7 +191,7 @@ size_t TW_Block_serialize(TW_Block* block, unsigned char** buffer) {
         unsigned char* entry_buf;
         size_t entry_size;
         if (block->is_internal) {
-            entry_size = TW_InternalTransaction_to_bytes(&block->entries[i].int_txn, &entry_buf);
+            entry_size = TW_InternalTransaction_serialize(&block->entries[i].int_txn, &entry_buf);
         } else {
             entry_size = TW_Transaction_to_bytes(&block->entries[i].txn, &entry_buf);
         }

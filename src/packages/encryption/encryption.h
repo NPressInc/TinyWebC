@@ -23,8 +23,11 @@ int save_private_key(const char* filename, const char* passphrase);
 int load_private_key(const char* filename, const char* passphrase);
 EncryptedPayload* encrypt_payload_multi(const unsigned char* plaintext, size_t plaintext_len,
                                         const unsigned char** recipient_pubkeys, size_t num_recipients);
+
 unsigned char *decrypt_payload(const EncryptedPayload *encrypted, size_t *plaintext_len,
-                                            const unsigned char *recipient_privkey, size_t recipient_index);
+                                const unsigned char *recipient_privkey, const unsigned char *recipient_publickey,
+                                const unsigned char *recipient_pubkeys);
+
 void free_encrypted_payload(EncryptedPayload* payload);
 void cleanup_encryption(void);
 

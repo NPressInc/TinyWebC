@@ -33,7 +33,7 @@ void tw_create_internal_transaction(TW_InternalTransaction* txn, TW_InternalTran
     }
 }
 
-size_t TW_InternalTransaction_to_bytes(TW_InternalTransaction* txn, unsigned char** buffer) {
+size_t TW_InternalTransaction_serialize(TW_InternalTransaction* txn, unsigned char** buffer) {
     if (!txn) {
         *buffer = NULL;
         return 0;
