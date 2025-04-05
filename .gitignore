@@ -3,5 +3,5 @@ CMakeFiles
 build
 tinyweb
 CMakeCache.txt
-
+node_key.bin
 *.bin
