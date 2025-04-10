@@ -8,14 +8,24 @@
 #define NONCE_SIZE crypto_box_NONCEBYTES         /* 24 */
 #define MAC_SIZE crypto_box_MACBYTES             /* 16 */
 
+// Maximum plaintext size is 2KB (2048 bytes)
+#define MAX_PLAINTEXT_SIZE 2048
+// Maximum ciphertext size: plaintext + MAC
+#define MAX_CIPHERTEXT_SIZE (MAX_PLAINTEXT_SIZE + MAC_SIZE)
+// Maximum number of recipients
+#define MAX_RECIPIENTS 25
+// Size of each encrypted symmetric key (key + MAC)
+#define ENCRYPTED_KEY_SIZE (crypto_secretbox_KEYBYTES + MAC_SIZE)
+
 typedef struct {
-    unsigned char* ciphertext;         // Encrypted message
-    size_t ciphertext_len;             // Length of encrypted message
-    unsigned char nonce[NONCE_SIZE];   // Nonce for symmetric encryption
-    unsigned char* encrypted_keys;     // Array of encrypted symmetric keys (one per recipient)
-    size_t encrypted_key_len;          // Length of each encrypted key
-    unsigned char ephemeral_pubkey[PUBKEY_SIZE]; // Ephemeral public key
-    size_t num_recipients;             // Number of recipients
+    unsigned char ciphertext[MAX_CIPHERTEXT_SIZE];      // Encrypted message (2KB + MAC)
+    size_t ciphertext_len;                              // Length of encrypted message
+    unsigned char nonce[NONCE_SIZE];                    // Nonce for symmetric encryption
+    unsigned char encrypted_keys[MAX_RECIPIENTS][ENCRYPTED_KEY_SIZE]; // Encrypted symmetric keys (one per recipient)
+    size_t encrypted_keys_len;
+    unsigned char key_nonces[MAX_RECIPIENTS][NONCE_SIZE]; // Nonces for encrypted keys
+    unsigned char ephemeral_pubkey[PUBKEY_SIZE];        // Ephemeral public key
+    size_t num_recipients;                             // Number of recipients (up to 25)
 } EncryptedPayload;
 
 int generate_keypair(void);

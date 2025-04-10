@@ -405,6 +405,33 @@ src/packages/structures/blockChain/transaction.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.s
 .PHONY : src/packages/structures/blockChain/transaction.c.s
 
+src/packages/utils/print.o: src/packages/utils/print.c.o
+.PHONY : src/packages/utils/print.o
+
+# target to build an object file
+src/packages/utils/print.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/print.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.o
+.PHONY : src/packages/utils/print.c.o
+
+src/packages/utils/print.i: src/packages/utils/print.c.i
+.PHONY : src/packages/utils/print.i
+
+# target to preprocess a source file
+src/packages/utils/print.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/print.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.i
+.PHONY : src/packages/utils/print.c.i
+
+src/packages/utils/print.s: src/packages/utils/print.c.s
+.PHONY : src/packages/utils/print.s
+
+# target to generate assembly for a file
+src/packages/utils/print.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/print.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.s
+.PHONY : src/packages/utils/print.c.s
+
 src/structs/group/group.o: src/structs/group/group.c.o
 .PHONY : src/structs/group/group.o
 
@@ -603,6 +630,9 @@ help:
 	@echo "... src/packages/structures/blockChain/transaction.o"
 	@echo "... src/packages/structures/blockChain/transaction.i"
 	@echo "... src/packages/structures/blockChain/transaction.s"
+	@echo "... src/packages/utils/print.o"
+	@echo "... src/packages/utils/print.i"
+	@echo "... src/packages/utils/print.s"
 	@echo "... src/structs/group/group.o"
 	@echo "... src/structs/group/group.i"
 	@echo "... src/structs/group/group.s"

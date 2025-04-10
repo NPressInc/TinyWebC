@@ -3,16 +3,11 @@
 #include <string.h>
 #include <sodium.h>
 #include "packages/encryption/encryption.h"
-
-void print_hex(const char* label, const unsigned char* data, size_t len) {
-    printf("%s: ", label);
-    for (size_t i = 0; i < len; i++) printf("%02x", data[i]);
-    printf("\n");
-}
+#include "packages/utils/print.h"
 
 int main() {
 
-    printf("Starting Encryption Test");
+    printf("Starting Encryption Test\n");
 
     if (sodium_init() < 0) {
         printf("Sodium initialization failed\n");
@@ -32,9 +27,11 @@ int main() {
     }
     printf("Private key loaded\n");
 
-    const char* message = "Hello, encrypted world!";
+    // Create a test message that's within the size limit
+    const char* message = "This is a test message for encryption";
     size_t msg_len = strlen(message) + 1;
-    print_hex("Original message", (unsigned char*)message, msg_len);
+    printf("Message length: %zu bytes\n", msg_len);
+    //print_hex("Original message", (unsigned char*)message, msg_len);
 
     // Generate multiple recipient keypairs (3 recipients)
     #define NUM_RECIPIENTS 3
@@ -66,17 +63,22 @@ int main() {
     printf("Multiple recipient encryption succeeded\n");
     print_hex("Ephemeral pubkey", encrypted_multi->ephemeral_pubkey, PUBKEY_SIZE);
     print_hex("Nonce", encrypted_multi->nonce, NONCE_SIZE);
-    print_hex("Ciphertext", encrypted_multi->ciphertext, encrypted_multi->ciphertext_len);
+    //print_hex("Ciphertext", encrypted_multi->ciphertext, encrypted_multi->ciphertext_len);
+    
+    // Print encrypted keys for each recipient
     for (int i = 0; i < NUM_RECIPIENTS; i++) {
         printf("Encrypted key %d:\n", i + 1);
-        print_hex("  Key", &encrypted_multi->encrypted_keys[i * encrypted_multi->encrypted_key_len], 
-                  encrypted_multi->encrypted_key_len);
+        print_hex("  Key", encrypted_multi->encrypted_keys[i], ENCRYPTED_KEY_SIZE);
+        print_hex("  Nonce", encrypted_multi->key_nonces[i], NONCE_SIZE);
     }
 
     // Decrypt with each recipient's private key
     for (int i = 0; i < NUM_RECIPIENTS; i++) {
         size_t plaintext_len;
-        unsigned char* decrypted = decrypt_payload(encrypted_multi, &plaintext_len, recip_privkeys[i], recip_pubkeys[i], &recip_pubkeys[0][0]);
+        unsigned char* decrypted = decrypt_payload(encrypted_multi, &plaintext_len, 
+                                                  recip_privkeys[i], 
+                                                  recip_pubkeys[i], 
+                                                  &recip_pubkeys[0][0]);
         if (!decrypted) {
             printf("Decryption failed for recipient %d\n", i + 1);
             continue;
@@ -90,8 +92,32 @@ int main() {
         }
 
         printf("Recipient %d decryption verified: %s\n", i + 1, decrypted);
-        print_hex("Decrypted", decrypted, plaintext_len);
+        //print_hex("Decrypted", decrypted, plaintext_len);
         free(decrypted);
+    }
+
+    // Test with a message that exceeds the size limit
+    printf("\nTesting with a message that exceeds the size limit:\n");
+    char* large_message = malloc(MAX_PLAINTEXT_SIZE + 1000);
+    if (large_message) {
+        memset(large_message, 'A', MAX_PLAINTEXT_SIZE + 1000);
+        large_message[MAX_PLAINTEXT_SIZE + 999] = '\0';
+        
+        EncryptedPayload* large_encrypted = encrypt_payload_multi(
+            (unsigned char*)large_message, 
+            MAX_PLAINTEXT_SIZE + 1000, 
+            recip_pubkey_ptrs, 
+            NUM_RECIPIENTS
+        );
+        
+        if (large_encrypted) {
+            printf("ERROR: Encryption of oversized message succeeded when it should have failed\n");
+            free_encrypted_payload(large_encrypted);
+        } else {
+            printf("SUCCESS: Encryption of oversized message correctly failed\n");
+        }
+        
+        free(large_message);
     }
 
     free_encrypted_payload(encrypted_multi);
