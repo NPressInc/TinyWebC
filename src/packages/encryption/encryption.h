@@ -2,6 +2,7 @@
 #define ENCRYPTION_H
 
 #include <sodium.h>
+#include "packages/keystore/keystore.h"
 
 #define PUBKEY_SIZE crypto_box_PUBLICKEYBYTES    /* 32 */
 #define SECRET_SIZE crypto_box_SECRETKEYBYTES    /* 32 */
@@ -28,9 +29,6 @@ typedef struct {
     size_t num_recipients;                             // Number of recipients (up to 25)
 } EncryptedPayload;
 
-int generate_keypair(void);
-int save_private_key(const char* filename, const char* passphrase);
-int load_private_key(const char* filename, const char* passphrase);
 EncryptedPayload* encrypt_payload_multi(const unsigned char* plaintext, size_t plaintext_len,
                                         const unsigned char** recipient_pubkeys, size_t num_recipients);
 
@@ -39,6 +37,5 @@ unsigned char *decrypt_payload(const EncryptedPayload *encrypted, size_t *plaint
                                 const unsigned char *recipient_pubkeys);
 
 void free_encrypted_payload(EncryptedPayload* payload);
-void cleanup_encryption(void);
 
 #endif /* ENCRYPTION_H */

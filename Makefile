@@ -243,6 +243,60 @@ src/packages/encryption/encryption.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.s
 .PHONY : src/packages/encryption/encryption.c.s
 
+src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
+.PHONY : src/packages/keystore/keystore.o
+
+# target to build an object file
+src/packages/keystore/keystore.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.o
+.PHONY : src/packages/keystore/keystore.c.o
+
+src/packages/keystore/keystore.i: src/packages/keystore/keystore.c.i
+.PHONY : src/packages/keystore/keystore.i
+
+# target to preprocess a source file
+src/packages/keystore/keystore.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.i
+.PHONY : src/packages/keystore/keystore.c.i
+
+src/packages/keystore/keystore.s: src/packages/keystore/keystore.c.s
+.PHONY : src/packages/keystore/keystore.s
+
+# target to generate assembly for a file
+src/packages/keystore/keystore.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.s
+.PHONY : src/packages/keystore/keystore.c.s
+
+src/packages/signing/signing.o: src/packages/signing/signing.c.o
+.PHONY : src/packages/signing/signing.o
+
+# target to build an object file
+src/packages/signing/signing.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.o
+.PHONY : src/packages/signing/signing.c.o
+
+src/packages/signing/signing.i: src/packages/signing/signing.c.i
+.PHONY : src/packages/signing/signing.i
+
+# target to preprocess a source file
+src/packages/signing/signing.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.i
+.PHONY : src/packages/signing/signing.c.i
+
+src/packages/signing/signing.s: src/packages/signing/signing.c.s
+.PHONY : src/packages/signing/signing.s
+
+# target to generate assembly for a file
+src/packages/signing/signing.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.s
+.PHONY : src/packages/signing/signing.c.s
+
 src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/block.c.o
 .PHONY : src/packages/structures/blockChain/block.o
 
@@ -540,33 +594,6 @@ src/structs/role/role.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/role/role.c.s
 .PHONY : src/structs/role/role.c.s
 
-src/structs/verification/signature.o: src/structs/verification/signature.c.o
-.PHONY : src/structs/verification/signature.o
-
-# target to build an object file
-src/structs/verification/signature.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/verification/signature.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/verification/signature.c.o
-.PHONY : src/structs/verification/signature.c.o
-
-src/structs/verification/signature.i: src/structs/verification/signature.c.i
-.PHONY : src/structs/verification/signature.i
-
-# target to preprocess a source file
-src/structs/verification/signature.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/verification/signature.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/verification/signature.c.i
-.PHONY : src/structs/verification/signature.c.i
-
-src/structs/verification/signature.s: src/structs/verification/signature.c.s
-.PHONY : src/structs/verification/signature.s
-
-# target to generate assembly for a file
-src/structs/verification/signature.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/verification/signature.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/verification/signature.c.s
-.PHONY : src/structs/verification/signature.c.s
-
 src/tests/encryption_test.o: src/tests/encryption_test.c.o
 .PHONY : src/tests/encryption_test.o
 
@@ -591,6 +618,54 @@ src/tests/encryption_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/encryption_test.c.s
 .PHONY : src/tests/encryption_test.c.s
 
+src/tests/signing_test.o: src/tests/signing_test.c.o
+.PHONY : src/tests/signing_test.o
+
+# target to build an object file
+src/tests/signing_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/signing_test.c.o
+.PHONY : src/tests/signing_test.c.o
+
+src/tests/signing_test.i: src/tests/signing_test.c.i
+.PHONY : src/tests/signing_test.i
+
+# target to preprocess a source file
+src/tests/signing_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/signing_test.c.i
+.PHONY : src/tests/signing_test.c.i
+
+src/tests/signing_test.s: src/tests/signing_test.c.s
+.PHONY : src/tests/signing_test.s
+
+# target to generate assembly for a file
+src/tests/signing_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/signing_test.c.s
+.PHONY : src/tests/signing_test.c.s
+
+src/tests/test_runner.o: src/tests/test_runner.c.o
+.PHONY : src/tests/test_runner.o
+
+# target to build an object file
+src/tests/test_runner.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/test_runner.c.o
+.PHONY : src/tests/test_runner.c.o
+
+src/tests/test_runner.i: src/tests/test_runner.c.i
+.PHONY : src/tests/test_runner.i
+
+# target to preprocess a source file
+src/tests/test_runner.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/test_runner.c.i
+.PHONY : src/tests/test_runner.c.i
+
+src/tests/test_runner.s: src/tests/test_runner.c.s
+.PHONY : src/tests/test_runner.s
+
+# target to generate assembly for a file
+src/tests/test_runner.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/test_runner.c.s
+.PHONY : src/tests/test_runner.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -612,6 +687,12 @@ help:
 	@echo "... src/packages/encryption/encryption.o"
 	@echo "... src/packages/encryption/encryption.i"
 	@echo "... src/packages/encryption/encryption.s"
+	@echo "... src/packages/keystore/keystore.o"
+	@echo "... src/packages/keystore/keystore.i"
+	@echo "... src/packages/keystore/keystore.s"
+	@echo "... src/packages/signing/signing.o"
+	@echo "... src/packages/signing/signing.i"
+	@echo "... src/packages/signing/signing.s"
 	@echo "... src/packages/structures/blockChain/block.o"
 	@echo "... src/packages/structures/blockChain/block.i"
 	@echo "... src/packages/structures/blockChain/block.s"
@@ -645,12 +726,15 @@ help:
 	@echo "... src/structs/role/role.o"
 	@echo "... src/structs/role/role.i"
 	@echo "... src/structs/role/role.s"
-	@echo "... src/structs/verification/signature.o"
-	@echo "... src/structs/verification/signature.i"
-	@echo "... src/structs/verification/signature.s"
 	@echo "... src/tests/encryption_test.o"
 	@echo "... src/tests/encryption_test.i"
 	@echo "... src/tests/encryption_test.s"
+	@echo "... src/tests/signing_test.o"
+	@echo "... src/tests/signing_test.i"
+	@echo "... src/tests/signing_test.s"
+	@echo "... src/tests/test_runner.o"
+	@echo "... src/tests/test_runner.i"
+	@echo "... src/tests/test_runner.s"
 .PHONY : help
 
 

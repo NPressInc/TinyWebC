@@ -18,13 +18,19 @@ target_link_libraries(tinyweb PRIVATE ${MICROHTTPD_LIBRARIES} cjson ${SODIUM_LIB
 target_include_directories(tinyweb PRIVATE ${MICROHTTPD_INCLUDE_DIRS} ${SODIUM_INCLUDE_DIRS} /usr/include/cjson)
 
 
+# Test sources
 file(GLOB_RECURSE TEST_SOURCES "src/tests/*.c")
 file(GLOB_RECURSE LIB_SOURCES "src/*.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/main.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/tests/.*")
-add_executable(tinyweb_tests ${TEST_SOURCES} ${LIB_SOURCES})
+
+# Ensure test_runner.c is the main entry point for tests
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/test_runner.c")
+set(TEST_MAIN "src/tests/test_runner.c")
+
+add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES})
 target_link_libraries(tinyweb_tests PRIVATE ${MICROHTTPD_LIBRARIES} cjson ${SODIUM_LIBRARIES} OpenSSL::Crypto)
-target_include_directories(tinyweb_tests PRIVATE ${MICROHTTPD_INCLUDE_DIRS} ${SODIUM_INCLUDE_DIRS} /usr/include/cjson src packages/structures/merkleTree)
+target_include_directories(tinyweb_tests PRIVATE ${MICROHTTPD_INCLUDE_DIRS} ${SODIUM_INCLUDE_DIRS} /usr/include/cjson src)
 
 # Enable testing and add a test
 enable_testing()

@@ -1,2 +1,3 @@
-AllTests 7 0.0136178
+AllTests 7 0
 ---
+AllTests

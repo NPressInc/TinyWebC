@@ -1,47 +1,75 @@
-Start testing: Apr 05 00:21 MDT
+Start testing: Apr 09 23:33 MDT
 ----------------------------------------------------------
 1/1 Testing: AllTests
 1/1 Test: AllTests
 Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests"
 Directory: /home/william/Documents/tinyweb/CTinyWeb
-"AllTests" start time: Apr 05 00:21 MDT
+"AllTests" start time: Apr 09 23:33 MDT
 Output:
 ----------------------------------------------------------
-Starting Encryption Test...Private key generated and saved
+Plaintext size (3048 bytes) exceeds maximum allowed size (2048 bytes)
+Running all tests...
+
+Running encryption tests...
+Starting Encryption Test
+Private key generated and saved
+Sender's public key:
+  Public key: 64d268ff6e83807b7d8d69b8cd18c2b6f152c15d85c4d5a0bb363c0f73f63745
 Private key loaded
-Original message: 48656c6c6f2c20656e6372797074656420776f726c642100
+Message length: 38 bytes
+Recipient 0 (Sender):
+  Public key: 64d268ff6e83807b7d8d69b8cd18c2b6f152c15d85c4d5a0bb363c0f73f63745
 Recipient 1:
-  Public key: 906dd9626f259eb237b9b09826d9e2037d6688afce6365ac10dd75e389c1e853
-  Private key: c78b413911ee3e2477f41a9c874fccf0fa6c246fbd84bb8498663362dde63195
+  Public key: 5c9c4b27ce43fff84c0ca1e7bf0da6dbc40ce57f0f42b2dd6ed92019123b8f10
+  Private key: c5f0f4eb5d8036e760197007ff1dbac37a102fbdcdbb945b02c1c3566204faf1
 Recipient 2:
-  Public key: 0dfa416a6a18cc8628f99153b0638c4eb93f13a973db0b9f2f093404eda8c873
-  Private key: 46d6129394de3662a0fa88015d14c58e49b78ba4fe4d5ec371434a570d3e2bcf
+  Public key: 4aaa0cc0588a5061599c6217c40f5126f021e833b789b6c963402feb200e9373
+  Private key: 1208cd55ff1c156ee20ab8161326136a17ea375c11f4f5c33c8e2737242cfe61
 Recipient 3:
-  Public key: d3e92f2f0e8da86be21e27469e5c12e0f0a92a1d3f5e999005f914f7fa7cbb56
-  Private key: ca86e769f3a95e03b9fbf44bb31de369ef2768f32338a9a6d691db07530773dd
+  Public key: 27a1e16f053bce9bab06ab640949233a0ac54ad444c5d5f331a6958cc5a6a812
+  Private key: b34f8eae669db36fb313dd8228806982a45fa3726537da2142a5a7ae35d8975b
 Multiple recipient encryption succeeded
-Ephemeral pubkey: be334cf4aa97d687097af5e24036a3f4a4ba84eac132346f22cf5cad64e30725
-Nonce: 74227f154923ff2d7343a6f1463d7d3cbeb42c75e47ddfe9
-Ciphertext: eeddaaafed51a4679e6d20e30dff1a89128b798c5296aadb693775c803f39a985cc38f70c46ac37b
+Ephemeral pubkey: 1d086a7c8f23547cb4238e5f58904465a25a0fa977468cd6a1553da1204ad425
+Nonce: c11ab3b6b40538b6980fe33fb35d569a29d7673171979c34
+Encrypted key 0:
+  Key: 899d3de89276bfa88e47029bd2861dcc366b23b31f0fc48f5c58c778cb5d690cbbe9d12c0d7b7fca93ec9b6741079702
+  Nonce: 9d4c7172ef50df783ebd0dfac6a6670bd35b47927e13f935
 Encrypted key 1:
-  Key: ede782f58c48416dcc0095f9a1d4340793a8c4445b4660480661eefe62153f143a7cad48449a36277b8594be066149cb
+  Key: 1116b2d1033846612156ce85925cd7ba94a4bd395a061383a6e8dbc96e57db5d68892f8b78c30b49ed044650489c4c62
+  Nonce: 46c3f0bea00f6fc2257e9c20fcf45b51dfab70fbed197ea6
 Encrypted key 2:
-  Key: c0ca29bc622bbc6951e22b80e12a16ed736e5a7a1bb3a3cff8d5ee4f0b94b2d1a5474b1b66c72a0616c693cd90188701
+  Key: 48dfb902b3fc45c2539ee45bb2ef6e2830a545fc3805722801ce8c263e073941b5af37028cd37e8a3be6c7baf3fd2ed9
+  Nonce: 860c526f16d938826d7523f6caf95863f53d71cab9a2c67a
 Encrypted key 3:
-  Key: 5f7f6c1752058c22cd5d05cc2beafdbdd55cafb9fe2f641de8da58d9d78ca87c6a855475283db03c260ed89b140a0779
-Recipient 1 decryption verified: Hello, encrypted world!
-Decrypted: 48656c6c6f2c20656e6372797074656420776f726c642100
-Recipient 2 decryption verified: Hello, encrypted world!
-Decrypted: 48656c6c6f2c20656e6372797074656420776f726c642100
-Recipient 3 decryption verified: Hello, encrypted world!
-Decrypted: 48656c6c6f2c20656e6372797074656420776f726c642100
+  Key: dbcba6aecd5047837abfc9175db13d5aad704a55efd03d6cf4084e4b1da3485f400298d25d7a4f7f005c6dc45e81c12d
+  Nonce: 4c8d504c03f41dc7cb68821964fb09ffe75ee0ce10c9e9cd
+
+Decrypting with sender's private key:
+Sender decryption verified: This is a test message for encryption
+Recipient 1 decryption verified: This is a test message for encryption
+Recipient 2 decryption verified: This is a test message for encryption
+Recipient 3 decryption verified: This is a test message for encryption
+
+Testing with a message that exceeds the size limit:
+SUCCESS: Encryption of oversized message correctly failed
 Test completed
+✓ Encryption tests passed
+
+Running signing tests...
+Starting signing tests...
+Failed to initialize keystore
+✗ Signing tests failed
+
+Test Summary:
+Total tests: 2
+Passed: 1
+Failed: 1
 <end of output>
 Test time =   0.10 sec
 ----------------------------------------------------------
-Test Passed.
-"AllTests" end time: Apr 05 00:21 MDT
+Test Failed.
+"AllTests" end time: Apr 09 23:33 MDT
 "AllTests" time elapsed: 00:00:00
 ----------------------------------------------------------
 
-End testing: Apr 05 00:21 MDT
+End testing: Apr 09 23:33 MDT

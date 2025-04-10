@@ -8,7 +8,7 @@
 #define PUBKEY_SIZE 33
 #define SIG_SIZE 64
 #define HASH_SIZE 32
-#define MAX_PEERS 8
+#define MAX_PEERS 10
 #define MAX_PAYLOAD_SIZE_INTERNAL 1024
 
 typedef enum {

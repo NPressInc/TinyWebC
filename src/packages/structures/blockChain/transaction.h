@@ -6,8 +6,8 @@
 
 #define PUBKEY_SIZE 33         // ECC public key size
 #define SIG_SIZE 64            // Signature size
-#define MAX_RECIPIENTS 8       // Max recipients for group messages
-#define MAX_PAYLOAD_SIZE_EXTERNAL 2048   // Max payload size
+#define MAX_RECIPIENTS 25       // Max recipients for group messages
+#define MAX_PAYLOAD_SIZE_EXTERNAL 3072   // Max payload size
 #define GROUP_ID_SIZE 16       // Fixed-size group identifier
 
 typedef enum {
