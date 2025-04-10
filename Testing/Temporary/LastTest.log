@@ -1,0 +1,47 @@
+Start testing: Apr 05 00:21 MDT
+----------------------------------------------------------
+1/1 Testing: AllTests
+1/1 Test: AllTests
+Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests"
+Directory: /home/william/Documents/tinyweb/CTinyWeb
+"AllTests" start time: Apr 05 00:21 MDT
+Output:
+----------------------------------------------------------
+Starting Encryption Test...Private key generated and saved
+Private key loaded
+Original message: 48656c6c6f2c20656e6372797074656420776f726c642100
+Recipient 1:
+  Public key: 906dd9626f259eb237b9b09826d9e2037d6688afce6365ac10dd75e389c1e853
+  Private key: c78b413911ee3e2477f41a9c874fccf0fa6c246fbd84bb8498663362dde63195
+Recipient 2:
+  Public key: 0dfa416a6a18cc8628f99153b0638c4eb93f13a973db0b9f2f093404eda8c873
+  Private key: 46d6129394de3662a0fa88015d14c58e49b78ba4fe4d5ec371434a570d3e2bcf
+Recipient 3:
+  Public key: d3e92f2f0e8da86be21e27469e5c12e0f0a92a1d3f5e999005f914f7fa7cbb56
+  Private key: ca86e769f3a95e03b9fbf44bb31de369ef2768f32338a9a6d691db07530773dd
+Multiple recipient encryption succeeded
+Ephemeral pubkey: be334cf4aa97d687097af5e24036a3f4a4ba84eac132346f22cf5cad64e30725
+Nonce: 74227f154923ff2d7343a6f1463d7d3cbeb42c75e47ddfe9
+Ciphertext: eeddaaafed51a4679e6d20e30dff1a89128b798c5296aadb693775c803f39a985cc38f70c46ac37b
+Encrypted key 1:
+  Key: ede782f58c48416dcc0095f9a1d4340793a8c4445b4660480661eefe62153f143a7cad48449a36277b8594be066149cb
+Encrypted key 2:
+  Key: c0ca29bc622bbc6951e22b80e12a16ed736e5a7a1bb3a3cff8d5ee4f0b94b2d1a5474b1b66c72a0616c693cd90188701
+Encrypted key 3:
+  Key: 5f7f6c1752058c22cd5d05cc2beafdbdd55cafb9fe2f641de8da58d9d78ca87c6a855475283db03c260ed89b140a0779
+Recipient 1 decryption verified: Hello, encrypted world!
+Decrypted: 48656c6c6f2c20656e6372797074656420776f726c642100
+Recipient 2 decryption verified: Hello, encrypted world!
+Decrypted: 48656c6c6f2c20656e6372797074656420776f726c642100
+Recipient 3 decryption verified: Hello, encrypted world!
+Decrypted: 48656c6c6f2c20656e6372797074656420776f726c642100
+Test completed
+<end of output>
+Test time =   0.10 sec
+----------------------------------------------------------
+Test Passed.
+"AllTests" end time: Apr 05 00:21 MDT
+"AllTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Apr 05 00:21 MDT

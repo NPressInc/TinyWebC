@@ -65,6 +65,16 @@ CMAKE_BINARY_DIR = /home/william/Documents/tinyweb/CTinyWeb
 #=============================================================================
 # Targets provided globally by CMake.
 
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running tests..."
+	/usr/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+.PHONY : test/fast
+
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "No interactive CMake dialog available..."
@@ -129,6 +139,32 @@ tinyweb/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/build
 .PHONY : tinyweb/fast
 
+#=============================================================================
+# Target rules for targets named tinyweb_tests
+
+# Build rule for target.
+tinyweb_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tinyweb_tests
+.PHONY : tinyweb_tests
+
+# fast build rule for target.
+tinyweb_tests/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/build
+.PHONY : tinyweb_tests/fast
+
+#=============================================================================
+# Target rules for targets named check
+
+# Build rule for target.
+check: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 check
+.PHONY : check
+
+# fast build rule for target.
+check/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/check.dir/build.make CMakeFiles/check.dir/build
+.PHONY : check/fast
+
 src/main.o: src/main.c.o
 .PHONY : src/main.o
 
@@ -159,6 +195,7 @@ src/packages/comm/blockChainQueryApi.o: src/packages/comm/blockChainQueryApi.c.o
 # target to build an object file
 src/packages/comm/blockChainQueryApi.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.o
 .PHONY : src/packages/comm/blockChainQueryApi.c.o
 
 src/packages/comm/blockChainQueryApi.i: src/packages/comm/blockChainQueryApi.c.i
@@ -167,6 +204,7 @@ src/packages/comm/blockChainQueryApi.i: src/packages/comm/blockChainQueryApi.c.i
 # target to preprocess a source file
 src/packages/comm/blockChainQueryApi.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.i
 .PHONY : src/packages/comm/blockChainQueryApi.c.i
 
 src/packages/comm/blockChainQueryApi.s: src/packages/comm/blockChainQueryApi.c.s
@@ -175,6 +213,7 @@ src/packages/comm/blockChainQueryApi.s: src/packages/comm/blockChainQueryApi.c.s
 # target to generate assembly for a file
 src/packages/comm/blockChainQueryApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.s
 .PHONY : src/packages/comm/blockChainQueryApi.c.s
 
 src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
@@ -183,6 +222,7 @@ src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
 # target to build an object file
 src/packages/encryption/encryption.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.o
 .PHONY : src/packages/encryption/encryption.c.o
 
 src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
@@ -191,6 +231,7 @@ src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
 # target to preprocess a source file
 src/packages/encryption/encryption.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.i
 .PHONY : src/packages/encryption/encryption.c.i
 
 src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
@@ -199,31 +240,8 @@ src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
 # target to generate assembly for a file
 src/packages/encryption/encryption.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.s
 .PHONY : src/packages/encryption/encryption.c.s
-
-src/packages/encryption/tests.o: src/packages/encryption/tests.c.o
-.PHONY : src/packages/encryption/tests.o
-
-# target to build an object file
-src/packages/encryption/tests.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/tests.c.o
-.PHONY : src/packages/encryption/tests.c.o
-
-src/packages/encryption/tests.i: src/packages/encryption/tests.c.i
-.PHONY : src/packages/encryption/tests.i
-
-# target to preprocess a source file
-src/packages/encryption/tests.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/tests.c.i
-.PHONY : src/packages/encryption/tests.c.i
-
-src/packages/encryption/tests.s: src/packages/encryption/tests.c.s
-.PHONY : src/packages/encryption/tests.s
-
-# target to generate assembly for a file
-src/packages/encryption/tests.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/tests.c.s
-.PHONY : src/packages/encryption/tests.c.s
 
 src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/block.c.o
 .PHONY : src/packages/structures/blockChain/block.o
@@ -231,6 +249,7 @@ src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/b
 # target to build an object file
 src/packages/structures/blockChain/block.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.o
 .PHONY : src/packages/structures/blockChain/block.c.o
 
 src/packages/structures/blockChain/block.i: src/packages/structures/blockChain/block.c.i
@@ -239,6 +258,7 @@ src/packages/structures/blockChain/block.i: src/packages/structures/blockChain/b
 # target to preprocess a source file
 src/packages/structures/blockChain/block.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.i
 .PHONY : src/packages/structures/blockChain/block.c.i
 
 src/packages/structures/blockChain/block.s: src/packages/structures/blockChain/block.c.s
@@ -247,6 +267,7 @@ src/packages/structures/blockChain/block.s: src/packages/structures/blockChain/b
 # target to generate assembly for a file
 src/packages/structures/blockChain/block.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.s
 .PHONY : src/packages/structures/blockChain/block.c.s
 
 src/packages/structures/blockChain/blockchain.o: src/packages/structures/blockChain/blockchain.c.o
@@ -255,6 +276,7 @@ src/packages/structures/blockChain/blockchain.o: src/packages/structures/blockCh
 # target to build an object file
 src/packages/structures/blockChain/blockchain.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.o
 .PHONY : src/packages/structures/blockChain/blockchain.c.o
 
 src/packages/structures/blockChain/blockchain.i: src/packages/structures/blockChain/blockchain.c.i
@@ -263,6 +285,7 @@ src/packages/structures/blockChain/blockchain.i: src/packages/structures/blockCh
 # target to preprocess a source file
 src/packages/structures/blockChain/blockchain.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.i
 .PHONY : src/packages/structures/blockChain/blockchain.c.i
 
 src/packages/structures/blockChain/blockchain.s: src/packages/structures/blockChain/blockchain.c.s
@@ -271,6 +294,7 @@ src/packages/structures/blockChain/blockchain.s: src/packages/structures/blockCh
 # target to generate assembly for a file
 src/packages/structures/blockChain/blockchain.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.s
 .PHONY : src/packages/structures/blockChain/blockchain.c.s
 
 src/packages/structures/blockChain/internalTransaction.o: src/packages/structures/blockChain/internalTransaction.c.o
@@ -279,6 +303,7 @@ src/packages/structures/blockChain/internalTransaction.o: src/packages/structure
 # target to build an object file
 src/packages/structures/blockChain/internalTransaction.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/internalTransaction.c.o
 .PHONY : src/packages/structures/blockChain/internalTransaction.c.o
 
 src/packages/structures/blockChain/internalTransaction.i: src/packages/structures/blockChain/internalTransaction.c.i
@@ -287,6 +312,7 @@ src/packages/structures/blockChain/internalTransaction.i: src/packages/structure
 # target to preprocess a source file
 src/packages/structures/blockChain/internalTransaction.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/internalTransaction.c.i
 .PHONY : src/packages/structures/blockChain/internalTransaction.c.i
 
 src/packages/structures/blockChain/internalTransaction.s: src/packages/structures/blockChain/internalTransaction.c.s
@@ -295,6 +321,7 @@ src/packages/structures/blockChain/internalTransaction.s: src/packages/structure
 # target to generate assembly for a file
 src/packages/structures/blockChain/internalTransaction.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/internalTransaction.c.s
 .PHONY : src/packages/structures/blockChain/internalTransaction.c.s
 
 src/packages/structures/blockChain/merkleTree.o: src/packages/structures/blockChain/merkleTree.c.o
@@ -303,6 +330,7 @@ src/packages/structures/blockChain/merkleTree.o: src/packages/structures/blockCh
 # target to build an object file
 src/packages/structures/blockChain/merkleTree.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.o
 .PHONY : src/packages/structures/blockChain/merkleTree.c.o
 
 src/packages/structures/blockChain/merkleTree.i: src/packages/structures/blockChain/merkleTree.c.i
@@ -311,6 +339,7 @@ src/packages/structures/blockChain/merkleTree.i: src/packages/structures/blockCh
 # target to preprocess a source file
 src/packages/structures/blockChain/merkleTree.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.i
 .PHONY : src/packages/structures/blockChain/merkleTree.c.i
 
 src/packages/structures/blockChain/merkleTree.s: src/packages/structures/blockChain/merkleTree.c.s
@@ -319,6 +348,7 @@ src/packages/structures/blockChain/merkleTree.s: src/packages/structures/blockCh
 # target to generate assembly for a file
 src/packages/structures/blockChain/merkleTree.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.s
 .PHONY : src/packages/structures/blockChain/merkleTree.c.s
 
 src/packages/structures/blockChain/merkleTreeNode.o: src/packages/structures/blockChain/merkleTreeNode.c.o
@@ -327,6 +357,7 @@ src/packages/structures/blockChain/merkleTreeNode.o: src/packages/structures/blo
 # target to build an object file
 src/packages/structures/blockChain/merkleTreeNode.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.o
 
 src/packages/structures/blockChain/merkleTreeNode.i: src/packages/structures/blockChain/merkleTreeNode.c.i
@@ -335,6 +366,7 @@ src/packages/structures/blockChain/merkleTreeNode.i: src/packages/structures/blo
 # target to preprocess a source file
 src/packages/structures/blockChain/merkleTreeNode.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.i
 
 src/packages/structures/blockChain/merkleTreeNode.s: src/packages/structures/blockChain/merkleTreeNode.c.s
@@ -343,6 +375,7 @@ src/packages/structures/blockChain/merkleTreeNode.s: src/packages/structures/blo
 # target to generate assembly for a file
 src/packages/structures/blockChain/merkleTreeNode.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.s
 
 src/packages/structures/blockChain/transaction.o: src/packages/structures/blockChain/transaction.c.o
@@ -351,6 +384,7 @@ src/packages/structures/blockChain/transaction.o: src/packages/structures/blockC
 # target to build an object file
 src/packages/structures/blockChain/transaction.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.o
 .PHONY : src/packages/structures/blockChain/transaction.c.o
 
 src/packages/structures/blockChain/transaction.i: src/packages/structures/blockChain/transaction.c.i
@@ -359,6 +393,7 @@ src/packages/structures/blockChain/transaction.i: src/packages/structures/blockC
 # target to preprocess a source file
 src/packages/structures/blockChain/transaction.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.i
 .PHONY : src/packages/structures/blockChain/transaction.c.i
 
 src/packages/structures/blockChain/transaction.s: src/packages/structures/blockChain/transaction.c.s
@@ -367,6 +402,7 @@ src/packages/structures/blockChain/transaction.s: src/packages/structures/blockC
 # target to generate assembly for a file
 src/packages/structures/blockChain/transaction.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.s
 .PHONY : src/packages/structures/blockChain/transaction.c.s
 
 src/structs/group/group.o: src/structs/group/group.c.o
@@ -375,6 +411,7 @@ src/structs/group/group.o: src/structs/group/group.c.o
 # target to build an object file
 src/structs/group/group.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/group/group.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/group/group.c.o
 .PHONY : src/structs/group/group.c.o
 
 src/structs/group/group.i: src/structs/group/group.c.i
@@ -383,6 +420,7 @@ src/structs/group/group.i: src/structs/group/group.c.i
 # target to preprocess a source file
 src/structs/group/group.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/group/group.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/group/group.c.i
 .PHONY : src/structs/group/group.c.i
 
 src/structs/group/group.s: src/structs/group/group.c.s
@@ -391,6 +429,7 @@ src/structs/group/group.s: src/structs/group/group.c.s
 # target to generate assembly for a file
 src/structs/group/group.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/group/group.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/group/group.c.s
 .PHONY : src/structs/group/group.c.s
 
 src/structs/message/message.o: src/structs/message/message.c.o
@@ -399,6 +438,7 @@ src/structs/message/message.o: src/structs/message/message.c.o
 # target to build an object file
 src/structs/message/message.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/message/message.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/message/message.c.o
 .PHONY : src/structs/message/message.c.o
 
 src/structs/message/message.i: src/structs/message/message.c.i
@@ -407,6 +447,7 @@ src/structs/message/message.i: src/structs/message/message.c.i
 # target to preprocess a source file
 src/structs/message/message.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/message/message.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/message/message.c.i
 .PHONY : src/structs/message/message.c.i
 
 src/structs/message/message.s: src/structs/message/message.c.s
@@ -415,6 +456,7 @@ src/structs/message/message.s: src/structs/message/message.c.s
 # target to generate assembly for a file
 src/structs/message/message.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/message/message.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/message/message.c.s
 .PHONY : src/structs/message/message.c.s
 
 src/structs/permission/permission.o: src/structs/permission/permission.c.o
@@ -423,6 +465,7 @@ src/structs/permission/permission.o: src/structs/permission/permission.c.o
 # target to build an object file
 src/structs/permission/permission.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.o
 .PHONY : src/structs/permission/permission.c.o
 
 src/structs/permission/permission.i: src/structs/permission/permission.c.i
@@ -431,6 +474,7 @@ src/structs/permission/permission.i: src/structs/permission/permission.c.i
 # target to preprocess a source file
 src/structs/permission/permission.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.i
 .PHONY : src/structs/permission/permission.c.i
 
 src/structs/permission/permission.s: src/structs/permission/permission.c.s
@@ -439,6 +483,7 @@ src/structs/permission/permission.s: src/structs/permission/permission.c.s
 # target to generate assembly for a file
 src/structs/permission/permission.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.s
 .PHONY : src/structs/permission/permission.c.s
 
 src/structs/role/role.o: src/structs/role/role.c.o
@@ -447,6 +492,7 @@ src/structs/role/role.o: src/structs/role/role.c.o
 # target to build an object file
 src/structs/role/role.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/role/role.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/role/role.c.o
 .PHONY : src/structs/role/role.c.o
 
 src/structs/role/role.i: src/structs/role/role.c.i
@@ -455,6 +501,7 @@ src/structs/role/role.i: src/structs/role/role.c.i
 # target to preprocess a source file
 src/structs/role/role.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/role/role.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/role/role.c.i
 .PHONY : src/structs/role/role.c.i
 
 src/structs/role/role.s: src/structs/role/role.c.s
@@ -463,6 +510,7 @@ src/structs/role/role.s: src/structs/role/role.c.s
 # target to generate assembly for a file
 src/structs/role/role.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/role/role.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/role/role.c.s
 .PHONY : src/structs/role/role.c.s
 
 src/structs/verification/signature.o: src/structs/verification/signature.c.o
@@ -471,6 +519,7 @@ src/structs/verification/signature.o: src/structs/verification/signature.c.o
 # target to build an object file
 src/structs/verification/signature.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/verification/signature.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/verification/signature.c.o
 .PHONY : src/structs/verification/signature.c.o
 
 src/structs/verification/signature.i: src/structs/verification/signature.c.i
@@ -479,6 +528,7 @@ src/structs/verification/signature.i: src/structs/verification/signature.c.i
 # target to preprocess a source file
 src/structs/verification/signature.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/verification/signature.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/verification/signature.c.i
 .PHONY : src/structs/verification/signature.c.i
 
 src/structs/verification/signature.s: src/structs/verification/signature.c.s
@@ -487,7 +537,32 @@ src/structs/verification/signature.s: src/structs/verification/signature.c.s
 # target to generate assembly for a file
 src/structs/verification/signature.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/verification/signature.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/verification/signature.c.s
 .PHONY : src/structs/verification/signature.c.s
+
+src/tests/encryption_test.o: src/tests/encryption_test.c.o
+.PHONY : src/tests/encryption_test.o
+
+# target to build an object file
+src/tests/encryption_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/encryption_test.c.o
+.PHONY : src/tests/encryption_test.c.o
+
+src/tests/encryption_test.i: src/tests/encryption_test.c.i
+.PHONY : src/tests/encryption_test.i
+
+# target to preprocess a source file
+src/tests/encryption_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/encryption_test.c.i
+.PHONY : src/tests/encryption_test.c.i
+
+src/tests/encryption_test.s: src/tests/encryption_test.c.s
+.PHONY : src/tests/encryption_test.s
+
+# target to generate assembly for a file
+src/tests/encryption_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/encryption_test.c.s
+.PHONY : src/tests/encryption_test.c.s
 
 # Help Target
 help:
@@ -497,7 +572,10 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... test"
+	@echo "... check"
 	@echo "... tinyweb"
+	@echo "... tinyweb_tests"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
@@ -507,9 +585,6 @@ help:
 	@echo "... src/packages/encryption/encryption.o"
 	@echo "... src/packages/encryption/encryption.i"
 	@echo "... src/packages/encryption/encryption.s"
-	@echo "... src/packages/encryption/tests.o"
-	@echo "... src/packages/encryption/tests.i"
-	@echo "... src/packages/encryption/tests.s"
 	@echo "... src/packages/structures/blockChain/block.o"
 	@echo "... src/packages/structures/blockChain/block.i"
 	@echo "... src/packages/structures/blockChain/block.s"
@@ -543,6 +618,9 @@ help:
 	@echo "... src/structs/verification/signature.o"
 	@echo "... src/structs/verification/signature.i"
 	@echo "... src/structs/verification/signature.s"
+	@echo "... src/tests/encryption_test.o"
+	@echo "... src/tests/encryption_test.i"
+	@echo "... src/tests/encryption_test.s"
 .PHONY : help
 
 

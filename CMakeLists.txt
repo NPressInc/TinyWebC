@@ -1,30 +1,38 @@
 cmake_minimum_required(VERSION 3.10)
 project(CTinyWeb)
 
-# Recursively gather all .c files under src/ and packages/
-file(GLOB_RECURSE SOURCES "src/*.c" "packages/structures/merkleTree/*.c")
+# Main sources (exclude Merkle tree if not needed)
+file(GLOB_RECURSE SOURCES "src/*.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/tests/.*")
 
-# Create the executable
 add_executable(tinyweb ${SOURCES})
+include_directories(src) 
 
-# Include all subdirectories under src/ and packages/ for .h files
-include_directories(src packages/structures/merkleTree)
-
-# Find and link libmicrohttpd using pkg-config
+# Dependencies (unchanged)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(MICROHTTPD REQUIRED libmicrohttpd)
-
-# Find and link cJSON
 find_package(cJSON REQUIRED)
-target_link_libraries(tinyweb PRIVATE ${MICROHTTPD_LIBRARIES} cjson)
-
-# Find and link libsodium using pkg-config
 pkg_check_modules(SODIUM REQUIRED libsodium)
-target_link_libraries(tinyweb PRIVATE ${SODIUM_LIBRARIES})
-
-# Find and link OpenSSL for SHA256
 find_package(OpenSSL REQUIRED)
-target_link_libraries(tinyweb PRIVATE OpenSSL::Crypto)
-
-# Include directories for all dependencies
+target_link_libraries(tinyweb PRIVATE ${MICROHTTPD_LIBRARIES} cjson ${SODIUM_LIBRARIES} OpenSSL::Crypto)
 target_include_directories(tinyweb PRIVATE ${MICROHTTPD_INCLUDE_DIRS} ${SODIUM_INCLUDE_DIRS} /usr/include/cjson)
+
+
+file(GLOB_RECURSE TEST_SOURCES "src/tests/*.c")
+file(GLOB_RECURSE LIB_SOURCES "src/*.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/main.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/tests/.*")
+add_executable(tinyweb_tests ${TEST_SOURCES} ${LIB_SOURCES})
+target_link_libraries(tinyweb_tests PRIVATE ${MICROHTTPD_LIBRARIES} cjson ${SODIUM_LIBRARIES} OpenSSL::Crypto)
+target_include_directories(tinyweb_tests PRIVATE ${MICROHTTPD_INCLUDE_DIRS} ${SODIUM_INCLUDE_DIRS} /usr/include/cjson src packages/structures/merkleTree)
+
+# Enable testing and add a test
+enable_testing()
+add_test(NAME AllTests COMMAND tinyweb_tests)
+
+# Custom target for "make check"
+add_custom_target(check
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+    DEPENDS tinyweb_tests
+    COMMENT "Running all tests..."
+)
