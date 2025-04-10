@@ -14,8 +14,8 @@ int sign_message(const char* message, size_t message_len, SignedMessage* signed_
         return -1;
     }
 
-    // Get the private key from keystore
-    unsigned char private_key[SECRET_SIZE];
+    // Get the Ed25519 private key from keystore
+    unsigned char private_key[SIGN_SECRET_SIZE];
     if (!_keystore_get_private_key(private_key)) {
         return -1;
     }
@@ -34,19 +34,13 @@ int sign_message(const char* message, size_t message_len, SignedMessage* signed_
     return 0;
 }
 
-int verify_signature(const SignedMessage* signed_msg) {
-    // Check if a keypair is loaded
-    if (!keystore_is_keypair_loaded()) {
+int verify_signature(const SignedMessage* signed_msg, const unsigned char* public_key) {
+    // Check if public key is provided
+    if (!public_key) {
         return -1;
     }
 
-    // Get the public key from keystore
-    unsigned char public_key[PUBKEY_SIZE];
-    if (!keystore_get_public_key(public_key)) {
-        return -1;
-    }
-
-    // Verify the signature
+    // Verify the signature using the provided public key
     if (crypto_sign_verify_detached(signed_msg->signature,
                                   signed_msg->message,
                                   signed_msg->message_len,

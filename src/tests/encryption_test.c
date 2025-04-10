@@ -7,13 +7,7 @@
 #include "packages/utils/print.h"
 
 int encryption_test_main(void) {
-
     printf("Starting Encryption Test\n");
-
-    if (sodium_init() < 0) {
-        printf("Sodium initialization failed\n");
-        return 1;
-    }
 
     // Initialize the keystore
     if (!keystore_init()) {
@@ -21,7 +15,7 @@ int encryption_test_main(void) {
         return 1;
     }
 
-    // Generate and save sender's private key
+    // Generate and save sender's Ed25519 keypair
     if (!keystore_generate_keypair()) {
         printf("Keystore initialization failed\n");
         return 1;
@@ -31,16 +25,25 @@ int encryption_test_main(void) {
         printf("Failed to save private key\n");
         return 1;
     }
-    printf("Private key generated and saved\n");
+    printf("Ed25519 private key generated and saved\n");
 
-    // Get the sender's public key
-    unsigned char sender_pubkey[PUBKEY_SIZE];
+    // Get the sender's Ed25519 public key (for signing and identity)
+    unsigned char sender_pubkey[SIGN_PUBKEY_SIZE];
     if (!keystore_get_public_key(sender_pubkey)) {
-        printf("Failed to get sender's public key\n");
+        printf("Failed to get sender's Ed25519 public key\n");
         return 1;
     }
-    printf("Sender's public key:\n");
-    print_hex("  Public key", sender_pubkey, PUBKEY_SIZE);
+    printf("Sender's Ed25519 public key (for signing and identity):\n");
+    print_hex("  Public key", sender_pubkey, SIGN_PUBKEY_SIZE);
+
+    // Get the sender's X25519 public key (for encryption)
+    unsigned char sender_encryption_pubkey[PUBKEY_SIZE];
+    if (!keystore_get_encryption_public_key(sender_encryption_pubkey)) {
+        printf("Failed to get sender's X25519 public key\n");
+        return 1;
+    }
+    printf("Sender's X25519 public key (for encryption):\n");
+    print_hex("  Encryption public key", sender_encryption_pubkey, PUBKEY_SIZE);
 
     // Clear the loaded keypair
     keystore_cleanup();
@@ -50,7 +53,7 @@ int encryption_test_main(void) {
         printf("Failed to load private key\n");
         return 1;
     }
-    printf("Private key loaded\n");
+    printf("Ed25519 private key loaded\n");
 
     // Create a test message that's within the size limit
     const char* message = "This is a test message for encryption";
@@ -64,12 +67,12 @@ int encryption_test_main(void) {
     unsigned char recip_privkeys[NUM_RECIPIENTS][SECRET_SIZE];
     const unsigned char* recip_pubkey_ptrs[NUM_RECIPIENTS];
 
-    // First recipient is the sender
-    memcpy(recip_pubkeys[0], sender_pubkey, PUBKEY_SIZE);
+    // First recipient is the sender (using X25519 key for encryption)
+    memcpy(recip_pubkeys[0], sender_encryption_pubkey, PUBKEY_SIZE);
     // We'll get the sender's private key later from keystore
     recip_pubkey_ptrs[0] = recip_pubkeys[0];
     printf("Recipient 0 (Sender):\n");
-    print_hex("  Public key", recip_pubkeys[0], PUBKEY_SIZE);
+    print_hex("  X25519 Public key", recip_pubkeys[0], PUBKEY_SIZE);
 
     // Generate the other recipients
     for (int i = 1; i < NUM_RECIPIENTS; i++) {
@@ -108,8 +111,8 @@ int encryption_test_main(void) {
     // Decrypt with sender's private key
     printf("\nDecrypting with sender's private key:\n");
     unsigned char sender_privkey[SECRET_SIZE];
-    if (!_keystore_get_private_key(sender_privkey)) {
-        printf("Failed to get sender's private key\n");
+    if (!_keystore_get_encryption_private_key(sender_privkey)) {
+        printf("Failed to get sender's X25519 private key\n");
         free_encrypted_payload(encrypted_multi);
         keystore_cleanup();
         return 1;
@@ -118,7 +121,7 @@ int encryption_test_main(void) {
     size_t plaintext_len;
     unsigned char* decrypted = decrypt_payload(encrypted_multi, &plaintext_len, 
                                               sender_privkey, 
-                                              sender_pubkey, 
+                                              sender_encryption_pubkey, 
                                               &recip_pubkeys[0][0]);
     if (!decrypted) {
         printf("Decryption failed for sender\n");

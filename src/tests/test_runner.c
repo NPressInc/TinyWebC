@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sodium.h>
+#include "packages/keystore/keystore.h"
 #include "tests/encryption_test.h"
 #include "tests/signing_test.h"
 
@@ -14,6 +16,12 @@ int main() {
 
     printf("Running all tests...\n\n");
 
+    // Initialize libsodium once at the start
+    if (sodium_init() < 0) {
+        printf("Failed to initialize libsodium\n");
+        return 1;
+    }
+
     // Run encryption tests
     printf("Running encryption tests...\n");
     if (encryption_test_main() == 0) {
@@ -23,6 +31,7 @@ int main() {
         printf("✗ Encryption tests failed\n");
         tests_failed++;
     }
+    keystore_cleanup();  // Clean up after encryption test
     printf("\n");
 
     // Run signing tests
@@ -34,6 +43,7 @@ int main() {
         printf("✗ Signing tests failed\n");
         tests_failed++;
     }
+    keystore_cleanup();  // Clean up after signing test
     printf("\n");
 
     // Print summary

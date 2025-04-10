@@ -15,14 +15,23 @@ int signing_test_main(void) {
 
     printf("Starting signing tests...\n");
 
-    // Initialize keystore and generate keypair
-    if (keystore_init() != 0) {
+    // Initialize keystore
+    if (keystore_init() == 0) {
         printf("Failed to initialize keystore\n");
         return 1;
     }
 
-    if (keystore_generate_keypair() != 0) {
-        printf("Failed to generate keypair\n");
+    // Load the existing key file instead of generating a new one
+    if (!keystore_load_private_key("node_key.bin", "testpass")) {
+        printf("Failed to load private key\n");
+        keystore_cleanup();
+        return 1;
+    }
+
+    // Get the public key for verification
+    unsigned char public_key[PUBKEY_SIZE];
+    if (!keystore_get_public_key(public_key)) {
+        printf("Failed to get public key\n");
         keystore_cleanup();
         return 1;
     }
@@ -40,7 +49,7 @@ int signing_test_main(void) {
 
     // Test 2: Verify the signature
     printf("Test 2: Verify signature... ");
-    if (verify_signature(&signed_msg) == 0) {
+    if (verify_signature(&signed_msg, public_key) == 0) {
         printf("✓ Passed\n");
         tests_passed++;
     } else {
@@ -51,7 +60,7 @@ int signing_test_main(void) {
     // Test 3: Verify with tampered message
     printf("Test 3: Verify tampered message... ");
     signed_msg.message[0] = 'X'; // Tamper with the message
-    if (verify_signature(&signed_msg) != 0) {
+    if (verify_signature(&signed_msg, public_key) != 0) {
         printf("✓ Passed (correctly rejected tampered message)\n");
         tests_passed++;
     } else {

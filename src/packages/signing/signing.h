@@ -5,7 +5,7 @@
 #include <sodium.h>
 
 // Maximum size of a message that can be signed
-#define MAX_SIGNED_MESSAGE_SIZE 1024
+#define MAX_SIGNED_MESSAGE_SIZE 3072
 
 // Structure to hold a signed message
 typedef struct {
@@ -25,11 +25,12 @@ typedef struct {
 int sign_message(const char* message, size_t message_len, SignedMessage* signed_msg);
 
 /**
- * Verify a signed message using the node's public key
+ * Verify a signed message using a provided public key
  * 
  * @param signed_msg The signed message to verify
+ * @param public_key The public key to use for verification
  * @return 0 if signature is valid, -1 if invalid
  */
-int verify_signature(const SignedMessage* signed_msg);
+int verify_signature(const SignedMessage* signed_msg, const unsigned char* public_key);
 
 #endif // SIGNING_H 
