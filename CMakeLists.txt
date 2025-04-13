@@ -32,9 +32,11 @@ add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES})
 target_link_libraries(tinyweb_tests PRIVATE ${MICROHTTPD_LIBRARIES} cjson ${SODIUM_LIBRARIES} OpenSSL::Crypto)
 target_include_directories(tinyweb_tests PRIVATE ${MICROHTTPD_INCLUDE_DIRS} ${SODIUM_INCLUDE_DIRS} /usr/include/cjson src)
 
-# Enable testing and add a test
+# Enable testing and add individual tests
 enable_testing()
-add_test(NAME AllTests COMMAND tinyweb_tests)
+add_test(NAME EncryptionTest COMMAND tinyweb_tests encryption)
+add_test(NAME SigningTest COMMAND tinyweb_tests signing)
+add_test(NAME BlockchainTest COMMAND tinyweb_tests blockchain)
 
 # Custom target for "make check"
 add_custom_target(check

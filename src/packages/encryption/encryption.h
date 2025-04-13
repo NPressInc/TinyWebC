@@ -30,7 +30,7 @@ typedef struct {
 } EncryptedPayload;
 
 EncryptedPayload* encrypt_payload_multi(const unsigned char* plaintext, size_t plaintext_len,
-                                        const unsigned char** recipient_pubkeys, size_t num_recipients);
+                                        const unsigned char* recipient_pubkeys, size_t num_recipients);
 
 unsigned char *decrypt_payload(const EncryptedPayload *encrypted, size_t *plaintext_len,
                                 const unsigned char *recipient_privkey, const unsigned char *recipient_publickey,

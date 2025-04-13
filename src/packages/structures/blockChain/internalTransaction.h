@@ -5,11 +5,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define PUBKEY_SIZE 33
 #define SIG_SIZE 64
 #define HASH_SIZE 32
 #define MAX_PEERS 10
-#define MAX_PAYLOAD_SIZE_INTERNAL 1024
+#define MAX_PAYLOAD_SIZE_INTERNAL 8096
 
 typedef enum {
     TW_INT_TXN_PROPOSE_BLOCK,
@@ -24,7 +23,7 @@ typedef enum {
     TW_INT_TXN_REQ_FULL_CHAIN,
     TW_INT_TXN_BROADCAST_BLOCK,
     TW_INT_TXN_BROADCAST_CHAIN,
-    TW_INT_TXN_REBROADCAST_MSG,
+    TW_INT_TXN_REBROADCAST_MSG
 } TW_InternalTransactionType;
 
 typedef struct {

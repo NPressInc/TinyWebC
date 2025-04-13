@@ -513,33 +513,6 @@ src/structs/group/group.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/group/group.c.s
 .PHONY : src/structs/group/group.c.s
 
-src/structs/message/message.o: src/structs/message/message.c.o
-.PHONY : src/structs/message/message.o
-
-# target to build an object file
-src/structs/message/message.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/message/message.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/message/message.c.o
-.PHONY : src/structs/message/message.c.o
-
-src/structs/message/message.i: src/structs/message/message.c.i
-.PHONY : src/structs/message/message.i
-
-# target to preprocess a source file
-src/structs/message/message.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/message/message.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/message/message.c.i
-.PHONY : src/structs/message/message.c.i
-
-src/structs/message/message.s: src/structs/message/message.c.s
-.PHONY : src/structs/message/message.s
-
-# target to generate assembly for a file
-src/structs/message/message.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/message/message.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/message/message.c.s
-.PHONY : src/structs/message/message.c.s
-
 src/structs/permission/permission.o: src/structs/permission/permission.c.o
 .PHONY : src/structs/permission/permission.o
 
@@ -593,6 +566,30 @@ src/structs/role/role.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/role/role.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/role/role.c.s
 .PHONY : src/structs/role/role.c.s
+
+src/tests/blockchain_test.o: src/tests/blockchain_test.c.o
+.PHONY : src/tests/blockchain_test.o
+
+# target to build an object file
+src/tests/blockchain_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/blockchain_test.c.o
+.PHONY : src/tests/blockchain_test.c.o
+
+src/tests/blockchain_test.i: src/tests/blockchain_test.c.i
+.PHONY : src/tests/blockchain_test.i
+
+# target to preprocess a source file
+src/tests/blockchain_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/blockchain_test.c.i
+.PHONY : src/tests/blockchain_test.c.i
+
+src/tests/blockchain_test.s: src/tests/blockchain_test.c.s
+.PHONY : src/tests/blockchain_test.s
+
+# target to generate assembly for a file
+src/tests/blockchain_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/blockchain_test.c.s
+.PHONY : src/tests/blockchain_test.c.s
 
 src/tests/encryption_test.o: src/tests/encryption_test.c.o
 .PHONY : src/tests/encryption_test.o
@@ -717,15 +714,15 @@ help:
 	@echo "... src/structs/group/group.o"
 	@echo "... src/structs/group/group.i"
 	@echo "... src/structs/group/group.s"
-	@echo "... src/structs/message/message.o"
-	@echo "... src/structs/message/message.i"
-	@echo "... src/structs/message/message.s"
 	@echo "... src/structs/permission/permission.o"
 	@echo "... src/structs/permission/permission.i"
 	@echo "... src/structs/permission/permission.s"
 	@echo "... src/structs/role/role.o"
 	@echo "... src/structs/role/role.i"
 	@echo "... src/structs/role/role.s"
+	@echo "... src/tests/blockchain_test.o"
+	@echo "... src/tests/blockchain_test.i"
+	@echo "... src/tests/blockchain_test.s"
 	@echo "... src/tests/encryption_test.o"
 	@echo "... src/tests/encryption_test.i"
 	@echo "... src/tests/encryption_test.s"

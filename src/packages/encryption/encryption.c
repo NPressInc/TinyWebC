@@ -5,7 +5,7 @@
 #include "packages/keystore/keystore.h"
 
 EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t plaintext_len,
-                                        const unsigned char **recipient_pubkeys, size_t num_recipients)
+                                        const unsigned char *recipient_pubkeys, size_t num_recipients)
 {
     if (!keystore_is_keypair_loaded() || num_recipients == 0)
         return NULL;
@@ -57,7 +57,7 @@ EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t p
         if (crypto_box_easy(encrypted->encrypted_keys[i],
                             symmetric_key, crypto_secretbox_KEYBYTES,
                             encrypted->key_nonces[i],
-                            recipient_pubkeys[i],
+                            &recipient_pubkeys[i * PUBKEY_SIZE],
                             ephemeral_privkey) != 0)
         {
             free(encrypted);

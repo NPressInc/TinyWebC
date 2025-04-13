@@ -3,6 +3,7 @@
 #include <time.h>
 #include <stddef.h>  // For size_t
 #include <stdint.h>
+#include "packages/keystore/keystore.h"
 
 /** Creates an internal transaction with pre-prepared data (no signing or hashing here). */
 void tw_create_internal_transaction(TW_InternalTransaction* txn, TW_InternalTransactionType type, 

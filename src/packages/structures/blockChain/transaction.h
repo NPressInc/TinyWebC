@@ -3,11 +3,12 @@
 
 #include <stddef.h>  // For size_t
 #include <stdint.h>
+#include "packages/keystore/keystore.h"
+#include "packages/encryption/encryption.h"
+#include "packages/signing/signing.h"
 
-#define PUBKEY_SIZE 33         // ECC public key size
-#define SIG_SIZE 64            // Signature size
 #define MAX_RECIPIENTS 25       // Max recipients for group messages
-#define MAX_PAYLOAD_SIZE_EXTERNAL 3072   // Max payload size
+#define MAX_PAYLOAD_SIZE_EXTERNAL 4096   // Max payload size
 #define GROUP_ID_SIZE 16       // Fixed-size group identifier
 
 typedef enum {
@@ -17,6 +18,10 @@ typedef enum {
     TW_TXN_VIDEO_CALL_REQ,
     TW_TXN_MEDIA_DOWNLOAD,
     TW_TXN_PERMISSION_EDIT,
+    TW_TXN_GROUP_INVITE,
+    TW_TXN_GROUP_REMOVE,
+    TW_TXN_GROUP_LEAVE,
+    TW_TXN_GROUP_ADD,
 } TW_TransactionType;
 
 typedef struct {
@@ -26,19 +31,19 @@ typedef struct {
     unsigned char recipients[PUBKEY_SIZE * MAX_RECIPIENTS];
     uint8_t recipient_count;
     unsigned char group_id[GROUP_ID_SIZE];
-    unsigned char payload[MAX_PAYLOAD_SIZE_EXTERNAL]; // Can be encrypted externally
-    uint16_t payload_len;
-    unsigned char signature[SIG_SIZE];       // Set externally
+    EncryptedPayload payload;  // Direct EncryptedPayload struct
+    unsigned char signature[SIGNATURE_SIZE];       // Set externally
 } TW_Transaction;
 
 // Basic functions
 TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned char* sender, 
                                      const unsigned char* recipients, uint8_t recipient_count, 
-                                     const unsigned char* group_id, const unsigned char* payload, 
-                                     uint16_t payload_len, const unsigned char* signature);
+                                     const unsigned char* group_id, const EncryptedPayload* payload, 
+                                     const unsigned char* signature);
 void TW_Transaction_destroy(TW_Transaction* tx);
 void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out);
 size_t TW_Transaction_to_bytes(TW_Transaction* tx, unsigned char** buffer);
 TW_Transaction* TW_Transaction_deserialize(const unsigned char* buffer, size_t buffer_size);
+void TW_Transaction_add_signature(TW_Transaction* txn)
 
 #endif

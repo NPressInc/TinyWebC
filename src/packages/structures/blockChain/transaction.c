@@ -4,12 +4,13 @@
 #include <time.h>
 #include <openssl/sha.h>
 #include "transaction.h"
+#include "packages/signing/signing.h"
 
 /** Creates a transaction with pre-prepared data (no encryption here). */
 TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned char* sender, 
                                      const unsigned char* recipients, uint8_t recipient_count, 
-                                     const unsigned char* group_id, const unsigned char* payload, 
-                                     uint16_t payload_len, const unsigned char* signature) {
+                                     const unsigned char* group_id, const EncryptedPayload* payload, 
+                                     const unsigned char* signature) {
     TW_Transaction* tx = malloc(sizeof(TW_Transaction));
     if (!tx) return NULL;
 
@@ -23,26 +24,37 @@ TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned ch
         memset(tx->recipients, 0, PUBKEY_SIZE * MAX_RECIPIENTS);
     }
     memcpy(tx->group_id, group_id ? group_id : (const unsigned char*)"\0", GROUP_ID_SIZE);
-    if (payload && payload_len > 0) {
-        memcpy(tx->payload, payload, payload_len <= MAX_PAYLOAD_SIZE_EXTERNAL ? payload_len : MAX_PAYLOAD_SIZE_EXTERNAL);
-        tx->payload_len = payload_len <= MAX_PAYLOAD_SIZE_EXTERNAL ? payload_len : MAX_PAYLOAD_SIZE_EXTERNAL;
+    
+    // Copy the entire EncryptedPayload struct
+    if (payload) {
+        memcpy(&tx->payload, payload, sizeof(EncryptedPayload));
     } else {
-        tx->payload_len = 0;
+        memset(&tx->payload, 0, sizeof(EncryptedPayload));
     }
+
     if (signature) {
-        memcpy(tx->signature, signature, SIG_SIZE);
+        memcpy(tx->signature, signature, SIGNATURE_SIZE);
     } else {
-        memset(tx->signature, 0, SIG_SIZE);
+        memset(tx->signature, 0, SIGNATURE_SIZE);
     }
 
     return tx;
+}
+
+void TW_Transaction_add_signature(TW_Transaction* txn){
+
+    char* txn_hash = malloc(SIGNATURE_SIZE);
+
+    TW_Transaction_hash(txn, txn_hash);
+
+    *txn->signature = sign_message(txn_hash);
 }
 
 /** Computes the SHA-256 hash of the transaction into hash_out. */
 void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
     if (!tx || !hash_out) return;
 
-    unsigned char buffer[1024];
+    unsigned char buffer[MAX_PAYLOAD_SIZE_EXTERNAL];
     size_t offset = 0;
 
     memcpy(buffer + offset, &tx->type, sizeof(tx->type));
@@ -55,8 +67,10 @@ void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
     offset += PUBKEY_SIZE * tx->recipient_count;
     memcpy(buffer + offset, tx->group_id, GROUP_ID_SIZE);
     offset += GROUP_ID_SIZE;
-    memcpy(buffer + offset, tx->payload, tx->payload_len);
-    offset += tx->payload_len;
+    
+    // Hash the EncryptedPayload
+    memcpy(buffer + offset, &tx->payload, sizeof(EncryptedPayload));
+    offset += sizeof(EncryptedPayload);
 
     SHA256(buffer, offset, hash_out);
 }
