@@ -36,7 +36,7 @@ int blockchain_test_main(void) {
 
     //Now making data that a client would produce
 
-    TW_InternalTransaction** transactions = malloc(sizeof(TW_Transaction*) * 10);
+    TW_Transaction** transactions = malloc(sizeof(TW_Transaction*) * 10);
 
     unsigned char* group_id = "test_group_id";
 

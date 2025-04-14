@@ -12,6 +12,7 @@
 #define GROUP_ID_SIZE 16       // Fixed-size group identifier
 
 typedef enum {
+    TW_TXN_MISC,
     TW_TXN_MESSAGE,
     TW_TXN_GROUP_MESSAGE,
     TW_TXN_VOICE_CALL_REQ,

@@ -38,8 +38,8 @@ int signing_test_main(void) {
 
     // Test 1: Sign a message
     printf("Test 1: Sign message... ");
-    SignedMessage signed_msg;
-    if (sign_message(test_message, message_len, &signed_msg) == 0) {
+    unsigned char signature[SIGNATURE_SIZE];
+    if (sign_message(test_message, signature) == 0) {
         printf("✓ Passed\n");
         tests_passed++;
     } else {
@@ -49,7 +49,7 @@ int signing_test_main(void) {
 
     // Test 2: Verify the signature
     printf("Test 2: Verify signature... ");
-    if (verify_signature(&signed_msg, public_key) == 0) {
+    if (verify_signature(signature, (unsigned char*)test_message, message_len, public_key) == 0) {
         printf("✓ Passed\n");
         tests_passed++;
     } else {
@@ -59,8 +59,10 @@ int signing_test_main(void) {
 
     // Test 3: Verify with tampered message
     printf("Test 3: Verify tampered message... ");
-    signed_msg.message[0] = 'X'; // Tamper with the message
-    if (verify_signature(&signed_msg, public_key) != 0) {
+    char tampered_message[message_len + 1];
+    strcpy(tampered_message, test_message);
+    tampered_message[0] = 'X'; // Tamper with the message
+    if (verify_signature(signature, (unsigned char*)tampered_message, message_len, public_key) != 0) {
         printf("✓ Passed (correctly rejected tampered message)\n");
         tests_passed++;
     } else {

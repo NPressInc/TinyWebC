@@ -38,18 +38,20 @@ void TW_BlockChain_create_genesis_block(TW_BlockChain* blockchain, const unsigne
     // Dummy genesis transaction (no crypto, plaintext)
     unsigned char sender[PUBKEY_SIZE];
     memcpy(sender, creator_pubkey, PUBKEY_SIZE);
-    TW_InternalTransaction* txn = malloc(sizeof(TW_InternalTransaction));
 
+    unsigned char* genesis_text = "genesis_text";
+
+    EncryptedPayload* genesis_payload = encrypt_payload_multi(genesis_text, 13, sender, 1);
+
+    TW_Transaction* txn = TW_Transaction_create(TW_TXN_MISC, sender, sender, 1, NULL, genesis_payload, NULL);
     
-    tw_create_internal_transaction(txn, TW_INT_MISC, sender, sender, 1, NULL, 
-                                               (InternalTransactionPayload)genesis_text, NULL);
+    
     if (!txn) return;
-
-    TW_BlockEntry entry = { .txn = *txn };
     unsigned char zero_hash[HASH_SIZE] = {0};
-    unsigned char proposer_id[PROP_ID_SIZE] = "genesis123";
+    unsigned char proposer_id[PROP_ID_SIZE] = "genesis";
 
-    TW_Block* genesis = TW_Block_create(0, &entry, 1, 0, time(NULL), zero_hash, proposer_id, NULL);
+    TW_Block* genesis = TW_Block_create(0, txn, 1, time(NULL), zero_hash, proposer_id, NULL);
+
     if (genesis) {
         blockchain->blocks[0] = genesis;
         blockchain->length = 1;

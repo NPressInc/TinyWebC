@@ -13,8 +13,8 @@
 
 /** Creates a new Block with the given parameters. */
 TW_Block* TW_Block_create(int32_t index, TW_Transaction* block_txns, int32_t txn_count, 
-                          uint8_t is_internal, time_t timestamp, const unsigned char* previous_hash, 
-                          const unsigned char* proposer_id, TW_MerkleTree* merkle_tree) {
+                        time_t timestamp, const unsigned char* previous_hash, 
+                        const unsigned char* proposer_id, TW_MerkleTree* merkle_tree) {
     TW_Block* block = malloc(sizeof(TW_Block));
     if (!block) return NULL;
 

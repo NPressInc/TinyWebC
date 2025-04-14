@@ -30,29 +30,29 @@ typedef enum {
 } TW_InternalTransactionType;
 
 typedef struct {
+    TW_InternalTransactionType type;
+    unsigned char sender[PUBKEY_SIZE];
+    uint64_t timestamp;
     uint32_t proposer_id;
     unsigned char block_hash[HASH_SIZE];
     TW_Block block_data;
     unsigned char chain_hash[HASH_SIZE];
-} BlockPayload;
-
-typedef struct {
-    TW_InternalTransactionType type;
-    unsigned char sender[PUBKEY_SIZE];
-    uint64_t timestamp;
-    BlockPayload payload;
-    const unsigned char block_hash[HASH_SIZE];
     unsigned char signature[SIGNATURE_SIZE];
 } TW_InternalTransaction;
 
 // Functions
-void tw_create_internal_transaction(TW_InternalTransaction* txn, TW_InternalTransactionType type, 
-                                   const unsigned char* sender, const unsigned char* last_hash, 
-                                   BlockPayload payload, const unsigned char* signature);
+TW_InternalTransaction* tw_create_internal_transaction(TW_InternalTransactionType type, const unsigned char* properser_id,
+                                    TW_Block* block_data, unsigned char* chain_hash, 
+                                    const unsigned char* sender, const unsigned char* block_hash, 
+                                    const unsigned char* signature);
 
 size_t TW_InternalTransaction_serialize(TW_InternalTransaction* txn, unsigned char** buffer);
 TW_InternalTransaction* TW_InternalTransaction_deserialize(const unsigned char* buffer, size_t buffer_size);
 
 void tw_destroy_internal_transaction(TW_InternalTransaction* txn);
+
+void TW_Internal_Transaction_add_signature(TW_InternalTransaction* txn);
+
+void TW_InternalTransaction_hash(TW_InternalTransaction *txn, unsigned char *hash_out);
 
 #endif
