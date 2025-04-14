@@ -4,6 +4,7 @@
 #include <stddef.h>  // For size_t
 #include <stdint.h>
 #include "block.h"
+#include "internalTransaction.h"
 
 #define MAX_BLOCKS 1000  // Arbitrary cap for in-memory chain, adjust as needed
 

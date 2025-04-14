@@ -4,11 +4,13 @@
 #include <stddef.h>  // For size_t
 #include <stdint.h>
 #include <stdlib.h>
+#include "packages/signing/signing.h"
+#include "packages/structures/blockChain/block.h"
 
-#define SIG_SIZE 64
 #define HASH_SIZE 32
 #define MAX_PEERS 10
 #define MAX_PAYLOAD_SIZE_INTERNAL 8096
+#define MAX_BLOCK_SIZE
 
 typedef enum {
     TW_INT_TXN_PROPOSE_BLOCK,
@@ -23,34 +25,30 @@ typedef enum {
     TW_INT_TXN_REQ_FULL_CHAIN,
     TW_INT_TXN_BROADCAST_BLOCK,
     TW_INT_TXN_BROADCAST_CHAIN,
-    TW_INT_TXN_REBROADCAST_MSG
+    TW_INT_TXN_REBROADCAST_MSG,
+    TW_INT_MISC
 } TW_InternalTransactionType;
+
+typedef struct {
+    uint32_t proposer_id;
+    unsigned char block_hash[HASH_SIZE];
+    TW_Block block_data;
+    unsigned char chain_hash[HASH_SIZE];
+} BlockPayload;
 
 typedef struct {
     TW_InternalTransactionType type;
     unsigned char sender[PUBKEY_SIZE];
     uint64_t timestamp;
-    unsigned char targets[PUBKEY_SIZE * MAX_PEERS];
-    uint8_t target_count;
-    unsigned char last_hash[HASH_SIZE];
-    unsigned char payload[MAX_PAYLOAD_SIZE_INTERNAL]; // Pre-formatted, e.g., from external logic
-    uint16_t payload_len;
-    unsigned char signature[SIG_SIZE];       // Pre-validated externally
+    BlockPayload payload;
+    const unsigned char block_hash[HASH_SIZE];
+    unsigned char signature[SIGNATURE_SIZE];
 } TW_InternalTransaction;
-
-typedef struct {
-    uint32_t proposer_id;
-    unsigned char block_hash[HASH_SIZE];
-    char block_data[512];
-    unsigned char chain_hash[HASH_SIZE];
-} ProposeBlockPayload;
 
 // Functions
 void tw_create_internal_transaction(TW_InternalTransaction* txn, TW_InternalTransactionType type, 
-                                   const unsigned char* sender, const unsigned char* targets, 
-                                   uint8_t target_count, const unsigned char* last_hash, 
-                                   const unsigned char* payload, uint16_t payload_len, 
-                                   const unsigned char* signature);
+                                   const unsigned char* sender, const unsigned char* last_hash, 
+                                   BlockPayload payload, const unsigned char* signature);
 
 size_t TW_InternalTransaction_serialize(TW_InternalTransaction* txn, unsigned char** buffer);
 TW_InternalTransaction* TW_InternalTransaction_deserialize(const unsigned char* buffer, size_t buffer_size);

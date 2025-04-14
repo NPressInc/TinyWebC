@@ -44,6 +44,6 @@ void TW_Transaction_destroy(TW_Transaction* tx);
 void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out);
 size_t TW_Transaction_to_bytes(TW_Transaction* tx, unsigned char** buffer);
 TW_Transaction* TW_Transaction_deserialize(const unsigned char* buffer, size_t buffer_size);
-void TW_Transaction_add_signature(TW_Transaction* txn)
+void TW_Transaction_add_signature(TW_Transaction* txn);
 
 #endif

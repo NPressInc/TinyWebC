@@ -3,28 +3,26 @@
 #include "packages/signing/signing.h"
 #include "packages/keystore/keystore.h"
 
-unsigned char* sign_message(const char* message) {
+int sign_message(const char* message, unsigned char* signature_out) {
     // Check if a keypair is loaded
     if (!keystore_is_keypair_loaded()) {
-        return NULL;
+        return -1;
     }
 
     // Get the Ed25519 private key from keystore
     unsigned char private_key[SIGN_SECRET_SIZE];
     if (!_keystore_get_private_key(private_key)) {
-        return NULL;
+        return -1;
     }
 
-    unsigned char* signature = malloc(crypto_sign_BYTES);
-
-    // Sign the message
-    if (crypto_sign_detached(signature, NULL,
+    // Sign the message directly into the provided buffer
+    if (crypto_sign_detached(signature_out, NULL,
                            (unsigned char*)message, SIGNED_MESSAGE_SIZE,
                            private_key) != 0) {
-        return NULL;
+        return -1;
     }
 
-    return signature;
+    return 0;  // Success
 }
 
 int verify_signature(const unsigned char* signature, const unsigned char* message, size_t message_len, const unsigned char* public_key){

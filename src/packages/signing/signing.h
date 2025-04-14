@@ -16,7 +16,7 @@
  * @param signed_msg Output parameter to store the signed message
  * @return 0 on success, -1 on failure
  */
-unsigned char* sign_message(const char* message);
+int sign_message(const char* message, unsigned char* signature_out);
 /**
  * Verify a signed message using a provided public key
  * 

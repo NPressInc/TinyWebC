@@ -43,11 +43,11 @@ TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned ch
 
 void TW_Transaction_add_signature(TW_Transaction* txn){
 
-    char* txn_hash = malloc(SIGNATURE_SIZE);
+    unsigned char txn_hash[SIGNATURE_SIZE];
 
     TW_Transaction_hash(txn, txn_hash);
 
-    *txn->signature = sign_message(txn_hash);
+    sign_message(txn_hash, txn->signature);
 }
 
 /** Computes the SHA-256 hash of the transaction into hash_out. */

@@ -17,13 +17,12 @@
 typedef union {
     TW_Transaction txn;
     TW_InternalTransaction int_txn;
-} TW_BlockEntry;
+} TW_BlockTxn;
 
 typedef struct {
     int32_t index;
-    TW_BlockEntry entries[MAX_TXNS];
-    int32_t entry_count;
-    uint8_t is_internal;
+    TW_Transaction txns[MAX_TXNS];
+    int32_t txn_count;
     time_t timestamp;
     unsigned char previous_hash[HASH_SIZE];
     unsigned char proposer_id[PROP_ID_SIZE];
@@ -32,8 +31,8 @@ typedef struct {
 
 
 // Function prototypes
-TW_Block* TW_Block_create(int32_t index, TW_BlockEntry* entries, int32_t entry_count, 
-                          uint8_t is_internal, time_t timestamp, const unsigned char* previous_hash, 
+TW_Block* TW_Block_create(int32_t index, TW_Transaction* block_txns, int32_t txn_count, 
+                          time_t timestamp, const unsigned char* previous_hash, 
                           const unsigned char* proposer_id, TW_MerkleTree* merkle_tree);
 void TW_Block_destroy(TW_Block* block);
 void TW_Block_buildMerkleTree(TW_Block* block);
