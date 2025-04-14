@@ -44,7 +44,8 @@ void TW_BlockChain_create_genesis_block(TW_BlockChain* blockchain, const unsigne
     EncryptedPayload* genesis_payload = encrypt_payload_multi(genesis_text, 13, sender, 1);
 
     TW_Transaction* txn = TW_Transaction_create(TW_TXN_MISC, sender, sender, 1, NULL, genesis_payload, NULL);
-    
+
+    free_encrypted_payload(genesis_payload);
     
     if (!txn) return;
     unsigned char zero_hash[HASH_SIZE] = {0};
