@@ -29,7 +29,7 @@ int signing_test_main(void) {
     }
 
     // Get the public key for verification
-    unsigned char public_key[PUBKEY_SIZE];
+    unsigned char public_key[SIGN_PUBKEY_SIZE];
     if (!keystore_get_public_key(public_key)) {
         printf("Failed to get public key\n");
         keystore_cleanup();

@@ -16,8 +16,9 @@ int sign_message(const char* message, unsigned char* signature_out) {
     }
 
     // Sign the message directly into the provided buffer
+    size_t message_len = strlen(message);
     if (crypto_sign_detached(signature_out, NULL,
-                           (unsigned char*)message, SIGNED_MESSAGE_SIZE,
+                           (unsigned char*)message, message_len,
                            private_key) != 0) {
         return -1;
     }

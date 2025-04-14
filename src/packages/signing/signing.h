@@ -11,16 +11,18 @@
 /**
  * Sign a message using the node's private key
  * 
- * @param message The message to sign
- * @param message_len Length of the message
- * @param signed_msg Output parameter to store the signed message
+ * @param message The message to sign (null-terminated string)
+ * @param signature_out Buffer to store the signature (must be at least SIGNATURE_SIZE bytes)
  * @return 0 on success, -1 on failure
  */
 int sign_message(const char* message, unsigned char* signature_out);
+
 /**
  * Verify a signed message using a provided public key
  * 
- * @param signed_msg The signed message to verify
+ * @param signature The signature to verify
+ * @param message The message that was signed
+ * @param message_len Length of the message
  * @param public_key The public key to use for verification
  * @return 0 if signature is valid, -1 if invalid
  */

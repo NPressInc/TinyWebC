@@ -59,25 +59,25 @@ int encryption_test_main(void) {
     const char* message = "This is a test message for encryption";
     size_t msg_len = strlen(message) + 1;
     printf("Message length: %zu bytes\n", msg_len);
-    //print_hex("Original message", (unsigned char*)message, msg_len);
 
     // Generate multiple recipient keypairs (3 recipients)
     #define NUM_RECIPIENTS 4  // Increased to include sender
     unsigned char recip_pubkeys[NUM_RECIPIENTS][PUBKEY_SIZE];
     unsigned char recip_privkeys[NUM_RECIPIENTS][SECRET_SIZE];
-    const unsigned char* recip_pubkey_ptrs[NUM_RECIPIENTS];
+    
+    // Create a continuous buffer for all public keys
+    unsigned char all_pubkeys[NUM_RECIPIENTS * PUBKEY_SIZE];
 
     // First recipient is the sender (using X25519 key for encryption)
     memcpy(recip_pubkeys[0], sender_encryption_pubkey, PUBKEY_SIZE);
-    // We'll get the sender's private key later from keystore
-    recip_pubkey_ptrs[0] = recip_pubkeys[0];
+    memcpy(all_pubkeys, sender_encryption_pubkey, PUBKEY_SIZE);
     printf("Recipient 0 (Sender):\n");
     print_hex("  X25519 Public key", recip_pubkeys[0], PUBKEY_SIZE);
 
     // Generate the other recipients
     for (int i = 1; i < NUM_RECIPIENTS; i++) {
         crypto_box_keypair(recip_pubkeys[i], recip_privkeys[i]);
-        recip_pubkey_ptrs[i] = recip_pubkeys[i];
+        memcpy(all_pubkeys + (i * PUBKEY_SIZE), recip_pubkeys[i], PUBKEY_SIZE);
         printf("Recipient %d:\n", i);
         print_hex("  Public key", recip_pubkeys[i], PUBKEY_SIZE);
         print_hex("  Private key", recip_privkeys[i], SECRET_SIZE);
@@ -87,7 +87,7 @@ int encryption_test_main(void) {
     EncryptedPayload* encrypted_multi = encrypt_payload_multi(
         (unsigned char*)message, 
         msg_len, 
-        recip_pubkey_ptrs, 
+        all_pubkeys, 
         NUM_RECIPIENTS
     );
     
@@ -99,7 +99,6 @@ int encryption_test_main(void) {
     printf("Multiple recipient encryption succeeded\n");
     print_hex("Ephemeral pubkey", encrypted_multi->ephemeral_pubkey, PUBKEY_SIZE);
     print_hex("Nonce", encrypted_multi->nonce, NONCE_SIZE);
-    //print_hex("Ciphertext", encrypted_multi->ciphertext, encrypted_multi->ciphertext_len);
     
     // Print encrypted keys for each recipient
     for (int i = 0; i < NUM_RECIPIENTS; i++) {
@@ -122,7 +121,7 @@ int encryption_test_main(void) {
     unsigned char* decrypted = decrypt_payload(encrypted_multi, &plaintext_len, 
                                               sender_privkey, 
                                               sender_encryption_pubkey, 
-                                              &recip_pubkeys[0][0]);
+                                              all_pubkeys);
     if (!decrypted) {
         printf("Decryption failed for sender\n");
     } else {
@@ -142,7 +141,7 @@ int encryption_test_main(void) {
         unsigned char* decrypted = decrypt_payload(encrypted_multi, &plaintext_len, 
                                                   recip_privkeys[i], 
                                                   recip_pubkeys[i], 
-                                                  &recip_pubkeys[0][0]);
+                                                  all_pubkeys);
         if (!decrypted) {
             printf("Decryption failed for recipient %d\n", i);
             continue;
@@ -156,7 +155,6 @@ int encryption_test_main(void) {
         }
 
         printf("Recipient %d decryption verified: %s\n", i, decrypted);
-        //print_hex("Decrypted", decrypted, plaintext_len);
         free(decrypted);
     }
 
@@ -170,7 +168,7 @@ int encryption_test_main(void) {
         EncryptedPayload* large_encrypted = encrypt_payload_multi(
             (unsigned char*)large_message, 
             MAX_PLAINTEXT_SIZE + 1000, 
-            recip_pubkey_ptrs, 
+            all_pubkeys, 
             NUM_RECIPIENTS
         );
         
