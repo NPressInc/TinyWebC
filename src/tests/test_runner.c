@@ -5,10 +5,8 @@
 #include "packages/keystore/keystore.h"
 #include "tests/encryption_test.h"
 #include "tests/signing_test.h"
+#include "tests/blockchain_test.h"
 
-// Declare the test functions
-int encryption_test_main(void);
-int signing_test_main(void);
 
 int main(int argc, char* argv[]) {
     // Initialize libsodium once at the start
@@ -21,7 +19,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 2;
+        int total_tests = 3;
 
         printf("Running all tests...\n\n");
 

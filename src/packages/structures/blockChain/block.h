@@ -25,7 +25,7 @@ typedef struct {
 
 
 // Function prototypes
-TW_Block* TW_Block_create(int32_t index, TW_Transaction* block_txns, int32_t txn_count, 
+TW_Block* TW_Block_create(int32_t index, TW_Transaction** block_txns, int32_t txn_count, 
                             time_t timestamp, const unsigned char* previous_hash, 
                             const unsigned char* proposer_id, TW_MerkleTree* merkle_tree);
 void TW_Block_destroy(TW_Block* block);

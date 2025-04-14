@@ -12,7 +12,7 @@
 #include "merkleTreeNode.h"
 
 /** Creates a new Block with the given parameters. */
-TW_Block* TW_Block_create(int32_t index, TW_Transaction* block_txns, int32_t txn_count, 
+TW_Block* TW_Block_create(int32_t index, TW_Transaction** block_txns, int32_t txn_count, 
                         time_t timestamp, const unsigned char* previous_hash, 
                         const unsigned char* proposer_id, TW_MerkleTree* merkle_tree) {
     TW_Block* block = malloc(sizeof(TW_Block));
@@ -21,7 +21,7 @@ TW_Block* TW_Block_create(int32_t index, TW_Transaction* block_txns, int32_t txn
     block->index = index;
     block->txn_count = (txn_count > MAX_TXNS) ? MAX_TXNS : txn_count;
     for (int32_t i = 0; i < block->txn_count; i++) {
-        block->txns[i] = block_txns[i];
+        block->txns[i] = *block_txns[i];
     }
     block->timestamp = timestamp;
     memcpy(block->previous_hash, previous_hash ? previous_hash : (const unsigned char*)"\0", HASH_SIZE);

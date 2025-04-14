@@ -43,22 +43,23 @@ void TW_BlockChain_create_genesis_block(TW_BlockChain* blockchain, const unsigne
 
     EncryptedPayload* genesis_payload = encrypt_payload_multi(genesis_text, 13, sender, 1);
 
-    TW_Transaction* txn = TW_Transaction_create(TW_TXN_MISC, sender, sender, 1, NULL, genesis_payload, NULL);
+    TW_Transaction* txns[1];
+    txns[0] = TW_Transaction_create(TW_TXN_MISC, sender, sender, 1, NULL, genesis_payload, NULL);
 
     free_encrypted_payload(genesis_payload);
     
-    if (!txn) return;
+    if (!txns) return;
     unsigned char zero_hash[HASH_SIZE] = {0};
     unsigned char proposer_id[PROP_ID_SIZE] = "genesis";
 
-    TW_Block* genesis = TW_Block_create(0, txn, 1, time(NULL), zero_hash, proposer_id, NULL);
+    TW_Block* genesis = TW_Block_create(0, txns, 1, time(NULL), zero_hash, proposer_id, NULL);
 
     if (genesis) {
         blockchain->blocks[0] = genesis;
         blockchain->length = 1;
     }
-
-    TW_Transaction_destroy(txn);
+    
+    TW_Transaction_destroy(txns[0]);
 }
 
 /** Returns the last block in the chain. */

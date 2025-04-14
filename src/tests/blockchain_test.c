@@ -1,3 +1,5 @@
+#include "string.h"
+
 #include "blockchain_test.h" 
 #include "packages/structures/blockChain/blockchain.h"
 #include "packages/keystore/keystore.h"
@@ -63,16 +65,13 @@ int blockchain_test_main(void) {
     unsigned char group_id[GROUP_ID_SIZE] = {0};
     strncpy((char*)group_id, "test_group_id", GROUP_ID_SIZE-1);
 
-    const unsigned char* recipient_pubkeys[1];
-    recipient_pubkeys[0] = publicKey;
-
     const char* raw_payload = "test-message";
     size_t payload_len = strlen(raw_payload);
 
     // Encrypt with array of pointers to public keys
     EncryptedPayload* encrypted_payload = encrypt_payload_multi(
         (unsigned char*)raw_payload, payload_len, 
-        recipient_pubkeys, 1);
+        publicKey, 1);
 
     if (!encrypted_payload) {
         printf("Failed to encrypt payload\n");
@@ -111,6 +110,24 @@ int blockchain_test_main(void) {
     printf("Created transactions\n");
 
     // now with the transactions, we can simulate what a node would do
+    unsigned char last_hash[HASH_SIZE];
+
+    TW_BlockChain_get_hash(blockchain, last_hash);
+
+    print_hex("blockchain hash: ", last_hash, HASH_SIZE);
+
+    TW_Block* test_block = TW_Block_create(1, transactions, 10, time(NULL), last_hash, "test", NULL);
+
+    TW_Block_getHash(test_block,last_hash);
+
+    print_hex("test_block hash: ", last_hash, HASH_SIZE);
+
+    TW_BlockChain_add_block(blockchain, test_block);
+
+    TW_BlockChain_get_hash(blockchain, last_hash);
+
+    print_hex("updated blockchain hash: ", last_hash, HASH_SIZE);
+
     // Clean up before returning
     for (int i = 0; i < 10; i++) {
         if (transactions[i]) TW_Transaction_destroy(transactions[i]);
