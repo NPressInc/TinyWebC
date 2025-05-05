@@ -1,6 +1,6 @@
 AllTests 9 0.0159946
-EncryptionTest 3 0.033173
-SigningTest 3 0.0177812
+EncryptionTest 4 0.0560965
+SigningTest 4 0.0305483
 BlockchainTest 0 0
 ---
 BlockchainTest

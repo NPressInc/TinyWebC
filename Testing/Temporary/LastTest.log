@@ -1,10 +1,10 @@
-Start testing: Apr 11 22:50 MDT
+Start testing: May 05 08:55 MDT
 ----------------------------------------------------------
 1/3 Testing: EncryptionTest
 1/3 Test: EncryptionTest
-Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "encryption"
-Directory: /home/william/Documents/tinyweb/CTinyWeb
-"EncryptionTest" start time: Apr 11 22:50 MDT
+Command: "/home/dolla/TinyWebC/tinyweb_tests" "encryption"
+Directory: /home/dolla/TinyWebC
+"EncryptionTest" start time: May 05 08:55 MDT
 Output:
 ----------------------------------------------------------
 Plaintext size (3048 bytes) exceeds maximum allowed size (2048 bytes)
@@ -12,37 +12,37 @@ Running encryption test...
 Starting Encryption Test
 Ed25519 private key generated and saved
 Sender's Ed25519 public key (for signing and identity):
-  Public key: 9c3fa67a0f763e9e15009ba87d4122c44e63d690337036a34b4f0da2db177b51
+  Public key: d41b21b05699944aca2be77f293c710d529b3a2477709a347d2f5716735a644a
 Sender's X25519 public key (for encryption):
-  Encryption public key: 6b4b5330002b6da683588ee2f2a8f976326cc3716033374152987be47d26b440
+  Encryption public key: 6012f5a05689fadfb5fd0e4ea5847bd53b7456bfa6e66eea26814166bc24a95d
 Ed25519 private key loaded
 Message length: 38 bytes
 Recipient 0 (Sender):
-  X25519 Public key: 6b4b5330002b6da683588ee2f2a8f976326cc3716033374152987be47d26b440
+  X25519 Public key: 6012f5a05689fadfb5fd0e4ea5847bd53b7456bfa6e66eea26814166bc24a95d
 Recipient 1:
-  Public key: 0529f28e0aa7d28d336a5e80be0cd73feb941a923f11141bd4ee644e3f2faf79
-  Private key: d212b906163ef8a1654e23cf6b70ad77504ef977198ce4728999a8c707afc97f
+  Public key: 1a2a3a0c5de6e780bd6c3dbcccf234696d804377b4f63aebed48897ff00b9115
+  Private key: 9a9af38168a2e24b00e886426c8363e1338b3d3a0bc1b981ed3a7575259a19ce
 Recipient 2:
-  Public key: 6cc45ac880cf7ae1c8b9a640bd0e491745618610be34cc605c061b28488c6a78
-  Private key: db79fcbf80b043c6b04b4d7bfc21c49094dfb496d7b05f8c4216d80c91fc4d9a
+  Public key: cd72a2dd7a9ccec87b745740bd90f315e538f74b267e72bc92b32c9805a4e14e
+  Private key: 1bef2e4d43609851fb97d898d073e2be510bcb138bba88104e6ce8a06e517b1d
 Recipient 3:
-  Public key: 87eb869e8995a278a9ed6955aad1497b01ca59e4916c12d97c78b4d639e4462e
-  Private key: 21721bd66497a73b6d1478e8cb53a3aa1155c6e62b3f511f1f6751585aff5d25
+  Public key: 0605bfb8e5bc939ee464d26cd1d7005279f5bc1e4454da5940d46c6cefdf5d57
+  Private key: 9f4631b3fb33cc6607ed1efa5a746b66005ea016f3ea701cb708e74967c28649
 Multiple recipient encryption succeeded
-Ephemeral pubkey: b5d3720f719c8221d6b4e64371c253aad9c080c562b9e8fa55b459806e4f5f2b
-Nonce: 58f709e6f531fea34ae51e6ce15a8d8028ecc8feeb54f476
+Ephemeral pubkey: 4d95500486027cea80f21aa8020e1b9d2ba5302048e47f8ef47bd716de070111
+Nonce: d275bedd9df76ff363c381660f898fd6b67a50df49e36459
 Encrypted key 0:
-  Key: 7f11a662ebb60f11967232ca4b7e58970573686ded7cf2dc99da3eb90ccf4623b5e48bdaacd90f36607e99e0d8e0f27f
-  Nonce: 11bbc9ad66af49056feb39fa474578c795ded087b9bb42c5
+  Key: e87cbd92c4db6432dd945cb1eac2f2854f858744a91230e6953e9dc4478d1dc73f6a053163bc839dd3efd7e82e19bf15
+  Nonce: b7a52772ec7a8fef2b7b22a3681aac70a92aff3a147b73ec
 Encrypted key 1:
-  Key: 8535f2c4da813d73e10cbd8aeec1a8b2a1210b8d3f5cbcb6e8b9af174eecc1e6992e21ad0c9faa473b259414660a88d6
-  Nonce: e35455d2666e6586f13c53ff455f50897547730c134f520b
+  Key: c350968a636325741a283c7e3766f1115a8a244de865313756b820a38ae19f4d73dffdca0f1f106ee90b500deb8d7af8
+  Nonce: f66fdb4023eec3c5c15d7e384b7b3dfb066e509f71a5c4d8
 Encrypted key 2:
-  Key: 9a255a74cef25d08064f9d655624b4d6e25a08dab705a8c3c942a1ebb489fd85a8d207007a12a4765f47fcbfa44cacd5
-  Nonce: dc8fb6a201cd9a8344e90ea7dfafb734b0b3af1f0a28ab38
+  Key: 78b4bda2a88ee07c019126485f0839475ab1253f64559c559c9e6949894a951c1a060a8b6541c38f60ec8e3378cd2e48
+  Nonce: 4e41743a90f83f158463da2b9bf9647038d1526208f28993
 Encrypted key 3:
-  Key: 75dbbb2b682cfc00c351f53ed5cdbf08a1f4e4de0e62988146065a51d150ebc9565f0931d204b4f04267f516be7086d1
-  Nonce: 990a981ef7ec443a5d53b59f971d99e3757bdde2c0402639
+  Key: ece203b66231a9d6e8c4ac34cd0d7be643c3603aa465b238f5a44988959afa02f0076f3236822c5b5963f21132b752ee
+  Nonce: afd9c9480b0e2d3dad8b5eb0fa47d38175aa43e0c343e86d
 
 Decrypting with sender's private key:
 Sender decryption verified: This is a test message for encryption
@@ -54,18 +54,18 @@ Testing with a message that exceeds the size limit:
 SUCCESS: Encryption of oversized message correctly failed
 Test completed
 <end of output>
-Test time =   0.10 sec
+Test time =   0.22 sec
 ----------------------------------------------------------
 Test Passed.
-"EncryptionTest" end time: Apr 11 22:50 MDT
+"EncryptionTest" end time: May 05 08:55 MDT
 "EncryptionTest" time elapsed: 00:00:00
 ----------------------------------------------------------
 
 2/3 Testing: SigningTest
 2/3 Test: SigningTest
-Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "signing"
-Directory: /home/william/Documents/tinyweb/CTinyWeb
-"SigningTest" start time: Apr 11 22:50 MDT
+Command: "/home/dolla/TinyWebC/tinyweb_tests" "signing"
+Directory: /home/dolla/TinyWebC
+"SigningTest" start time: May 05 08:55 MDT
 Output:
 ----------------------------------------------------------
 Running signing test...
@@ -79,28 +79,28 @@ Total tests: 3
 Passed: 3
 Failed: 0
 <end of output>
-Test time =   0.05 sec
+Test time =   0.12 sec
 ----------------------------------------------------------
 Test Passed.
-"SigningTest" end time: Apr 11 22:50 MDT
+"SigningTest" end time: May 05 08:55 MDT
 "SigningTest" time elapsed: 00:00:00
 ----------------------------------------------------------
 
 3/3 Testing: BlockchainTest
 3/3 Test: BlockchainTest
-Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "blockchain"
-Directory: /home/william/Documents/tinyweb/CTinyWeb
-"BlockchainTest" start time: Apr 11 22:50 MDT
+Command: "/home/dolla/TinyWebC/tinyweb_tests" "blockchain"
+Directory: /home/dolla/TinyWebC
+"BlockchainTest" start time: May 05 08:55 MDT
 Output:
 ----------------------------------------------------------
 Unknown test: blockchain
 Available tests: encryption, signing
 <end of output>
-Test time =   0.00 sec
+Test time =   0.01 sec
 ----------------------------------------------------------
 Test Failed.
-"BlockchainTest" end time: Apr 11 22:50 MDT
+"BlockchainTest" end time: May 05 08:55 MDT
 "BlockchainTest" time elapsed: 00:00:00
 ----------------------------------------------------------
 
-End testing: Apr 11 22:50 MDT
+End testing: May 05 08:55 MDT
