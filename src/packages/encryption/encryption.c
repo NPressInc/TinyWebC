@@ -181,6 +181,7 @@ unsigned char *decrypt_payload(const EncryptedPayload *encrypted, const unsigned
 }
 
 size_t encrypted_payload_get_size(EncryptedPayload* payload){
+    if (!payload || !payload->ciphertext) return 0;
     size_t mem_size = 0;
 
     mem_size += payload->ciphertext_len;
@@ -195,17 +196,15 @@ size_t encrypted_payload_get_size(EncryptedPayload* payload){
 }
 
 
-size_t encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer){
-    size_t buffer_size = encrypted_payload_get_size(payload);
+void encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer, size_t buffer_remaining){
 
-    if (!buffer_size) {
-        printf("payload size is 0\n");
-        return 0;
+    // Check if the buffer has enough space
+    if (buffer_remaining < encrypted_payload_get_size(payload)) {
+        return 0; // Buffer too small
     }
 
-    *out_buffer = malloc(buffer_size);
-    if (!*out_buffer) {
-        printf("malloc failed\n");
+    if (!out_buffer) {
+        printf("payload size is 0\n");
         return 0;
     }
 

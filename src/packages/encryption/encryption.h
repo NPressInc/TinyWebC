@@ -14,7 +14,7 @@
 // Maximum ciphertext size: plaintext + MAC
 #define MAX_CIPHERTEXT_SIZE (MAX_PLAINTEXT_SIZE + MAC_SIZE)
 // Maximum number of recipients
-#define MAX_RECIPIENTS 25
+#define MAX_RECIPIENTS 50
 // Size of each encrypted symmetric key (key + MAC)
 #define ENCRYPTED_KEY_SIZE (crypto_secretbox_KEYBYTES + MAC_SIZE)
 
@@ -39,6 +39,6 @@ size_t encrypted_payload_get_size(EncryptedPayload* payload);
 
 size_t encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer);
 
-size_t encrypted_payload_deserialize(char* serialized_payload, size_t payload_len, EncryptedPayload* payload_out);
+size_t encrypted_payload_deserialize(char* buffer, EncryptedPayload* payload);
 
 #endif /* ENCRYPTION_H */

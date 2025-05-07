@@ -27,7 +27,9 @@ TW_Block* TW_Block_create(int32_t index, TW_Transaction** block_txns, int32_t tx
     memcpy(block->proposer_id, proposer_id ? proposer_id : (const unsigned char*)"\0", PROP_ID_SIZE);
 
 
-    TW_MerkleTreeNode* node = TW_MerkleTree_buildTree(block_txns, txn_count, )
+    //TW_MerkleTreeNode* node = TW_MerkleTree_buildTree(block_txns, txn_count, )
+
+    char* merkle_root_hash = NULL;
 
     memcpy(block->merkle_root_hash, merkle_root_hash ? merkle_root_hash : (const unsigned char*)"\0", HASH_SIZE);
 
