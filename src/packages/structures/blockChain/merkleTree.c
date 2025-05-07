@@ -47,7 +47,7 @@ static void index_to_binary(uint32_t index, uint32_t depth, char* navigation) {
 }
 
 /** Retrieves the transaction node at the given index. */
-TW_MerkleTreeNode* TW_MerkleTree_getTransactionNodeFromIndex(TW_MerkleTree* tree, uint32_t index) {
+TW_MerkleTreeNode* TW_MerkleTree_getNodeFromIndex(TW_MerkleTree* tree, uint32_t index) {
     if (!tree || index >= tree->size) return NULL;
 
     char* navigation = calloc(tree->depth + 1, sizeof(char));
@@ -61,75 +61,6 @@ TW_MerkleTreeNode* TW_MerkleTree_getTransactionNodeFromIndex(TW_MerkleTree* tree
     }
     free(navigation);
     return curr_node;
-}
-
-/** Verifies the transaction hash at the given index, returns 1 if valid. */
-int TW_MerkleTree_verifyTransactionHashByIndex(TW_MerkleTree* tree, uint32_t index, 
-                                              unsigned char** result_value, size_t* result_size) {
-    if (!tree || index >= tree->size) return 0;
-
-    char* navigation = calloc(tree->depth + 1, sizeof(char));
-    if (!navigation) return 0;
-    index_to_binary(index, tree->depth, navigation);
-
-    TW_MerkleTreeNode* curr_node = tree->root_node;
-    unsigned char** neighbor_hashes = malloc(tree->depth * sizeof(unsigned char*));
-    if (!neighbor_hashes) {
-        free(navigation);
-        return 0;
-    }
-    for (uint32_t i = 0; i < tree->depth; i++) neighbor_hashes[i] = NULL;
-
-    // Traverse and collect neighbor hashes
-    for (uint32_t i = 0; i < tree->depth; i++) {
-        if (!curr_node) break;
-        TW_MerkleTreeNode* neighbor = (navigation[i] == '0') ? TW_MerkleTreeNode_get_right(curr_node) 
-                                                            : TW_MerkleTreeNode_get_left(curr_node);
-        if (neighbor) neighbor_hashes[i] = (unsigned char*)TW_MerkleTreeNode_get_hash(neighbor);
-        curr_node = (navigation[i] == '0') ? TW_MerkleTreeNode_get_left(curr_node) 
-                                          : TW_MerkleTreeNode_get_right(curr_node);
-    }
-
-    if (!curr_node || !curr_node->is_leaf) {
-        free(neighbor_hashes);
-        free(navigation);
-        *result_value = NULL;
-        *result_size = 0;
-        return 0;
-    }
-
-    // Reconstruct root hash from leaf hash and neighbors
-    unsigned char current_hash[HASH_SIZE];
-    memcpy(current_hash, TW_MerkleTreeNode_get_hash(curr_node), HASH_SIZE);
-    for (int32_t i = tree->depth - 1; i >= 0; i--) {
-        unsigned char combined[HASH_SIZE * 2];
-        if (neighbor_hashes[i]) {
-            if (navigation[i] == '0') {
-                memcpy(combined, current_hash, HASH_SIZE);
-                memcpy(combined + HASH_SIZE, neighbor_hashes[i], HASH_SIZE);
-            } else {
-                memcpy(combined, neighbor_hashes[i], HASH_SIZE);
-                memcpy(combined + HASH_SIZE, current_hash, HASH_SIZE);
-            }
-        } else {
-            memcpy(combined, current_hash, HASH_SIZE);
-            memcpy(combined + HASH_SIZE, current_hash, HASH_SIZE); // Duplicate if no neighbor
-        }
-        SHA256(combined, HASH_SIZE * 2, current_hash);
-    }
-
-    int valid = (memcmp(current_hash, tree->root_hash, HASH_SIZE) == 0);
-    free(neighbor_hashes);
-    free(navigation);
-    *result_value = NULL; // Data in SQLite, not stored here
-    *result_size = 0;
-    return valid;
-}
-
-/** Returns the root hash of the Merkle Tree. */
-const unsigned char* TW_MerkleTree_get_rootHash(TW_MerkleTree* tree) {
-    if (!tree) return NULL;
-    return tree->root_hash; // Should always return the stored hash
 }
 
 /** Returns the number of transactions in the Merkle Tree. */
@@ -150,7 +81,7 @@ void TW_MerkleTree_destroy(TW_MerkleTree* tree) {
 }
 
 /** Builds a Merkle Tree from transaction byte data. */
-TW_MerkleTreeNode* TW_MerkleTreeNode_buildTree(const unsigned char** transactions, 
+TW_MerkleTreeNode* TW_MerkleTree_buildTree(const unsigned char** transactions, 
                                               uint32_t transaction_count, size_t* data_sizes) {
     if (!transactions || transaction_count == 0) return NULL;
 

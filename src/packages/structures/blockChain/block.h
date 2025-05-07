@@ -15,12 +15,13 @@
 
 typedef struct {
     int32_t index;
-    TW_Transaction txns[MAX_TXNS];
+    TW_Transaction* txns;
+    size_t* txn_sizes;
     int32_t txn_count;
     time_t timestamp;
     unsigned char previous_hash[HASH_SIZE];
     unsigned char proposer_id[PROP_ID_SIZE];
-    TW_MerkleTree* merkle_tree;
+    unsigned char merkle_root_hash[HASH_SIZE];
 } TW_Block;
 
 
@@ -30,7 +31,7 @@ TW_Block* TW_Block_create(int32_t index, TW_Transaction** block_txns, int32_t tx
                             const unsigned char* proposer_id, TW_MerkleTree* merkle_tree);
 void TW_Block_destroy(TW_Block* block);
 void TW_Block_buildMerkleTree(TW_Block* block);
-void TW_Block_getHash(TW_Block* block, unsigned char* hash_out);
+int TW_Block_getHash(TW_Block* block, unsigned char* hash_out);
 size_t TW_Block_serialize(TW_Block* block, unsigned char** buffer); 
 TW_Block* TW_Block_deserialize(const unsigned char* buffer, size_t buffer_size);
 

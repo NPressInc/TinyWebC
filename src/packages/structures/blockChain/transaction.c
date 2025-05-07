@@ -18,19 +18,27 @@ TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned ch
     memcpy(tx->sender, sender, PUBKEY_SIZE);
     tx->timestamp = time(NULL);
     tx->recipient_count = (recipient_count > MAX_RECIPIENTS) ? MAX_RECIPIENTS : recipient_count;
-    if (recipients) {
+    tx->payload = payload;
+    
+    if (recipients && tx->recipient_count > 0) {
+        tx->recipients = malloc(PUBKEY_SIZE * tx->recipient_count);
+        if (!tx->recipients) {
+            perror("malloc failed");
+            free(tx);
+            return NULL;
+        }
         memcpy(tx->recipients, recipients, PUBKEY_SIZE * tx->recipient_count);
     } else {
-        memset(tx->recipients, 0, PUBKEY_SIZE * MAX_RECIPIENTS);
+        tx->recipients = NULL; // No recipients, set to NULL
+        tx->recipient_count = 0; // Ensure count reflects no recipients
     }
-    memcpy(tx->group_id, group_id ? group_id : (const unsigned char*)"\0", GROUP_ID_SIZE);
-    
-    // Copy the entire EncryptedPayload struct
-    if (payload) {
-        memcpy(&tx->payload, payload, sizeof(EncryptedPayload));
+
+    if (group_id) {
+        memcpy(tx->group_id, group_id, GROUP_ID_SIZE);
     } else {
-        memset(&tx->payload, 0, sizeof(EncryptedPayload));
+        memset(tx->group_id, 0, GROUP_ID_SIZE);
     }
+    
 
     if (signature) {
         memcpy(tx->signature, signature, SIGNATURE_SIZE);
@@ -69,8 +77,8 @@ void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
     offset += GROUP_ID_SIZE;
     
     // Hash the EncryptedPayload
-    memcpy(buffer + offset, &tx->payload, sizeof(EncryptedPayload));
-    offset += sizeof(EncryptedPayload);
+    memcpy(buffer + offset, &tx->payload, encrypted_payload_get_size(tx->payload));
+    offset += encrypted_payload_get_size(tx->payload);
 
     SHA256(buffer, offset, hash_out);
 }
@@ -103,5 +111,6 @@ TW_Transaction* TW_Transaction_deserialize(const unsigned char* buffer, size_t b
 /** Frees the memory allocated for the transaction. */
 void TW_Transaction_destroy(TW_Transaction* tx) {
     if (!tx) return;
+    
     free(tx);
 }

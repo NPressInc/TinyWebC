@@ -19,12 +19,11 @@
 #define ENCRYPTED_KEY_SIZE (crypto_secretbox_KEYBYTES + MAC_SIZE)
 
 typedef struct {
-    unsigned char ciphertext[MAX_CIPHERTEXT_SIZE];      // Encrypted message (2KB + MAC)
+    unsigned char* ciphertext;      // Encrypted message (2KB + MAC)
     size_t ciphertext_len;                              // Length of encrypted message
     unsigned char nonce[NONCE_SIZE];                    // Nonce for symmetric encryption
-    unsigned char encrypted_keys[MAX_RECIPIENTS][ENCRYPTED_KEY_SIZE]; // Encrypted symmetric keys (one per recipient)
-    size_t encrypted_keys_len;
-    unsigned char key_nonces[MAX_RECIPIENTS][NONCE_SIZE]; // Nonces for encrypted keys
+    unsigned char* encrypted_keys; // Encrypted symmetric keys (one per recipient) size is MAX_RECIPIENTS * ENCRYPTED_KEY_SIZE
+    unsigned char* key_nonces; // Nonces for encrypted keys, size is MAX_RECIPIENTS * NONCE_SIZE
     unsigned char ephemeral_pubkey[PUBKEY_SIZE];        // Ephemeral public key
     size_t num_recipients;                             // Number of recipients (up to 25)
 } EncryptedPayload;
@@ -32,10 +31,14 @@ typedef struct {
 EncryptedPayload* encrypt_payload_multi(const unsigned char* plaintext, size_t plaintext_len,
                                         const unsigned char* recipient_pubkeys, size_t num_recipients);
 
-unsigned char *decrypt_payload(const EncryptedPayload *encrypted, size_t *plaintext_len,
-                                const unsigned char *recipient_privkey, const unsigned char *recipient_publickey,
-                                const unsigned char *recipient_pubkeys);
+unsigned char *decrypt_payload(const EncryptedPayload *encrypted, const unsigned char *recipient_pubkeys);
 
 void free_encrypted_payload(EncryptedPayload* payload);
+
+size_t encrypted_payload_get_size(EncryptedPayload* payload);
+
+size_t encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer);
+
+size_t encrypted_payload_deserialize(char* serialized_payload, size_t payload_len, EncryptedPayload* payload_out);
 
 #endif /* ENCRYPTION_H */

@@ -29,10 +29,11 @@ typedef struct {
     TW_TransactionType type;
     unsigned char sender[PUBKEY_SIZE];
     uint64_t timestamp;
-    unsigned char recipients[PUBKEY_SIZE * MAX_RECIPIENTS];
+    unsigned char* recipients; // pubkey size * max recipients is max size
     uint8_t recipient_count;
     unsigned char group_id[GROUP_ID_SIZE];
-    EncryptedPayload payload;  // Direct EncryptedPayload struct
+    EncryptedPayload* payload;
+    size_t payload_len;
     unsigned char signature[SIGNATURE_SIZE];       // Set externally
 } TW_Transaction;
 

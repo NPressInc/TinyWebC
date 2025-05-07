@@ -10,7 +10,8 @@
 #define MAX_BLOCKS 1000  // Arbitrary cap for in-memory chain, adjust as needed
 
 typedef struct {
-    TW_Block* blocks[MAX_BLOCKS];  // Fixed-size array of block pointers
+    TW_Block* blocks;  // Fixed-size array of block pointers
+    size_t* block_sizes;
     uint32_t length;               // Current number of blocks
     unsigned char creator_pubkey[PUBKEY_SIZE]; // Creator's public key
 } TW_BlockChain;
