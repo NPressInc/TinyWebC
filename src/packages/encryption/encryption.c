@@ -1,9 +1,9 @@
 #include "encryption.h"
-#include <arpa/inet.h>  // For htonl and ntohl
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "packages/keystore/keystore.h"
+#include "packages/utils/byteorder.h"
 
 EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t plaintext_len,
                                         const unsigned char *recipient_pubkeys, size_t num_recipients)
@@ -61,10 +61,10 @@ EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t p
 
     for (size_t i = 0; i < num_recipients; i++)
     {
-        randombytes_buf(encrypted->key_nonces[i], NONCE_SIZE);
-        if (crypto_box_easy(encrypted->encrypted_keys[i],
+        randombytes_buf(&encrypted->key_nonces[i], NONCE_SIZE);
+        if (crypto_box_easy(&encrypted->encrypted_keys[i],
                             symmetric_key, crypto_secretbox_KEYBYTES,
-                            encrypted->key_nonces[i],
+                            &encrypted->key_nonces[i],
                             &recipient_pubkeys[i * PUBKEY_SIZE],
                             ephemeral_privkey) != 0)
         {
@@ -137,9 +137,9 @@ unsigned char *decrypt_payload(const EncryptedPayload *encrypted, const unsigned
 
     // Step 2: Decrypt the symmetric key using the recipient's private key at the matched index
     unsigned char symmetric_key[crypto_secretbox_KEYBYTES];
-    if (crypto_box_open_easy(symmetric_key, encrypted->encrypted_keys[recipient_index], 
+    if (crypto_box_open_easy(symmetric_key, &encrypted->encrypted_keys[recipient_index], 
                              ENCRYPTED_KEY_SIZE,
-                             encrypted->key_nonces[recipient_index], 
+                             &encrypted->key_nonces[recipient_index], 
                              encrypted->ephemeral_pubkey, 
                              recipient_privkey) != 0)
     {
@@ -196,27 +196,26 @@ size_t encrypted_payload_get_size(EncryptedPayload* payload){
 }
 
 
-void encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer, size_t buffer_remaining){
+int encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer){
 
-    // Check if the buffer has enough space
-    if (buffer_remaining < encrypted_payload_get_size(payload)) {
-        return 0; // Buffer too small
+    if(!payload){
+        printf("payload is empty \n");
+        return 1;
     }
-
     if (!out_buffer) {
-        printf("payload size is 0\n");
-        return 0;
+        printf("output buffer is NULL \n");
+        return 1;
     }
 
     char* ptr = *out_buffer;
 
     // Convert num_recipients to network byte order and copy it
-    size_t num_recipients_net = htonl(payload->num_recipients);
+    size_t num_recipients_net = htonll(payload->num_recipients);
     memcpy(ptr, &num_recipients_net, sizeof(size_t));
     ptr += sizeof(size_t);
 
     // Convert ciphertext_len to network byte order and copy it
-    size_t ciphertext_len_net = htonl(payload->ciphertext_len);
+    size_t ciphertext_len_net = htonll(payload->ciphertext_len);
     memcpy(ptr, &ciphertext_len_net, sizeof(size_t));
     ptr += sizeof(size_t);
 
@@ -241,23 +240,39 @@ void encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer, s
     size_t nonce_bytes = payload->num_recipients * NONCE_SIZE;
     memcpy(ptr, payload->key_nonces, nonce_bytes);
     ptr += nonce_bytes;
-    
-    return buffer_size;
+
+    *out_buffer = ptr;
+
+    return 0;
 }
 
-size_t encrypted_payload_deserialize(char* buffer, EncryptedPayload* payload) {
-    char* ptr = buffer;
+EncryptedPayload* encrypted_payload_deserialize(const char** buffer) {
+    if (!buffer || !*buffer) {
+        printf("Invalid buffer\n");
+        return NULL;
+    }
 
-    // Convert num_recipients from network byte order to host byte order
+    const char* ptr = *buffer;
+
+    // Allocate memory for the EncryptedPayload
+    EncryptedPayload* payload = (EncryptedPayload*)malloc(sizeof(EncryptedPayload));
+    if (!payload) {
+        printf("Failed to allocate memory for EncryptedPayload\n");
+        return NULL;
+    }
+    // Initialize to avoid undefined behavior
+    memset(payload, 0, sizeof(EncryptedPayload));
+
+    // Deserialize num_recipients (convert from network byte order)
     size_t num_recipients_net;
     memcpy(&num_recipients_net, ptr, sizeof(size_t));
-    payload->num_recipients = ntohl(num_recipients_net);  // Convert to host order
+    payload->num_recipients = ntohl(num_recipients_net);
     ptr += sizeof(size_t);
 
-    // Convert ciphertext_len from network byte order to host byte order
+    // Deserialize ciphertext_len (convert from network byte order)
     size_t ciphertext_len_net;
     memcpy(&ciphertext_len_net, ptr, sizeof(size_t));
-    payload->ciphertext_len = ntohl(ciphertext_len_net);  // Convert to host order
+    payload->ciphertext_len = ntohl(ciphertext_len_net);
     ptr += sizeof(size_t);
 
     // Deserialize ephemeral_pubkey
@@ -269,35 +284,58 @@ size_t encrypted_payload_deserialize(char* buffer, EncryptedPayload* payload) {
     ptr += NONCE_SIZE;
 
     // Deserialize the ciphertext
-    payload->ciphertext = malloc(payload->ciphertext_len);
-    if(!payload->ciphertext){
-        printf("Failed to allocate memory for ciphertext\n");
-        return 0;
+    if (payload->ciphertext_len > 0) {
+        payload->ciphertext = (char*)malloc(payload->ciphertext_len);
+        if (!payload->ciphertext) {
+            printf("Failed to allocate memory for ciphertext\n");
+            free(payload);
+            return NULL;
+        }
+        memcpy(payload->ciphertext, ptr, payload->ciphertext_len);
+        ptr += payload->ciphertext_len;
+    } else {
+        payload->ciphertext = NULL;
     }
-    memcpy(payload->ciphertext, ptr, payload->ciphertext_len);
-    ptr += payload->ciphertext_len;
 
-    // Deserialize encrypted keys
-    payload->encrypted_keys = malloc(payload->num_recipients * ENCRYPTED_KEY_SIZE);
-    if(!payload->encrypted_keys){
-        printf("Failed to allocate memory for ciphertext\n");
-        return 0;
+    // Deserialize encrypted_keys
+    if (payload->num_recipients > 0) {
+        payload->encrypted_keys = (char*)malloc(payload->num_recipients * ENCRYPTED_KEY_SIZE);
+        if (!payload->encrypted_keys) {
+            printf("Failed to allocate memory for encrypted_keys\n");
+            if (payload->ciphertext) {
+                free(payload->ciphertext);
+            }
+            free(payload);
+            return NULL;
+        }
+        memcpy(payload->encrypted_keys, ptr, payload->num_recipients * ENCRYPTED_KEY_SIZE);
+        ptr += payload->num_recipients * ENCRYPTED_KEY_SIZE;
+    } else {
+        payload->encrypted_keys = NULL;
     }
-    memcpy(payload->encrypted_keys, ptr, payload->num_recipients * ENCRYPTED_KEY_SIZE);
-    ptr += payload->num_recipients * ENCRYPTED_KEY_SIZE;
 
-    // Deserialize key nonces
-    payload->key_nonces = malloc(payload->num_recipients * NONCE_SIZE);
-    if(!payload->key_nonces){
-        printf("Failed to allocate memory for ciphertext\n");
-        return 0;
+    // Deserialize key_nonces
+    if (payload->num_recipients > 0) {
+        payload->key_nonces = (char*)malloc(payload->num_recipients * NONCE_SIZE);
+        if (!payload->key_nonces) {
+            printf("Failed to allocate memory for key_nonces\n");
+            if (payload->ciphertext) {
+                free(payload->ciphertext);
+            }
+            if (payload->encrypted_keys) {
+                free(payload->encrypted_keys);
+            }
+            free(payload);
+            return NULL;
+        }
+        memcpy(payload->key_nonces, ptr, payload->num_recipients * NONCE_SIZE);
+        ptr += payload->num_recipients * NONCE_SIZE;
+    } else {
+        payload->key_nonces = NULL;
     }
-    memcpy(payload->key_nonces, ptr, payload->num_recipients * NONCE_SIZE);
-    ptr += payload->num_recipients * NONCE_SIZE;
-    
 
-    return ptr - buffer;  // Returns the total number of bytes deserialized
+    // Update the caller's buffer pointer
+    *buffer = ptr;
+    return payload;
 }
-
-
 

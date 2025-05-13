@@ -459,6 +459,33 @@ src/packages/structures/blockChain/transaction.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.s
 .PHONY : src/packages/structures/blockChain/transaction.c.s
 
+src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o
+.PHONY : src/packages/utils/byteorder.o
+
+# target to build an object file
+src/packages/utils/byteorder.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.o
+.PHONY : src/packages/utils/byteorder.c.o
+
+src/packages/utils/byteorder.i: src/packages/utils/byteorder.c.i
+.PHONY : src/packages/utils/byteorder.i
+
+# target to preprocess a source file
+src/packages/utils/byteorder.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.i
+.PHONY : src/packages/utils/byteorder.c.i
+
+src/packages/utils/byteorder.s: src/packages/utils/byteorder.c.s
+.PHONY : src/packages/utils/byteorder.s
+
+# target to generate assembly for a file
+src/packages/utils/byteorder.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.s
+.PHONY : src/packages/utils/byteorder.c.s
+
 src/packages/utils/print.o: src/packages/utils/print.c.o
 .PHONY : src/packages/utils/print.o
 
@@ -708,6 +735,9 @@ help:
 	@echo "... src/packages/structures/blockChain/transaction.o"
 	@echo "... src/packages/structures/blockChain/transaction.i"
 	@echo "... src/packages/structures/blockChain/transaction.s"
+	@echo "... src/packages/utils/byteorder.o"
+	@echo "... src/packages/utils/byteorder.i"
+	@echo "... src/packages/utils/byteorder.s"
 	@echo "... src/packages/utils/print.o"
 	@echo "... src/packages/utils/print.i"
 	@echo "... src/packages/utils/print.s"

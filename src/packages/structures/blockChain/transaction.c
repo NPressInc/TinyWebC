@@ -3,9 +3,9 @@
 #include <string.h>
 #include <time.h>
 #include <openssl/sha.h>
-#include <arpa/inet.h>  // For htonl
 #include "transaction.h"
 #include "packages/signing/signing.h"
+#include "packages/utils/byteorder.h"
 
 /** Creates a transaction with pre-prepared data (no encryption here). */
 TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned char* sender, 
@@ -128,15 +128,15 @@ void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
 
 
 
-size_t TW_Transaction_serialize(TW_Transaction* txn, char** out_buffer) {
-    // The total size includes all the fields and lengths for serialized data
-    size_t buffer_size = TW_Transaction_get_size(txn);
+int TW_Transaction_serialize(TW_Transaction* txn, char** out_buffer) {
+    if(!txn){
+        printf("transaction is empty \n");
+        return 1;
+    }
 
-    // Allocate memory for the buffer
-    *out_buffer = malloc(buffer_size);
-    if (!*out_buffer) {
+    if (!out_buffer) {
         printf("Memory allocation failed for transaction serialization\n");
-        return 0;
+        return 1;
     }
 
     char* ptr = *out_buffer;
@@ -154,7 +154,7 @@ size_t TW_Transaction_serialize(TW_Transaction* txn, char** out_buffer) {
     memcpy(ptr, &timestamp_net, sizeof(timestamp_net));
     ptr += sizeof(timestamp_net);
 
-    // Serialize recipient_count (Convert to network byte order using htonl)
+    // Serialize recipient_count
     uint8_t recipient_count_net = txn->recipient_count;
     memcpy(ptr, &recipient_count_net, sizeof(recipient_count_net));
     ptr += sizeof(recipient_count_net);
@@ -168,7 +168,7 @@ size_t TW_Transaction_serialize(TW_Transaction* txn, char** out_buffer) {
     ptr += GROUP_ID_SIZE;
 
     // Serialize the length of the payload (Convert to network byte order using htonl)
-    size_t payload_size_net = htonl(txn->payload_size);  // Convert size to network byte order
+    size_t payload_size_net = htonll(txn->payload_size);  // Convert size to network byte order
     memcpy(ptr, &payload_size_net, sizeof(payload_size_net));
     ptr += sizeof(payload_size_net);
 
@@ -181,18 +181,93 @@ size_t TW_Transaction_serialize(TW_Transaction* txn, char** out_buffer) {
     memcpy(ptr, txn->signature, SIGNATURE_SIZE);
     ptr += SIGNATURE_SIZE;
 
-    return buffer_size;
+    // Update the caller's buffer pointer
+    *out_buffer = ptr;
+
+    return 0;
 }
 
 
-TW_Transaction* TW_Transaction_deserialize(const unsigned char* buffer, size_t buffer_size) {
-    if (!buffer || buffer_size < sizeof(TW_Transaction)) return NULL;
+TW_Transaction* TW_Transaction_deserialize(const char* buffer) {
+    if (!buffer) {
+        printf("Invalid buffer\n");
+        return NULL;
+    }
 
-    TW_Transaction* tx = malloc(sizeof(TW_Transaction));
-    if (!tx) return NULL;
+    // Allocate memory for the transaction
+    TW_Transaction* txn = (TW_Transaction*)malloc(sizeof(TW_Transaction));
+    if (!txn) {
+        printf("Memory allocation failed for transaction\n");
+        return NULL;
+    }
+    // Initialize fields to avoid undefined behavior
+    memset(txn, 0, sizeof(TW_Transaction));
 
-    memcpy(tx, buffer, sizeof(TW_Transaction));
-    return tx;
+    const char* ptr = buffer;
+
+    // Deserialize the type
+    memcpy(&txn->type, ptr, sizeof(txn->type));
+    ptr += sizeof(txn->type);
+
+    // Deserialize the sender public key
+    memcpy(txn->sender, ptr, PUBKEY_SIZE);
+    ptr += PUBKEY_SIZE;
+
+    // Deserialize the timestamp (Convert from network byte order using ntohll)
+    uint64_t timestamp_net;
+    memcpy(&timestamp_net, ptr, sizeof(timestamp_net));
+    txn->timestamp = ntohll(timestamp_net);
+    ptr += sizeof(timestamp_net);
+
+    // Deserialize recipient_count
+    uint8_t recipient_count_net;
+    memcpy(&recipient_count_net, ptr, sizeof(recipient_count_net));
+    txn->recipient_count = recipient_count_net;
+    ptr += sizeof(recipient_count_net);
+
+    // Allocate and deserialize the recipients (list of public keys)
+    if (txn->recipient_count > 0) {
+        txn->recipients = (uint8_t*)malloc(PUBKEY_SIZE * txn->recipient_count);
+        if (!txn->recipients) {
+            printf("Memory allocation failed for recipients\n");
+            free(txn);
+            return NULL;
+        }
+        memcpy(txn->recipients, ptr, PUBKEY_SIZE * txn->recipient_count);
+    } else {
+        txn->recipients = NULL;
+    }
+    ptr += PUBKEY_SIZE * txn->recipient_count;
+
+    // Deserialize the group ID
+    memcpy(txn->group_id, ptr, GROUP_ID_SIZE);
+    ptr += GROUP_ID_SIZE;
+
+    // Deserialize the length of the payload (Convert from network byte order using ntohl)
+    size_t payload_size_net;
+    memcpy(&payload_size_net, ptr, sizeof(payload_size_net));
+    txn->payload_size = ntohl(payload_size_net);
+    ptr += sizeof(payload_size_net);
+
+    // Deserialize the encrypted payload
+    if (txn->payload_size > 0) {
+        if (encrypted_payload_deserialize(&txn->payload, &ptr) != 0) {
+            printf("Failed to deserialize encrypted payload\n");
+            if (txn->recipients) {
+                free(txn->recipients);
+            }
+            free(txn);
+            return NULL;
+        }
+    } else {
+        txn->payload = NULL;
+    }
+
+    // Deserialize the signature
+    memcpy(txn->signature, ptr, SIGNATURE_SIZE);
+    ptr += SIGNATURE_SIZE;
+
+    return txn;
 }
 
 /** Frees the memory allocated for the transaction. */

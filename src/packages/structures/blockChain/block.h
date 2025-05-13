@@ -15,7 +15,7 @@
 
 typedef struct {
     int32_t index;
-    TW_Transaction* txns;
+    TW_Transaction** txns;
     size_t* txn_sizes;
     int32_t txn_count;
     time_t timestamp;

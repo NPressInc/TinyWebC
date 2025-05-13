@@ -81,60 +81,92 @@ void TW_Block_destroy(TW_Block* block) {
     free(block);
 }
 
-/** Serializes the block to a byte array. */
-size_t TW_Block_serialize(TW_Block* block, unsigned char** buffer) {
+size_t TW_Block_get_size(TW_Block* block) {
     if (!block) {
-        *buffer = NULL;
-        return 0;
+        return 0; // Invalid block
+    }
+    if (block->txn_count < 0 || (block->txn_count > 0 && (!block->txns || !block->txn_sizes))) {
+        return 0; // Invalid transaction count or missing arrays
     }
 
-    size_t total_size = sizeof(int32_t) +    // index
-                        sizeof(int32_t) +    // txn_count
-                        sizeof(uint8_t) +    // is_internal
-                        sizeof(time_t) +     // timestamp
-                        HASH_SIZE +          // previous_hash
-                        PROP_ID_SIZE +       // proposer_id
-                        HASH_SIZE;           // merkle_root_hash
-    size_t* entry_sizes = malloc(block->txn_count * sizeof(size_t));
-    if (!entry_sizes) {
-        *buffer = NULL;
-        return 0;
-    }
+    size_t size = 0;
 
+    // Fixed-size fields
+    size += sizeof(int32_t);        // index
+    size += sizeof(int32_t);        // txn_count
+    size += sizeof(time_t);         // timestamp
+    size += HASH_SIZE;              // previous_hash
+    size += PROP_ID_SIZE;           // proposer_id
+    size += HASH_SIZE;              // merkle_root_hash
+
+    // Size of txn_sizes array
+    size += block->txn_count * sizeof(size_t); // txn_sizes array
+
+    // Size of all transactions
     for (int32_t i = 0; i < block->txn_count; i++) {
-        unsigned char* entry_buf;
-        entry_sizes[i] = TW_Transaction_to_bytes(&block->txns[i], &entry_buf);
-        total_size += sizeof(size_t) + entry_sizes[i];
-        free(entry_buf);
+        if (!block->txns[i]) {
+            return 0; // Invalid transaction
+        }
+        size_t txn_size = TW_Transaction_get_size(block->txns[i]);
+        if (txn_size == 0) {
+            return 0; // Invalid transaction size
+        }
+        // Validate and update txn_sizes[i]
+        if (block->txn_sizes[i] != txn_size) {
+            block->txn_sizes[i] = txn_size;
+        }
+        size += block->txn_sizes[i]; // Add serialized size of each transaction
+    }
+
+    return size;
+}
+
+/** Serializes the block to a byte array. */
+int TW_Block_serialize(TW_Block* block, unsigned char** buffer) {
+    if (!block) {
+        return 1;
     }
 
     unsigned char* ptr = *buffer;
-    memcpy(ptr, &block->index, sizeof(int32_t));
-    ptr += sizeof(int32_t);
-    memcpy(ptr, &block->txn_count, sizeof(int32_t));
-    ptr += sizeof(int32_t);
-    memcpy(ptr, &block->timestamp, sizeof(time_t));
-    ptr += sizeof(time_t);
+
+    uint32_t index_net = htonl((uint32_t)block->index);
+    memcpy(ptr, &index_net, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+    
+    // Serialize txn_count 
+    uint32_t txn_count_net = htonl((uint32_t)block->txn_count);
+    memcpy(ptr, &txn_count_net, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+    
+    // Serialize timestamp 
+    uint64_t timestamp_net = htonll((uint64_t)block->timestamp);
+    memcpy(ptr, timestamp_net, sizeof(uint64_t));
+    ptr += sizeof(uint64_t);
+    
+    // Serialize previous_hash (no conversion needed)
     memcpy(ptr, block->previous_hash, HASH_SIZE);
     ptr += HASH_SIZE;
+
+    // Serialize merkle_root_hash (no conversion needed)
     memcpy(ptr, block->merkle_root_hash, HASH_SIZE);
     ptr += HASH_SIZE;
+
+    // Serialize proposer_id (no conversion needed)
     memcpy(ptr, block->proposer_id, PROP_ID_SIZE);
     ptr += PROP_ID_SIZE;
-    
 
     for (int32_t i = 0; i < block->txn_count; i++) {
-        unsigned char* entry_buf;
-        size_t entry_size;
-        entry_size = TW_Transaction_to_bytes(&block->txns[i], &entry_buf);
-        memcpy(ptr, &entry_size, sizeof(size_t));
-        ptr += sizeof(size_t);
-        memcpy(ptr, entry_buf, entry_size);
-        ptr += entry_size;
-        free(entry_buf);
+        int res = TW_Transaction_to_bytes(block->txns[i], &ptr);
+        if(res != 0){
+            printf("Failed to serialize transaction in block. \n");
+            return 1;
+        }
+        ptr += block->txn_sizes[i];
     }
-    free(entry_sizes);
-    return total_size;
+
+    *buffer = ptr; 
+
+    return 0;
 }
 
 /** Deserializes a block from a byte array. */
@@ -174,7 +206,7 @@ TW_Block* TW_Block_deserialize(const unsigned char* buffer, size_t buffer_size) 
             free(block);
             return NULL;
         }
-        block->txns[i] = *txn;
+        block->txns[i] = txn;
         free(txn);
         ptr += entry_size;
     }
