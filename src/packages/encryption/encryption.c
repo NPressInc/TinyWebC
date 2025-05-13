@@ -85,13 +85,24 @@ EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t p
 
 void free_encrypted_payload(EncryptedPayload *encrypted)
 {
-    if (encrypted)
-    {
-        free(encrypted->key_nonces);
-        free(encrypted->encrypted_keys);
+    if (!encrypted) return;
+    
+    if (encrypted->ciphertext) {
         free(encrypted->ciphertext);
-        free(encrypted);
+        encrypted->ciphertext = NULL;
     }
+    
+    if (encrypted->key_nonces) {
+        free(encrypted->key_nonces);
+        encrypted->key_nonces = NULL;
+    }
+    
+    if (encrypted->encrypted_keys) {
+        free(encrypted->encrypted_keys);
+        encrypted->encrypted_keys = NULL;
+    }
+    
+    free(encrypted);
 }
 
 unsigned char *decrypt_payload(const EncryptedPayload *encrypted, const unsigned char *recipient_pubkeys)
@@ -196,7 +207,7 @@ size_t encrypted_payload_get_size(EncryptedPayload* payload){
 }
 
 
-int encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer){
+int encrypted_payload_serialize(EncryptedPayload* payload, unsigned char** out_buffer){
 
     if(!payload){
         printf("payload is empty \n");
@@ -207,7 +218,7 @@ int encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer){
         return 1;
     }
 
-    char* ptr = *out_buffer;
+    unsigned char* ptr = *out_buffer;
 
     // Convert num_recipients to network byte order and copy it
     size_t num_recipients_net = htonll(payload->num_recipients);

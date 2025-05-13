@@ -31,6 +31,7 @@ TW_Block* TW_Block_create(int32_t index, TW_Transaction** block_txns, int32_t tx
 void TW_Block_destroy(TW_Block* block);
 void TW_Block_buildMerkleTree(TW_Block* block);
 int TW_Block_getHash(TW_Block* block, unsigned char* hash_out);
+size_t TW_Block_get_size(TW_Block* block);
 size_t TW_Block_serialize(TW_Block* block, unsigned char** buffer); 
 TW_Block* TW_Block_deserialize(const unsigned char* buffer, size_t buffer_size);
 

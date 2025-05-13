@@ -4,7 +4,9 @@
 #include <stddef.h>  // For size_t
 #include <stdint.h>
 #include <openssl/sha.h>
+#include <arpa/inet.h>  // For htonl, ntohl
 #include "blockchain.h"
+#include "packages/utils/byteorder.h"  // For htonll, ntohll
 
 /** Initializes a new blockchain. */
 TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Block** chain, uint32_t length) {
@@ -18,9 +20,24 @@ TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Bloc
         memset(blockchain->creator_pubkey, 0, PUBKEY_SIZE);
     }
 
-    // Initialize blocks
+    // Allocate memory for blocks and block_sizes
+    blockchain->blocks = malloc(MAX_BLOCKS * sizeof(TW_Block*));
+    if (!blockchain->blocks) {
+        free(blockchain);
+        return NULL;
+    }
+    
+    blockchain->block_sizes = malloc(MAX_BLOCKS * sizeof(size_t));
+    if (!blockchain->block_sizes) {
+        free(blockchain->blocks);
+        free(blockchain);
+        return NULL;
+    }
+
+    // Initialize blocks and block_sizes
     for (uint32_t i = 0; i < MAX_BLOCKS; i++) {
         blockchain->blocks[i] = (i < length && chain) ? chain[i] : NULL;
+        blockchain->block_sizes[i] = 0;
     }
 
     // If no chain provided and creator key exists, create genesis block
@@ -33,33 +50,63 @@ TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Bloc
 
 /** Creates and adds a genesis block to the blockchain. */
 void TW_BlockChain_create_genesis_block(TW_BlockChain* blockchain, const unsigned char* creator_pubkey) {
-    if (!blockchain || blockchain->length >= MAX_BLOCKS) return;
+    if (!blockchain || blockchain->length >= MAX_BLOCKS || !creator_pubkey) return;
 
     // Dummy genesis transaction (no crypto, plaintext)
     unsigned char sender[PUBKEY_SIZE];
     memcpy(sender, creator_pubkey, PUBKEY_SIZE);
 
-    unsigned char* genesis_text = "genesis_text";
+    // Create a genesis message
+    unsigned char genesis_text[] = "Genesis Block";
+    size_t text_len = sizeof(genesis_text) - 1; // Exclude null terminator
 
-    EncryptedPayload* genesis_payload = encrypt_payload_multi(genesis_text, 13, sender, 1);
+    // Create an encrypted payload
+    EncryptedPayload* genesis_payload = encrypt_payload_multi(genesis_text, text_len, sender, 1);
+    if (!genesis_payload) return;
 
-    TW_Transaction* txns[1];
-    txns[0] = TW_Transaction_create(TW_TXN_MISC, sender, sender, 1, NULL, genesis_payload, NULL);
-
-    free_encrypted_payload(genesis_payload);
+    // Create a single transaction for the genesis block
+    TW_Transaction** txns = malloc(sizeof(TW_Transaction*));
+    if (!txns) {
+        free_encrypted_payload(genesis_payload);
+        return;
+    }
     
-    if (!txns) return;
+    // Initialize to NULL first
+    txns[0] = NULL;
+    
+    // Create the transaction
+    txns[0] = TW_Transaction_create(TW_TXN_MISC, sender, sender, 1, NULL, genesis_payload, NULL);
+    
+    // The transaction now owns the payload
+    genesis_payload = NULL;
+    
+    if (!txns[0]) {
+        free(txns);
+        return;
+    }
+    
+    // Create zeroed hash for previous_hash
     unsigned char zero_hash[HASH_SIZE] = {0};
-    unsigned char proposer_id[PROP_ID_SIZE] = "genesis";
+    
+    // Create proposer_id
+    unsigned char proposer_id[PROP_ID_SIZE] = {0};
+    strncpy((char*)proposer_id, "genesis", PROP_ID_SIZE-1);
 
+    // Create the genesis block
     TW_Block* genesis = TW_Block_create(0, txns, 1, time(NULL), zero_hash, proposer_id);
 
+    // Add the block to the blockchain
     if (genesis) {
         blockchain->blocks[0] = genesis;
         blockchain->length = 1;
+    } else {
+        // If block creation failed, clean up the transaction
+        TW_Transaction_destroy(txns[0]);
     }
     
-    TW_Transaction_destroy(txns[0]);
+    // Free the array but not the transaction 
+    // (it's now managed by the block if the block was created successfully)
+    free(txns);
 }
 
 /** Returns the last block in the chain. */
@@ -105,7 +152,7 @@ void TW_BlockChain_get_block_hashes(TW_BlockChain* blockchain, unsigned char* ha
 
     *count = blockchain->length;
     for (uint32_t i = 0; i < blockchain->length; i++) {
-        TW_Block_getHash(&blockchain->blocks[i], hashes + i * HASH_SIZE);
+        TW_Block_getHash(blockchain->blocks[i], hashes + i * HASH_SIZE);
     }
 }
 
@@ -154,27 +201,50 @@ size_t TW_BlockChain_get_size(const TW_BlockChain* chain) {
 
 /** Serializes the blockchain to a byte array (simplified, no Protobuf yet). */
 int TW_BlockChain_serialize(TW_BlockChain* blockchain, unsigned char** buffer) {
-    if (!blockchain) {
-        return 1;
+    if (!blockchain || !buffer || !*buffer) {
+        return 1; // Error
+    }
+
+    // Ensure block sizes are up to date
+    for (uint32_t i = 0; i < blockchain->length; i++) {
+        if (blockchain->blocks[i]) {
+            blockchain->block_sizes[i] = TW_Block_get_size(blockchain->blocks[i]);
+        }
     }
 
     unsigned char* ptr = *buffer;
-    memcpy(ptr, &blockchain->length, sizeof(uint32_t));
+    
+    // Serialize length
+    uint32_t length_net = htonl(blockchain->length);
+    memcpy(ptr, &length_net, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
 
-    memcpy(ptr, &blockchain->creator_pubkey, PUBKEY_SIZE);
+    // Serialize creator_pubkey
+    memcpy(ptr, blockchain->creator_pubkey, PUBKEY_SIZE);
     ptr += PUBKEY_SIZE;
 
-    memcpy(ptr, &blockchain->block_sizes, sizeof(size_t) * blockchain->length);
-
+    // Serialize block_sizes
     for (uint32_t i = 0; i < blockchain->length; i++) {
-        int res = TW_Block_serialize(blockchain->blocks[i], &ptr);
-        ptr += blockchain->block_sizes[i];
+        size_t block_size_net = htonll(blockchain->block_sizes[i]);
+        memcpy(ptr, &block_size_net, sizeof(size_t));
+        ptr += sizeof(size_t);
+    }
+
+    // Serialize blocks
+    for (uint32_t i = 0; i < blockchain->length; i++) {
+        if (!blockchain->blocks[i]) {
+            return 1; // Error - block is NULL
+        }
+        
+        size_t result = TW_Block_serialize(blockchain->blocks[i], &ptr);
+        if (result == 0) {
+            return 1; // Error in serialization
+        }
+        // ptr is already updated by TW_Block_serialize
     }
 
     *buffer = ptr;
-
-    return 0;
+    return 0; // Success
 }
 
 TW_BlockChain* TW_BlockChain_deserialize(const unsigned char* buffer, size_t buffer_size) {
@@ -182,13 +252,16 @@ TW_BlockChain* TW_BlockChain_deserialize(const unsigned char* buffer, size_t buf
 
     TW_BlockChain* blockchain = malloc(sizeof(TW_BlockChain));
     if (!blockchain) return NULL;
+    memset(blockchain, 0, sizeof(TW_BlockChain)); // Initialize to zeros
 
     const unsigned char* ptr = buffer;
 
+    // Deserialize length
     memcpy(&blockchain->length, ptr, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
 
-    memset(blockchain->creator_pubkey, 0, PUBKEY_SIZE);
+    // Deserialize creator_pubkey
+    memcpy(blockchain->creator_pubkey, ptr, PUBKEY_SIZE);
     ptr += PUBKEY_SIZE;
 
     if (blockchain->length > MAX_BLOCKS) {
@@ -196,19 +269,37 @@ TW_BlockChain* TW_BlockChain_deserialize(const unsigned char* buffer, size_t buf
         return NULL;
     }
 
+    // Allocate memory for blocks and block_sizes
+    blockchain->blocks = malloc(MAX_BLOCKS * sizeof(TW_Block*));
+    if (!blockchain->blocks) {
+        free(blockchain);
+        return NULL;
+    }
+    memset(blockchain->blocks, 0, MAX_BLOCKS * sizeof(TW_Block*));
+    
+    blockchain->block_sizes = malloc(MAX_BLOCKS * sizeof(size_t));
+    if (!blockchain->block_sizes) {
+        free(blockchain->blocks);
+        free(blockchain);
+        return NULL;
+    }
+    memset(blockchain->block_sizes, 0, MAX_BLOCKS * sizeof(size_t));
+
+    // Read block sizes
     for (uint32_t i = 0; i < blockchain->length; i++) {
-        size_t block_size;
-        memcpy(&block_size, ptr, sizeof(size_t));
+        memcpy(&blockchain->block_sizes[i], ptr, sizeof(size_t));
         ptr += sizeof(size_t);
-        if (ptr + block_size > buffer + buffer_size) {
-            TW_Block_destroy(blockchain);
+        if (ptr + blockchain->block_sizes[i] > buffer + buffer_size) {
+            TW_BlockChain_destroy(blockchain);
             return NULL;
         }
     }
+    
+    // Deserialize blocks
     for (uint32_t i = 0; i < blockchain->length; i++) {
         blockchain->blocks[i] = TW_Block_deserialize(ptr, blockchain->block_sizes[i]);
-        if (!&blockchain->blocks[i]) {
-            TW_Block_destroy(blockchain);
+        if (!blockchain->blocks[i]) {
+            TW_BlockChain_destroy(blockchain);
             return NULL;
         }
         ptr += blockchain->block_sizes[i];
@@ -220,8 +311,19 @@ TW_BlockChain* TW_BlockChain_deserialize(const unsigned char* buffer, size_t buf
 /** Frees the blockchain and its blocks. */
 void TW_BlockChain_destroy(TW_BlockChain* blockchain) {
     if (!blockchain) return;
-    for (uint32_t i = 0; i < blockchain->length; i++) {
-        TW_Block_destroy(blockchain->blocks[i]);
+    
+    if (blockchain->blocks) {
+        for (uint32_t i = 0; i < blockchain->length; i++) {
+            if (blockchain->blocks[i]) {
+                TW_Block_destroy(blockchain->blocks[i]);
+            }
+        }
+        free(blockchain->blocks);
     }
+    
+    if (blockchain->block_sizes) {
+        free(blockchain->block_sizes);
+    }
+    
     free(blockchain);
 }

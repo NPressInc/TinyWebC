@@ -37,8 +37,8 @@ void free_encrypted_payload(EncryptedPayload* payload);
 
 size_t encrypted_payload_get_size(EncryptedPayload* payload);
 
-int encrypted_payload_serialize(EncryptedPayload* payload, char** out_buffer);
+int encrypted_payload_serialize(EncryptedPayload* payload, unsigned char** out_buffer);
 
-EncryptedPayload* encrypted_payload_deserialize(char** buffer);
+EncryptedPayload* encrypted_payload_deserialize(const char** buffer);
 
 #endif /* ENCRYPTION_H */

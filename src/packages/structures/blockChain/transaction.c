@@ -19,7 +19,12 @@ TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned ch
     memcpy(tx->sender, sender, PUBKEY_SIZE);
     tx->timestamp = time(NULL);
     tx->recipient_count = (recipient_count > MAX_RECIPIENTS) ? MAX_RECIPIENTS : recipient_count;
-    tx->payload = payload;
+    tx->payload = (EncryptedPayload*)payload;
+    if (payload) {
+        tx->payload_size = encrypted_payload_get_size((EncryptedPayload*)payload);
+    } else {
+        tx->payload_size = 0;
+    }
     
     if (recipients && tx->recipient_count > 0) {
         tx->recipients = malloc(PUBKEY_SIZE * tx->recipient_count);
@@ -128,7 +133,7 @@ void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
 
 
 
-int TW_Transaction_serialize(TW_Transaction* txn, char** out_buffer) {
+int TW_Transaction_serialize(TW_Transaction* txn, unsigned char** out_buffer) {
     if(!txn){
         printf("transaction is empty \n");
         return 1;
@@ -139,7 +144,7 @@ int TW_Transaction_serialize(TW_Transaction* txn, char** out_buffer) {
         return 1;
     }
 
-    char* ptr = *out_buffer;
+    unsigned char* ptr = *out_buffer;
 
     // Serialize the type
     memcpy(ptr, &txn->type, sizeof(txn->type));
@@ -188,9 +193,9 @@ int TW_Transaction_serialize(TW_Transaction* txn, char** out_buffer) {
 }
 
 
-TW_Transaction* TW_Transaction_deserialize(const char* buffer) {
-    if (!buffer) {
-        printf("Invalid buffer\n");
+TW_Transaction* TW_Transaction_deserialize(const unsigned char* buffer, size_t buffer_size) {
+    if (!buffer || buffer_size < sizeof(TW_Transaction)) {
+        printf("Invalid buffer or buffer size too small\n");
         return NULL;
     }
 
@@ -203,7 +208,7 @@ TW_Transaction* TW_Transaction_deserialize(const char* buffer) {
     // Initialize fields to avoid undefined behavior
     memset(txn, 0, sizeof(TW_Transaction));
 
-    const char* ptr = buffer;
+    const unsigned char* ptr = buffer;
 
     // Deserialize the type
     memcpy(&txn->type, ptr, sizeof(txn->type));
@@ -251,7 +256,10 @@ TW_Transaction* TW_Transaction_deserialize(const char* buffer) {
 
     // Deserialize the encrypted payload
     if (txn->payload_size > 0) {
-        if (encrypted_payload_deserialize(&txn->payload, &ptr) != 0) {
+        const char** char_ptr = (const char**)&ptr;
+        txn->payload = encrypted_payload_deserialize(char_ptr);
+        ptr = (const unsigned char*)(*char_ptr);
+        if (!txn->payload) {
             printf("Failed to deserialize encrypted payload\n");
             if (txn->recipients) {
                 free(txn->recipients);
@@ -273,6 +281,18 @@ TW_Transaction* TW_Transaction_deserialize(const char* buffer) {
 /** Frees the memory allocated for the transaction. */
 void TW_Transaction_destroy(TW_Transaction* tx) {
     if (!tx) return;
+    
+    // Free the recipients array
+    if (tx->recipients) {
+        free(tx->recipients);
+        tx->recipients = NULL;
+    }
+    
+    // Free the payload
+    if (tx->payload) {
+        free_encrypted_payload(tx->payload);
+        tx->payload = NULL;
+    }
     
     free(tx);
 }
