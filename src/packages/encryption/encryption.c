@@ -192,16 +192,23 @@ unsigned char *decrypt_payload(const EncryptedPayload *encrypted, const unsigned
 }
 
 size_t encrypted_payload_get_size(EncryptedPayload* payload){
-    if (!payload || !payload->ciphertext) return 0;
+    if (!payload) {
+        return 0;
+    }
+    
+    if (!payload->ciphertext) {
+        return 0;
+    }
+           
     size_t mem_size = 0;
 
-    mem_size += payload->ciphertext_len;
-    mem_size += sizeof(size_t);
-    mem_size += NONCE_SIZE;
-    mem_size += payload->num_recipients * ENCRYPTED_KEY_SIZE;
-    mem_size += payload->num_recipients * NONCE_SIZE;
-    mem_size += PUBKEY_SIZE;
-    mem_size += sizeof(size_t);
+    mem_size += payload->ciphertext_len;               // Ciphertext
+    mem_size += sizeof(size_t);                        // Ciphertext length
+    mem_size += NONCE_SIZE;                            // Nonce
+    mem_size += payload->num_recipients * ENCRYPTED_KEY_SIZE;  // Encrypted keys
+    mem_size += payload->num_recipients * NONCE_SIZE;  // Key nonces
+    mem_size += PUBKEY_SIZE;                           // Ephemeral pubkey
+    mem_size += sizeof(size_t);                        // Num recipients
 
     return mem_size;
 }
@@ -277,13 +284,13 @@ EncryptedPayload* encrypted_payload_deserialize(const char** buffer) {
     // Deserialize num_recipients (convert from network byte order)
     size_t num_recipients_net;
     memcpy(&num_recipients_net, ptr, sizeof(size_t));
-    payload->num_recipients = ntohl(num_recipients_net);
+    payload->num_recipients = ntohll(num_recipients_net);
     ptr += sizeof(size_t);
 
     // Deserialize ciphertext_len (convert from network byte order)
     size_t ciphertext_len_net;
     memcpy(&ciphertext_len_net, ptr, sizeof(size_t));
-    payload->ciphertext_len = ntohl(ciphertext_len_net);
+    payload->ciphertext_len = ntohll(ciphertext_len_net);
     ptr += sizeof(size_t);
 
     // Deserialize ephemeral_pubkey

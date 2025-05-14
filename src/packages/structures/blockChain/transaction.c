@@ -65,7 +65,13 @@ void TW_Transaction_add_signature(TW_Transaction* txn){
 }
 
 size_t TW_Transaction_get_size(const TW_Transaction* tx) {
-    if (!tx || !tx->payload) return 0;
+    if (!tx) {
+        return 0;
+    }
+    
+    if (!tx->payload) {
+        return 0;
+    }
 
     size_t size = 0;
 
@@ -75,12 +81,20 @@ size_t TW_Transaction_get_size(const TW_Transaction* tx) {
     size += PUBKEY_SIZE * tx->recipient_count;     // Recipients
     size += sizeof(tx->recipient_count);           // Recipient count (uint8_t)
     size += GROUP_ID_SIZE;                         // Group ID
-    size += encrypted_payload_get_size(tx->payload); // EncryptedPayload content
+    
+    size_t payload_size = encrypted_payload_get_size(tx->payload);
+    
+    if (payload_size == 0) {
+        return 0;
+    }
+    
+    size += payload_size;                          // EncryptedPayload content
     size += sizeof(tx->payload_size);              // Payload size metadata
     size += SIGNATURE_SIZE;                        // Signature
 
     return size;
 }
+
 
 
 void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
@@ -251,7 +265,7 @@ TW_Transaction* TW_Transaction_deserialize(const unsigned char* buffer, size_t b
     // Deserialize the length of the payload (Convert from network byte order using ntohl)
     size_t payload_size_net;
     memcpy(&payload_size_net, ptr, sizeof(payload_size_net));
-    txn->payload_size = ntohl(payload_size_net);
+    txn->payload_size = ntohll(payload_size_net);
     ptr += sizeof(payload_size_net);
 
     // Deserialize the encrypted payload

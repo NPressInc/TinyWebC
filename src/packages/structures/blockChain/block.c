@@ -142,8 +142,8 @@ size_t TW_Block_get_size(TW_Block* block) {
     size += PROP_ID_SIZE;           // proposer_id
     size += HASH_SIZE;              // merkle_root_hash
 
-    // Size of txn_sizes array
-    size += block->txn_count * sizeof(size_t); // txn_sizes array
+    // Size of txn_sizes array - REMOVED since we don't actually serialize this
+    // size += block->txn_count * sizeof(size_t);
 
     // Size of all transactions
     for (int32_t i = 0; i < block->txn_count; i++) {
@@ -214,12 +214,14 @@ size_t TW_Block_serialize(TW_Block* block, unsigned char** buffer) {
             printf("Failed to serialize transaction in block. \n");
             return 0; // Return 0 to indicate failure
         }
-        total_size += block->txn_sizes[i];
-        ptr += block->txn_sizes[i];
+        
+        // We don't need to increment total_size here because ptr is updated by the function
+        // and the final size is calculated by the difference between the final and initial pointers
     }
 
+    size_t actual_total = ptr - *buffer;
     *buffer = ptr; 
-    return total_size; // Return the total size serialized
+    return actual_total; // Return the total size serialized
 }
 
 /** Deserializes a block from a byte array. */

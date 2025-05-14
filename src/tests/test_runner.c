@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
         printf("\n");
 
         // Run blockchain tests
-        printf("Running signing tests...\n");
+        printf("Running blockchain tests...\n");
         if (blockchain_test_main() == 0) {
             printf("✓ Blockchain tests passed\n");
             tests_passed++;
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         return result;
     }
-    else if (strcmp(argv[1], "signing") == 0) {
+    else if (strcmp(argv[1], "blockchain") == 0) {
         printf("Running blockchain test...\n");
         int result = blockchain_test_main();
         keystore_cleanup();
@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
     }
     else {
         printf("Unknown test: %s\n", argv[1]);
-        printf("Available tests: encryption, signing\n");
+        printf("Available tests: encryption, signing, blockchain\n");
         return 1;
     }
 

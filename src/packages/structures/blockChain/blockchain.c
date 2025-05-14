@@ -156,46 +156,45 @@ void TW_BlockChain_get_block_hashes(TW_BlockChain* blockchain, unsigned char* ha
     }
 }
 
-#include <stdint.h>
-
 size_t TW_BlockChain_get_size(const TW_BlockChain* chain) {
     if (!chain) {
         return 0; // Invalid chain
     }
-    if (chain->length == 0) {
-        return sizeof(TW_BlockChain); // Only the structure itself
-    }
-    if (!chain->blocks || !chain->block_sizes) {
-        return 0; // Invalid arrays
-    }
-
+    
+    // Start with the basic essential fields
     size_t size = 0;
-
-    // Size of the TW_BlockChain structure
-    size += sizeof(TW_BlockChain);
-
-    // Size of blocks array (array of TW_Block* pointers)
-    size += chain->length * sizeof(TW_Block*);
-
-    // Size of block_sizes array
+    size += sizeof(uint32_t);            // length
+    size += PUBKEY_SIZE;                 // creator_pubkey
+    
+    // Add size for block_sizes array
     size += chain->length * sizeof(size_t);
-
-    // Size of each TW_Block
+    
+    // If no blocks, just return the size of the header
+    if (chain->length == 0) {
+        return size;
+    }
+    
+    if (!chain->blocks) {
+        return 0; // Invalid blocks array
+    }
+    
+    // Add size for each block
     for (uint32_t i = 0; i < chain->length; i++) {
         if (!chain->blocks[i]) {
             return 0; // Invalid block
         }
+        
+        // Get the size of this block
         size_t block_size = TW_Block_get_size(chain->blocks[i]);
+        
         if (block_size == 0) {
             return 0; // Invalid block size
         }
-        // Validate and update block_sizes[i]
-        if (chain->block_sizes[i] != block_size) {
-            chain->block_sizes[i] = block_size;
-        }
-        size += chain->block_sizes[i];
+        
+        // Add the block size to the total
+        size += block_size;
     }
-
+    
     return size;
 }
 
@@ -240,7 +239,11 @@ int TW_BlockChain_serialize(TW_BlockChain* blockchain, unsigned char** buffer) {
         if (result == 0) {
             return 1; // Error in serialization
         }
-        // ptr is already updated by TW_Block_serialize
+        
+        // Update the block_sizes array with actual size if different
+        if (blockchain->block_sizes[i] != result) {
+            blockchain->block_sizes[i] = result;
+        }
     }
 
     *buffer = ptr;
@@ -248,7 +251,9 @@ int TW_BlockChain_serialize(TW_BlockChain* blockchain, unsigned char** buffer) {
 }
 
 TW_BlockChain* TW_BlockChain_deserialize(const unsigned char* buffer, size_t buffer_size) {
-    if (!buffer || buffer_size < sizeof(uint32_t)) return NULL;
+    if (!buffer || buffer_size < sizeof(uint32_t)) {
+        return NULL;
+    }
 
     TW_BlockChain* blockchain = malloc(sizeof(TW_BlockChain));
     if (!blockchain) return NULL;
@@ -257,7 +262,9 @@ TW_BlockChain* TW_BlockChain_deserialize(const unsigned char* buffer, size_t buf
     const unsigned char* ptr = buffer;
 
     // Deserialize length
-    memcpy(&blockchain->length, ptr, sizeof(uint32_t));
+    uint32_t length_net;
+    memcpy(&length_net, ptr, sizeof(uint32_t));
+    blockchain->length = ntohl(length_net);
     ptr += sizeof(uint32_t);
 
     // Deserialize creator_pubkey
@@ -286,13 +293,27 @@ TW_BlockChain* TW_BlockChain_deserialize(const unsigned char* buffer, size_t buf
     memset(blockchain->block_sizes, 0, MAX_BLOCKS * sizeof(size_t));
 
     // Read block sizes
+    size_t total_block_size = 0;
     for (uint32_t i = 0; i < blockchain->length; i++) {
-        memcpy(&blockchain->block_sizes[i], ptr, sizeof(size_t));
+        size_t block_size_net;
+        memcpy(&block_size_net, ptr, sizeof(size_t));
+        blockchain->block_sizes[i] = ntohll(block_size_net);
         ptr += sizeof(size_t);
+        
+        total_block_size += blockchain->block_sizes[i];
         if (ptr + blockchain->block_sizes[i] > buffer + buffer_size) {
             TW_BlockChain_destroy(blockchain);
             return NULL;
         }
+    }
+    
+    // Calculate expected total size and validate
+    size_t header_size = sizeof(uint32_t) + PUBKEY_SIZE + blockchain->length * sizeof(size_t);
+    size_t expected_total = header_size + total_block_size;
+    
+    if (expected_total > buffer_size) {
+        TW_BlockChain_destroy(blockchain);
+        return NULL;
     }
     
     // Deserialize blocks
