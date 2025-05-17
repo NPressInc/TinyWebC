@@ -17,7 +17,7 @@ typedef struct {
 } TW_BlockChain;
 
 // Function prototypes
-TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Block** chain, uint32_t length);
+TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Block** blocks, uint32_t length);
 void TW_BlockChain_create_genesis_block(TW_BlockChain* blockchain, const unsigned char* creator_pubkey);
 TW_Block* TW_BlockChain_get_last_block(TW_BlockChain* blockchain);
 int TW_BlockChain_add_block(TW_BlockChain* blockchain, TW_Block* block);

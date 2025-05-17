@@ -9,7 +9,7 @@
 #include "packages/utils/byteorder.h"  // For htonll, ntohll
 
 /** Initializes a new blockchain. */
-TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Block** chain, uint32_t length) {
+TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Block** blocks, uint32_t length) {
     TW_BlockChain* blockchain = malloc(sizeof(TW_BlockChain));
     if (!blockchain) return NULL;
 
@@ -36,11 +36,11 @@ TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Bloc
 
     // Initialize blocks and block_sizes
     for (uint32_t i = 0; i < MAX_BLOCKS; i++) {
-        blockchain->blocks[i] = (i < length && chain) ? chain[i] : NULL;
+        blockchain->blocks[i] = (i < length && blocks) ? blocks[i] : NULL;
         blockchain->block_sizes[i] = 0;
     }
 
-    // If no chain provided and creator key exists, create genesis block
+    // If no blocks provided and creator key exists, create genesis block
     if (blockchain->length == 0 && creator_pubkey) {
         TW_BlockChain_create_genesis_block(blockchain, creator_pubkey);
     }
