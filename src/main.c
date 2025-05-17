@@ -6,9 +6,15 @@
 #include "packages/encryption/encryption.h"
 #include "packages/keystore/keystore.h"
 #include "packages/comm/nodeApi.h"
+#include "packages/PBFT/node.h"
 
 void* http_server_thread(void* arg) {
     start_node_api("http://localhost:8000");
+    return NULL;
+}
+
+void* node_thread(void* arg) {
+    runNode();
     return NULL;
 }
 
@@ -28,8 +34,16 @@ int main() {
         return 1;
     }
 
+    // Create node thread
+    pthread_t node_thread_id;
+    if (pthread_create(&node_thread_id, NULL, node_thread, NULL) != 0) {
+        printf("Failed to create node thread\n");
+        return 1;
+    }
+
     // Wait for user input to exit
     printf("HTTP server running on http://localhost:8000\n");
+    printf("PBFT node is running...\n");
     printf("Press Enter to exit...\n");
     getchar();
 

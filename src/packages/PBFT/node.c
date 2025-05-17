@@ -149,7 +149,11 @@ void runNode(void) {
 
     // Get signing public key for blockchain
     unsigned char signing_pubkey[PUBKEY_SIZE];
-    keystore_get_signing_public_key(signing_pubkey);
+    if (!keystore_get_public_key(signing_pubkey)) {
+        printf("Error: Failed to get public key\n");
+        keystore_cleanup();
+        return;
+    }
     memcpy(node_state.public_key, signing_pubkey, PUBKEY_SIZE);
 
     // Load or create blockchain
