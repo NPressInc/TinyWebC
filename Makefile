@@ -31,6 +31,9 @@ default_target: all
 
 .SUFFIXES: .hpux_make_needs_suffix_list
 
+# Produce verbose output by default.
+VERBOSE = 1
+
 # Command-line flag to silence nested $(MAKE).
 $(VERBOSE)MAKESILENT = -s
 
@@ -165,6 +168,33 @@ check/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/check.dir/build.make CMakeFiles/check.dir/build
 .PHONY : check/fast
 
+src/external/mongoose/mongoose.o: src/external/mongoose/mongoose.c.o
+.PHONY : src/external/mongoose/mongoose.o
+
+# target to build an object file
+src/external/mongoose/mongoose.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/external/mongoose/mongoose.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/external/mongoose/mongoose.c.o
+.PHONY : src/external/mongoose/mongoose.c.o
+
+src/external/mongoose/mongoose.i: src/external/mongoose/mongoose.c.i
+.PHONY : src/external/mongoose/mongoose.i
+
+# target to preprocess a source file
+src/external/mongoose/mongoose.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/external/mongoose/mongoose.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/external/mongoose/mongoose.c.i
+.PHONY : src/external/mongoose/mongoose.c.i
+
+src/external/mongoose/mongoose.s: src/external/mongoose/mongoose.c.s
+.PHONY : src/external/mongoose/mongoose.s
+
+# target to generate assembly for a file
+src/external/mongoose/mongoose.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/external/mongoose/mongoose.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/external/mongoose/mongoose.c.s
+.PHONY : src/external/mongoose/mongoose.c.s
+
 src/main.o: src/main.c.o
 .PHONY : src/main.o
 
@@ -215,6 +245,33 @@ src/packages/comm/blockChainQueryApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.s
 .PHONY : src/packages/comm/blockChainQueryApi.c.s
+
+src/packages/comm/nodeApi.o: src/packages/comm/nodeApi.c.o
+.PHONY : src/packages/comm/nodeApi.o
+
+# target to build an object file
+src/packages/comm/nodeApi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.o
+.PHONY : src/packages/comm/nodeApi.c.o
+
+src/packages/comm/nodeApi.i: src/packages/comm/nodeApi.c.i
+.PHONY : src/packages/comm/nodeApi.i
+
+# target to preprocess a source file
+src/packages/comm/nodeApi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.i
+.PHONY : src/packages/comm/nodeApi.c.i
+
+src/packages/comm/nodeApi.s: src/packages/comm/nodeApi.c.s
+.PHONY : src/packages/comm/nodeApi.s
+
+# target to generate assembly for a file
+src/packages/comm/nodeApi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.s
+.PHONY : src/packages/comm/nodeApi.c.s
 
 src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
 .PHONY : src/packages/encryption/encryption.o
@@ -702,12 +759,18 @@ help:
 	@echo "... check"
 	@echo "... tinyweb"
 	@echo "... tinyweb_tests"
+	@echo "... src/external/mongoose/mongoose.o"
+	@echo "... src/external/mongoose/mongoose.i"
+	@echo "... src/external/mongoose/mongoose.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
 	@echo "... src/packages/comm/blockChainQueryApi.o"
 	@echo "... src/packages/comm/blockChainQueryApi.i"
 	@echo "... src/packages/comm/blockChainQueryApi.s"
+	@echo "... src/packages/comm/nodeApi.o"
+	@echo "... src/packages/comm/nodeApi.i"
+	@echo "... src/packages/comm/nodeApi.s"
 	@echo "... src/packages/encryption/encryption.o"
 	@echo "... src/packages/encryption/encryption.i"
 	@echo "... src/packages/encryption/encryption.s"
