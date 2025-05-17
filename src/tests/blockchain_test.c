@@ -8,9 +8,9 @@
 #include "packages/structures/blockChain/block.h"
 #include "packages/encryption/encryption.h"
 #include "packages/utils/print.h"
+#include "packages/fileIO/blockchainIO.h"
 
 int blockchain_test_main(void) {
-
     printf("Running blockchain test...\n");
 
     // Starting with node functions
@@ -142,103 +142,66 @@ int blockchain_test_main(void) {
 
     print_hex("updated blockchain hash: ", last_hash, HASH_SIZE);
 
-    // Test serialization and deserialization
-    printf("\nTesting blockchain serialization and deserialization...\n");
+    // Test blockchain I/O
+    printf("\nTesting blockchain I/O operations...\n");
     
-    // Calculate the size needed for serialization
-    size_t blockchain_size = TW_BlockChain_get_size(blockchain);
-    if (blockchain_size == 0) {
-        printf("Failed to calculate blockchain size\n");
+    // Save blockchain to file
+    if (!saveBlockChainToFile(blockchain)) {
+        printf("Failed to save blockchain to file\n");
         free(transactions);
         TW_BlockChain_destroy(blockchain);
         keystore_cleanup();
         return 1;
     }
-    printf("Blockchain size: %zu bytes\n", blockchain_size);
+    printf("Successfully saved blockchain to file\n");
     
-    // Allocate memory for serialized data
-    unsigned char* serialized_data = malloc(blockchain_size);
-    if (!serialized_data) {
-        printf("Failed to allocate memory for serialized data\n");
+    // Read blockchain from file
+    TW_BlockChain* loaded_blockchain = readBlockChainFromFile();
+    if (!loaded_blockchain) {
+        printf("Failed to read blockchain from file\n");
         free(transactions);
         TW_BlockChain_destroy(blockchain);
         keystore_cleanup();
         return 1;
     }
+    printf("Successfully read blockchain from file\n");
     
-    // Pointer for tracking serialization progress
-    unsigned char* ptr = serialized_data;
-    
-    // Serialize the blockchain
-    int serialize_result = TW_BlockChain_serialize(blockchain, &ptr);
-    if (serialize_result != 0) {
-        printf("Failed to serialize blockchain\n");
-        free(serialized_data);
-        free(transactions);
-        TW_BlockChain_destroy(blockchain);
-        keystore_cleanup();
-        return 1;
-    }
-    
-    // Calculate actual bytes written
-    size_t bytes_written = ptr - serialized_data;
-    printf("Serialized blockchain: %zu bytes written\n", bytes_written);
-    
-    // For deserialization, use the actual written size
-    if (bytes_written != blockchain_size) {
-        blockchain_size = bytes_written;
-    }
-    
-    // Deserialize the blockchain
-    TW_BlockChain* deserialized = TW_BlockChain_deserialize(serialized_data, blockchain_size);
-    if (!deserialized) {
-        printf("Failed to deserialize blockchain\n");
-        free(serialized_data);
-        free(transactions);
-        TW_BlockChain_destroy(blockchain);
-        keystore_cleanup();
-        return 1;
-    }
-    
-    // Verify the deserialized blockchain has the same properties
-    printf("Verifying deserialized blockchain...\n");
+    // Verify loaded blockchain
+    printf("Verifying loaded blockchain...\n");
     
     // Check blockchain length
-    if (deserialized->length != blockchain->length) {
-        printf("Blockchain length mismatch: expected %u, got %u\n", 
-               blockchain->length, deserialized->length);
-        free(serialized_data);
+    if (loaded_blockchain->length != blockchain->length) {
+        printf("Loaded blockchain length mismatch: expected %u, got %u\n", 
+               blockchain->length, loaded_blockchain->length);
         free(transactions);
         TW_BlockChain_destroy(blockchain);
-        TW_BlockChain_destroy(deserialized);
+        TW_BlockChain_destroy(loaded_blockchain);
         keystore_cleanup();
         return 1;
     }
-    printf("Blockchain length: %u blocks (verified)\n", deserialized->length);
+    printf("Blockchain length: %u blocks (verified)\n", loaded_blockchain->length);
     
-    // Check that the hash of the deserialized blockchain matches the original
-    unsigned char deserialized_hash[HASH_SIZE];
-    TW_BlockChain_get_hash(deserialized, deserialized_hash);
-    if (memcmp(last_hash, deserialized_hash, HASH_SIZE) != 0) {
-        printf("Blockchain hash mismatch\n");
-        print_hex("Original hash   : ", last_hash, HASH_SIZE);
-        print_hex("Deserialized hash: ", deserialized_hash, HASH_SIZE);
-        free(serialized_data);
+    // Check that the hash of the loaded blockchain matches the original
+    unsigned char loaded_hash[HASH_SIZE];
+    TW_BlockChain_get_hash(loaded_blockchain, loaded_hash);
+    if (memcmp(last_hash, loaded_hash, HASH_SIZE) != 0) {
+        printf("Loaded blockchain hash mismatch\n");
+        print_hex("Original hash: ", last_hash, HASH_SIZE);
+        print_hex("Loaded hash  : ", loaded_hash, HASH_SIZE);
         free(transactions);
         TW_BlockChain_destroy(blockchain);
-        TW_BlockChain_destroy(deserialized);
+        TW_BlockChain_destroy(loaded_blockchain);
         keystore_cleanup();
         return 1;
     }
-    print_hex("Deserialized blockchain hash: ", deserialized_hash, HASH_SIZE);
+    print_hex("Loaded blockchain hash: ", loaded_hash, HASH_SIZE);
     printf("Hash verification: Passed\n");
     
-    // If we got here, the test passed
-    printf("Serialization/Deserialization test: Passed\n");
+    // If we got here, the I/O test passed
+    printf("Blockchain I/O test: Passed\n");
     
-    // Clean up serialization test resources
-    free(serialized_data);
-    TW_BlockChain_destroy(deserialized);
+    // Clean up I/O test resources
+    TW_BlockChain_destroy(loaded_blockchain);
 
     // Clean up before returning
     // Don't free the transactions here since they are owned by the block

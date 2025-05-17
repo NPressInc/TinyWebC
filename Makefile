@@ -219,6 +219,33 @@ src/main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/main.c.s
 .PHONY : src/main.c.s
 
+src/packages/PBFT/node.o: src/packages/PBFT/node.c.o
+.PHONY : src/packages/PBFT/node.o
+
+# target to build an object file
+src/packages/PBFT/node.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/node.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/node.c.o
+.PHONY : src/packages/PBFT/node.c.o
+
+src/packages/PBFT/node.i: src/packages/PBFT/node.c.i
+.PHONY : src/packages/PBFT/node.i
+
+# target to preprocess a source file
+src/packages/PBFT/node.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/node.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/node.c.i
+.PHONY : src/packages/PBFT/node.c.i
+
+src/packages/PBFT/node.s: src/packages/PBFT/node.c.s
+.PHONY : src/packages/PBFT/node.s
+
+# target to generate assembly for a file
+src/packages/PBFT/node.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/node.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/node.c.s
+.PHONY : src/packages/PBFT/node.c.s
+
 src/packages/comm/blockChainQueryApi.o: src/packages/comm/blockChainQueryApi.c.o
 .PHONY : src/packages/comm/blockChainQueryApi.o
 
@@ -299,6 +326,33 @@ src/packages/encryption/encryption.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.s
 .PHONY : src/packages/encryption/encryption.c.s
+
+src/packages/fileIO/blockchainIO.o: src/packages/fileIO/blockchainIO.c.o
+.PHONY : src/packages/fileIO/blockchainIO.o
+
+# target to build an object file
+src/packages/fileIO/blockchainIO.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.o
+.PHONY : src/packages/fileIO/blockchainIO.c.o
+
+src/packages/fileIO/blockchainIO.i: src/packages/fileIO/blockchainIO.c.i
+.PHONY : src/packages/fileIO/blockchainIO.i
+
+# target to preprocess a source file
+src/packages/fileIO/blockchainIO.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.i
+.PHONY : src/packages/fileIO/blockchainIO.c.i
+
+src/packages/fileIO/blockchainIO.s: src/packages/fileIO/blockchainIO.c.s
+.PHONY : src/packages/fileIO/blockchainIO.s
+
+# target to generate assembly for a file
+src/packages/fileIO/blockchainIO.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.s
+.PHONY : src/packages/fileIO/blockchainIO.c.s
 
 src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.o
@@ -765,6 +819,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/packages/PBFT/node.o"
+	@echo "... src/packages/PBFT/node.i"
+	@echo "... src/packages/PBFT/node.s"
 	@echo "... src/packages/comm/blockChainQueryApi.o"
 	@echo "... src/packages/comm/blockChainQueryApi.i"
 	@echo "... src/packages/comm/blockChainQueryApi.s"
@@ -774,6 +831,9 @@ help:
 	@echo "... src/packages/encryption/encryption.o"
 	@echo "... src/packages/encryption/encryption.i"
 	@echo "... src/packages/encryption/encryption.s"
+	@echo "... src/packages/fileIO/blockchainIO.o"
+	@echo "... src/packages/fileIO/blockchainIO.i"
+	@echo "... src/packages/fileIO/blockchainIO.s"
 	@echo "... src/packages/keystore/keystore.o"
 	@echo "... src/packages/keystore/keystore.i"
 	@echo "... src/packages/keystore/keystore.s"
