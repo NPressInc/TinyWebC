@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include "blockchainIO.h"
 #include "packages/structures/blockChain/blockchain.h"
+#include "compression.h"
 
 #define BLOCKCHAIN_DIR "state/blockchain"
 #define BLOCKCHAIN_FILENAME BLOCKCHAIN_DIR "/blockchain.dat"
@@ -37,7 +38,7 @@ bool saveBlockChainToFile(TW_BlockChain* blockChain) {
     size_t serializedSize = TW_BlockChain_get_size(blockChain);
     if (serializedSize == 0) return false;
 
-    uint8_t* serializedData = malloc(serializedSize);
+    unsigned char* serializedData = malloc(serializedSize);
     if (!serializedData) return false;
 
     unsigned char* ptr = serializedData;
@@ -46,30 +47,47 @@ bool saveBlockChainToFile(TW_BlockChain* blockChain) {
         return false;
     }
 
+    // Compress the serialized data
+    unsigned char* compressedData;
+    size_t compressedSize;
+    if (!compress_data(serializedData, serializedSize, &compressedData, &compressedSize)) {
+        free(serializedData);
+        return false;
+    }
+    free(serializedData); // Free the uncompressed data
+
     // Write to file
     FILE* file = fopen(BLOCKCHAIN_FILENAME, "wb");
     if (!file) {
-        free(serializedData);
+        free(compressedData);
         return false;
     }
 
-    // Write size first, then data
+    // Write original size first, then compressed size, then compressed data
     size_t written = fwrite(&serializedSize, sizeof(size_t), 1, file);
     if (written != 1) {
         fclose(file);
-        free(serializedData);
+        free(compressedData);
         return false;
     }
 
-    written = fwrite(serializedData, 1, serializedSize, file);
+    written = fwrite(&compressedSize, sizeof(size_t), 1, file);
+    if (written != 1) {
+        fclose(file);
+        free(compressedData);
+        return false;
+    }
+
+    written = fwrite(compressedData, 1, compressedSize, file);
     fclose(file);
-    free(serializedData);
+    free(compressedData);
 
-    if (written != serializedSize) {
+    if (written != compressedSize) {
         return false;
     }
 
-    printf("Saved BlockChain To File!\n");
+    printf("Saved BlockChain To File! (Original size: %zu bytes, Compressed size: %zu bytes)\n", 
+           serializedSize, compressedSize);
     return true;
 }
 
@@ -81,25 +99,49 @@ TW_BlockChain* readBlockChainFromFile(void) {
         return NULL;
     }
 
-    // Read size first
-    size_t serializedSize;
-    size_t read = fread(&serializedSize, sizeof(size_t), 1, file);
+    // Read original size first
+    size_t originalSize;
+    size_t read = fread(&originalSize, sizeof(size_t), 1, file);
     if (read != 1) {
         fclose(file);
         return NULL;
     }
 
-    // Read serialized data
-    uint8_t* serializedData = malloc(serializedSize);
-    if (!serializedData) {
+    // Read compressed size
+    size_t compressedSize;
+    read = fread(&compressedSize, sizeof(size_t), 1, file);
+    if (read != 1) {
         fclose(file);
         return NULL;
     }
 
-    read = fread(serializedData, 1, serializedSize, file);
+    // Read compressed data
+    unsigned char* compressedData = malloc(compressedSize);
+    if (!compressedData) {
+        fclose(file);
+        return NULL;
+    }
+
+    read = fread(compressedData, 1, compressedSize, file);
     fclose(file);
 
-    if (read != serializedSize) {
+    if (read != compressedSize) {
+        free(compressedData);
+        return NULL;
+    }
+
+    // Decompress the data
+    unsigned char* serializedData;
+    size_t serializedSize;
+    if (!decompress_data(compressedData, compressedSize, &serializedData, &serializedSize)) {
+        free(compressedData);
+        return NULL;
+    }
+    free(compressedData);
+
+    // Verify the decompressed size matches the original size
+    if (serializedSize != originalSize) {
+        printf("Size mismatch: expected %zu bytes, got %zu bytes\n", originalSize, serializedSize);
         free(serializedData);
         return NULL;
     }
@@ -109,7 +151,8 @@ TW_BlockChain* readBlockChainFromFile(void) {
     free(serializedData);
 
     if (blockChain) {
-        printf("Loaded it\n");
+        printf("Loaded blockchain (Original size: %zu bytes, Compressed size: %zu bytes)\n", 
+               originalSize, compressedSize);
     }
 
     return blockChain;

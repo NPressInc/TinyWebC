@@ -14,9 +14,22 @@ pkg_check_modules(MICROHTTPD REQUIRED libmicrohttpd)
 find_package(cJSON REQUIRED)
 pkg_check_modules(SODIUM REQUIRED libsodium)
 find_package(OpenSSL REQUIRED)
-target_link_libraries(tinyweb PRIVATE ${MICROHTTPD_LIBRARIES} cjson ${SODIUM_LIBRARIES} OpenSSL::Crypto)
-target_include_directories(tinyweb PRIVATE ${MICROHTTPD_INCLUDE_DIRS} ${SODIUM_INCLUDE_DIRS} /usr/include/cjson)
+pkg_check_modules(LZ4 REQUIRED liblz4)
 
+target_link_libraries(tinyweb PRIVATE 
+    ${MICROHTTPD_LIBRARIES} 
+    cjson 
+    ${SODIUM_LIBRARIES} 
+    OpenSSL::Crypto
+    ${LZ4_LIBRARIES}
+)
+
+target_include_directories(tinyweb PRIVATE 
+    ${MICROHTTPD_INCLUDE_DIRS} 
+    ${SODIUM_INCLUDE_DIRS} 
+    /usr/include/cjson
+    ${LZ4_INCLUDE_DIRS}
+)
 
 # Test sources
 file(GLOB_RECURSE TEST_SOURCES "src/tests/*.c")
@@ -29,8 +42,21 @@ list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/test_runner.c")
 set(TEST_MAIN "src/tests/test_runner.c")
 
 add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES})
-target_link_libraries(tinyweb_tests PRIVATE ${MICROHTTPD_LIBRARIES} cjson ${SODIUM_LIBRARIES} OpenSSL::Crypto)
-target_include_directories(tinyweb_tests PRIVATE ${MICROHTTPD_INCLUDE_DIRS} ${SODIUM_INCLUDE_DIRS} /usr/include/cjson src)
+target_link_libraries(tinyweb_tests PRIVATE 
+    ${MICROHTTPD_LIBRARIES} 
+    cjson 
+    ${SODIUM_LIBRARIES} 
+    OpenSSL::Crypto
+    ${LZ4_LIBRARIES}
+)
+
+target_include_directories(tinyweb_tests PRIVATE 
+    ${MICROHTTPD_INCLUDE_DIRS} 
+    ${SODIUM_INCLUDE_DIRS} 
+    /usr/include/cjson 
+    ${LZ4_INCLUDE_DIRS}
+    src
+)
 
 # Enable testing and add individual tests
 enable_testing()

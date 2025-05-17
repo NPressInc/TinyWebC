@@ -354,6 +354,33 @@ src/packages/fileIO/blockchainIO.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.s
 .PHONY : src/packages/fileIO/blockchainIO.c.s
 
+src/packages/fileIO/compression.o: src/packages/fileIO/compression.c.o
+.PHONY : src/packages/fileIO/compression.o
+
+# target to build an object file
+src/packages/fileIO/compression.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.o
+.PHONY : src/packages/fileIO/compression.c.o
+
+src/packages/fileIO/compression.i: src/packages/fileIO/compression.c.i
+.PHONY : src/packages/fileIO/compression.i
+
+# target to preprocess a source file
+src/packages/fileIO/compression.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.i
+.PHONY : src/packages/fileIO/compression.c.i
+
+src/packages/fileIO/compression.s: src/packages/fileIO/compression.c.s
+.PHONY : src/packages/fileIO/compression.s
+
+# target to generate assembly for a file
+src/packages/fileIO/compression.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.s
+.PHONY : src/packages/fileIO/compression.c.s
+
 src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.o
 
@@ -834,6 +861,9 @@ help:
 	@echo "... src/packages/fileIO/blockchainIO.o"
 	@echo "... src/packages/fileIO/blockchainIO.i"
 	@echo "... src/packages/fileIO/blockchainIO.s"
+	@echo "... src/packages/fileIO/compression.o"
+	@echo "... src/packages/fileIO/compression.i"
+	@echo "... src/packages/fileIO/compression.s"
 	@echo "... src/packages/keystore/keystore.o"
 	@echo "... src/packages/keystore/keystore.i"
 	@echo "... src/packages/keystore/keystore.s"

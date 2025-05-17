@@ -7,7 +7,7 @@
 #include "transaction.h"
 #include "packages/encryption/encryption.h"
 
-#define MAX_BLOCKS 1000  // Arbitrary cap for in-memory chain, adjust as needed
+#define MAX_BLOCKS 1000000  // Arbitrary cap for in-memory chain, adjust as needed
 
 typedef struct {
     TW_Block** blocks;  // Fixed-size array of block pointers
