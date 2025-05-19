@@ -1,5 +1,5 @@
-#ifndef TW_BLOCKCHAIN_IO_H
-#define TW_BLOCKCHAIN_IO_H
+#ifndef BLOCKCHAIN_IO_H
+#define BLOCKCHAIN_IO_H
 
 #include <stdbool.h>
 #include "packages/structures/blockChain/blockchain.h"
@@ -13,4 +13,6 @@ bool saveBlockChainToFile(TW_BlockChain* blockChain);
 // Caller is responsible for freeing the returned BlockChain
 TW_BlockChain* readBlockChainFromFile(void);
 
-#endif // TW_BLOCKCHAIN_IO_H
+bool writeBlockChainToJson(TW_BlockChain* blockChain);
+
+#endif // BLOCKCHAIN_IO_H

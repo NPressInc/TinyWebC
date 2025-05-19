@@ -12,8 +12,12 @@
 int initialize_network(const InitConfig* config) {
     if (!config) return -1;
 
+    // Initialize all pointers to NULL for proper cleanup
+    GeneratedKeys keys = {0};
+    TW_BlockChain* blockchain = NULL;
+    PeerInfo* peers = NULL;
+
     // 1. Generate keys
-    GeneratedKeys keys;
     if (generate_initial_keys(&keys, config) != 0) {
         fprintf(stderr, "Error: Failed to generate initial keys\n");
         return -1;
@@ -27,7 +31,7 @@ int initialize_network(const InitConfig* config) {
     }
 
     // 3. Create blockchain
-    TW_BlockChain* blockchain = TW_BlockChain_create(keys.node_public_keys[0], NULL, 0);
+    blockchain = TW_BlockChain_create(keys.node_public_keys[0], NULL, 0);
     if (!blockchain) {
         fprintf(stderr, "Error: Failed to create blockchain\n");
         free_generated_keys(&keys);
@@ -35,7 +39,7 @@ int initialize_network(const InitConfig* config) {
     }
 
     // 4. Generate peer list
-    PeerInfo* peers = malloc(sizeof(PeerInfo) * config->node_count);
+    peers = malloc(sizeof(PeerInfo) * config->node_count);
     if (!peers) {
         fprintf(stderr, "Error: Failed to allocate peer list\n");
         free_generated_keys(&keys);
@@ -96,6 +100,12 @@ int initialize_network(const InitConfig* config) {
         return -1;
     }
 
+    // Save blockchain as JSON for human readability
+    if (!writeBlockChainToJson(blockchain)) {
+        fprintf(stderr, "Warning: Failed to save blockchain as JSON\n");
+        // Don't return error here as the main blockchain file was saved successfully
+    }
+
     // Cleanup
     free(peers);
     free_generated_keys(&keys);
@@ -119,7 +129,7 @@ int generate_initial_keys(GeneratedKeys* keys, const InitConfig* config) {
         return -1;
     }
     for (uint32_t i = 0; i < keys->node_count; i++) {
-        keys->node_private_keys[i] = malloc(SECRET_SIZE);
+        keys->node_private_keys[i] = malloc(SIGN_SECRET_SIZE);
         keys->node_public_keys[i] = malloc(PUBKEY_SIZE);
         if (!keys->node_private_keys[i] || !keys->node_public_keys[i]) {
             free_generated_keys(keys);
@@ -135,7 +145,7 @@ int generate_initial_keys(GeneratedKeys* keys, const InitConfig* config) {
         }
     }
     for (uint32_t i = 0; i < keys->user_count; i++) {
-        keys->user_private_keys[i] = malloc(SECRET_SIZE);
+        keys->user_private_keys[i] = malloc(SIGN_SECRET_SIZE);
         keys->user_public_keys[i] = malloc(PUBKEY_SIZE);
         if (!keys->user_private_keys[i] || !keys->user_public_keys[i]) {
             free_generated_keys(keys);
@@ -161,7 +171,7 @@ int save_keys_to_keystore(const GeneratedKeys* keys, const char* keystore_path, 
         snprintf(node_key_path, sizeof(node_key_path), "%s/node_%u_key.bin", keystore_path, i);
         FILE* f = fopen(node_key_path, "wb");
         if (!f) return -1;
-        fwrite(keys->node_private_keys[i], 1, SECRET_SIZE, f);
+        fwrite(keys->node_private_keys[i], 1, SIGN_SECRET_SIZE, f);
         fclose(f);
     }
     // Save user keys
@@ -170,7 +180,7 @@ int save_keys_to_keystore(const GeneratedKeys* keys, const char* keystore_path, 
         snprintf(user_key_path, sizeof(user_key_path), "%s/user_%u_key.bin", keystore_path, i);
         FILE* f = fopen(user_key_path, "wb");
         if (!f) return -1;
-        fwrite(keys->user_private_keys[i], 1, SECRET_SIZE, f);
+        fwrite(keys->user_private_keys[i], 1, SIGN_SECRET_SIZE, f);
         fclose(f);
     }
     return 0;
@@ -229,7 +239,15 @@ int create_permission_transactions(TW_BlockChain* blockchain) {
 // Helper functions
 int create_genesis_block(TW_BlockChain* blockchain) {
     if (!blockchain) return -1;
-    TW_BlockChain_create_genesis_block(blockchain, NULL);
+    
+    // Get the creator's public key from the blockchain
+    TW_BlockChain_create_genesis_block(blockchain, blockchain->creator_pubkey);
+    
+    // Verify that the genesis block was created
+    if (blockchain->length == 0 || !blockchain->blocks[0]) {
+        return -1;
+    }
+    
     return 0;
 }
 

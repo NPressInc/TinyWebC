@@ -13,6 +13,9 @@ TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Bloc
     TW_BlockChain* blockchain = malloc(sizeof(TW_BlockChain));
     if (!blockchain) return NULL;
 
+    // Initialize all fields to zero
+    memset(blockchain, 0, sizeof(TW_BlockChain));
+
     blockchain->length = (length > MAX_BLOCKS) ? MAX_BLOCKS : length;
     if (creator_pubkey) {
         memcpy(blockchain->creator_pubkey, creator_pubkey, PUBKEY_SIZE);
@@ -26,6 +29,7 @@ TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Bloc
         free(blockchain);
         return NULL;
     }
+    memset(blockchain->blocks, 0, MAX_BLOCKS * sizeof(TW_Block*));
     
     blockchain->block_sizes = malloc(MAX_BLOCKS * sizeof(size_t));
     if (!blockchain->block_sizes) {
@@ -33,6 +37,7 @@ TW_BlockChain* TW_BlockChain_create(const unsigned char* creator_pubkey, TW_Bloc
         free(blockchain);
         return NULL;
     }
+    memset(blockchain->block_sizes, 0, MAX_BLOCKS * sizeof(size_t));
 
     // Initialize blocks and block_sizes
     for (uint32_t i = 0; i < MAX_BLOCKS; i++) {
