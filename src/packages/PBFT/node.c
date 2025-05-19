@@ -8,6 +8,7 @@
 #include "packages/structures/blockChain/block.h"
 #include "packages/fileIO/blockchainIO.h"
 #include "packages/keystore/keystore.h"
+#include "packages/encryption/encryption.h"
 
 // Speed modifier in microseconds (1 second = 1000000 microseconds)
 #define SPEED_MODIFIER 1000000
@@ -27,106 +28,6 @@ void node_state_cleanup(void) {
         TW_BlockChain_destroy(node_state.blockchain);
         node_state.blockchain = NULL;
     }
-}
-
-// Peer management functions
-int node_add_peer(const unsigned char* public_key, const char* ip, uint32_t id) {
-    if (node_state.peer_count >= MAX_PEERS) return 0;
-    
-    // Add to peers array
-    PeerInfo* peer = &node_state.peers[node_state.peer_count];
-    memcpy(peer->public_key, public_key, PUBKEY_SIZE);
-    strncpy(peer->ip, ip, sizeof(peer->ip) - 1);
-    peer->id = id;
-    peer->is_delinquent = 0;
-    
-    // Add to lookup tables
-    node_state.id_ip_map[node_state.id_ip_count].id = id;
-    strncpy(node_state.id_ip_map[node_state.id_ip_count].ip, ip, sizeof(node_state.id_ip_map[0].ip) - 1);
-    
-    memcpy(node_state.pkey_ip_map[node_state.pkey_ip_count].public_key, public_key, PUBKEY_SIZE);
-    strncpy(node_state.pkey_ip_map[node_state.pkey_ip_count].ip, ip, sizeof(node_state.pkey_ip_map[0].ip) - 1);
-    
-    memcpy(node_state.pkey_id_map[node_state.pkey_id_count].public_key, public_key, PUBKEY_SIZE);
-    node_state.pkey_id_map[node_state.pkey_id_count].id = id;
-    
-    // Update counts
-    node_state.peer_count++;
-    node_state.id_ip_count++;
-    node_state.pkey_ip_count++;
-    node_state.pkey_id_count++;
-    
-    return 1;
-}
-
-int node_remove_peer(uint32_t id) {
-    // TODO: Implement peer removal
-    return 0;
-}
-
-int node_mark_peer_delinquent(uint32_t id) {
-    for (size_t i = 0; i < node_state.peer_count; i++) {
-        if (node_state.peers[i].id == id) {
-            node_state.peers[i].is_delinquent = 1;
-            return 1;
-        }
-    }
-    return 0;
-}
-
-int node_get_peer_info(uint32_t id, PeerInfo* info) {
-    for (size_t i = 0; i < node_state.peer_count; i++) {
-        if (node_state.peers[i].id == id) {
-            memcpy(info, &node_state.peers[i], sizeof(PeerInfo));
-            return 1;
-        }
-    }
-    return 0;
-}
-
-// Peer lookup functions
-const char* node_get_ip_by_id(uint32_t id) {
-    for (size_t i = 0; i < node_state.id_ip_count; i++) {
-        if (node_state.id_ip_map[i].id == id) {
-            return node_state.id_ip_map[i].ip;
-        }
-    }
-    return NULL;
-}
-
-const char* node_get_ip_by_pubkey(const unsigned char* public_key) {
-    for (size_t i = 0; i < node_state.pkey_ip_count; i++) {
-        if (memcmp(node_state.pkey_ip_map[i].public_key, public_key, PUBKEY_SIZE) == 0) {
-            return node_state.pkey_ip_map[i].ip;
-        }
-    }
-    return NULL;
-}
-
-uint32_t node_get_id_by_pubkey(const unsigned char* public_key) {
-    for (size_t i = 0; i < node_state.pkey_id_count; i++) {
-        if (memcmp(node_state.pkey_id_map[i].public_key, public_key, PUBKEY_SIZE) == 0) {
-            return node_state.pkey_id_map[i].id;
-        }
-    }
-    return 0;
-}
-
-// Consensus functions
-void node_set_proposer_id(uint32_t id) {
-    node_state.proposer_id = id;
-}
-
-uint32_t node_get_proposer_id(void) {
-    return node_state.proposer_id;
-}
-
-void node_set_proposer_offset(uint32_t offset) {
-    node_state.proposer_offset = offset;
-}
-
-uint32_t node_get_proposer_offset(void) {
-    return node_state.proposer_offset;
 }
 
 void runNode(void) {
@@ -207,4 +108,108 @@ void runNode(void) {
     // Cleanup (though we never reach here due to infinite loop)
     node_state_cleanup();
     keystore_cleanup();
+}
+
+
+// Peer management functions
+int node_add_peer(const unsigned char* public_key, const char* ip, uint32_t id) {
+    if (node_state.peer_count >= MAX_PEERS) return 0;
+    
+    // Add to peers array
+    PeerInfo* peer = &node_state.peers[node_state.peer_count];
+    memcpy(peer->public_key, public_key, PUBKEY_SIZE);
+    strncpy(peer->ip, ip, sizeof(peer->ip) - 1);
+    peer->id = id;
+    peer->is_delinquent = 0;
+    
+    // Add to ID-IP map
+    node_state.id_ip_map[node_state.id_ip_count].id = id;
+    strncpy(node_state.id_ip_map[node_state.id_ip_count].ip, ip, sizeof(node_state.id_ip_map[0].ip) - 1);
+    node_state.id_ip_map[node_state.id_ip_count].ip[sizeof(node_state.id_ip_map[0].ip) - 1] = '\0';
+    node_state.id_ip_count++;
+
+    // Add to public key-IP map
+    memcpy(node_state.pkey_ip_map[node_state.pkey_ip_count].public_key, public_key, PUBKEY_SIZE);
+    strncpy(node_state.pkey_ip_map[node_state.pkey_ip_count].ip, ip, sizeof(node_state.pkey_ip_map[0].ip) - 1);
+    node_state.pkey_ip_map[node_state.pkey_ip_count].ip[sizeof(node_state.pkey_ip_map[0].ip) - 1] = '\0';
+    node_state.pkey_ip_count++;
+    
+    memcpy(node_state.pkey_id_map[node_state.pkey_id_count].public_key, public_key, PUBKEY_SIZE);
+    node_state.pkey_id_map[node_state.pkey_id_count].id = id;
+    
+    // Update counts
+    node_state.peer_count++;
+    node_state.pkey_id_count++;
+    
+    return 0;
+}
+
+int node_remove_peer(uint32_t id) {
+    // TODO: Implement peer removal
+    return 0;
+}
+
+int node_mark_peer_delinquent(uint32_t id) {
+    for (size_t i = 0; i < node_state.peer_count; i++) {
+        if (node_state.peers[i].id == id) {
+            node_state.peers[i].is_delinquent = 1;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int node_get_peer_info(uint32_t id, PeerInfo* info) {
+    for (size_t i = 0; i < node_state.peer_count; i++) {
+        if (node_state.peers[i].id == id) {
+            memcpy(info, &node_state.peers[i], sizeof(PeerInfo));
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Peer lookup functions
+const char* node_get_ip_by_id(uint32_t id) {
+    for (size_t i = 0; i < node_state.id_ip_count; i++) {
+        if (node_state.id_ip_map[i].id == id) {
+            return node_state.id_ip_map[i].ip;
+        }
+    }
+    return NULL;
+}
+
+const char* node_get_ip_by_pubkey(const unsigned char* public_key) {
+    for (size_t i = 0; i < node_state.pkey_ip_count; i++) {
+        if (memcmp(node_state.pkey_ip_map[i].public_key, public_key, PUBKEY_SIZE) == 0) {
+            return node_state.pkey_ip_map[i].ip;
+        }
+    }
+    return NULL;
+}
+
+uint32_t node_get_id_by_pubkey(const unsigned char* public_key) {
+    for (size_t i = 0; i < node_state.pkey_id_count; i++) {
+        if (memcmp(node_state.pkey_id_map[i].public_key, public_key, PUBKEY_SIZE) == 0) {
+            return node_state.pkey_id_map[i].id;
+        }
+    }
+    return 0;
+}
+
+// Consensus functions
+void node_set_proposer_id(uint32_t id) {
+    node_state.proposer_id = id;
+}
+
+uint32_t node_get_proposer_id(void) {
+    return node_state.proposer_id;
+}
+
+void node_set_proposer_offset(uint32_t offset) {
+    node_state.proposer_offset = offset;
+}
+
+uint32_t node_get_proposer_offset(void) {
+    return node_state.proposer_offset;
 }

@@ -168,6 +168,19 @@ check/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/check.dir/build.make CMakeFiles/check.dir/build
 .PHONY : check/fast
 
+#=============================================================================
+# Target rules for targets named init_tool
+
+# Build rule for target.
+init_tool: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 init_tool
+.PHONY : init_tool
+
+# fast build rule for target.
+init_tool/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/build
+.PHONY : init_tool/fast
+
 src/external/mongoose/mongoose.o: src/external/mongoose/mongoose.c.o
 .PHONY : src/external/mongoose/mongoose.o
 
@@ -307,6 +320,7 @@ src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
 src/packages/encryption/encryption.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.o
 .PHONY : src/packages/encryption/encryption.c.o
 
 src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
@@ -316,6 +330,7 @@ src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
 src/packages/encryption/encryption.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.i
 .PHONY : src/packages/encryption/encryption.c.i
 
 src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
@@ -325,6 +340,7 @@ src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
 src/packages/encryption/encryption.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.s
 .PHONY : src/packages/encryption/encryption.c.s
 
 src/packages/fileIO/blockchainIO.o: src/packages/fileIO/blockchainIO.c.o
@@ -334,6 +350,7 @@ src/packages/fileIO/blockchainIO.o: src/packages/fileIO/blockchainIO.c.o
 src/packages/fileIO/blockchainIO.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/blockchainIO.c.o
 .PHONY : src/packages/fileIO/blockchainIO.c.o
 
 src/packages/fileIO/blockchainIO.i: src/packages/fileIO/blockchainIO.c.i
@@ -343,6 +360,7 @@ src/packages/fileIO/blockchainIO.i: src/packages/fileIO/blockchainIO.c.i
 src/packages/fileIO/blockchainIO.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/blockchainIO.c.i
 .PHONY : src/packages/fileIO/blockchainIO.c.i
 
 src/packages/fileIO/blockchainIO.s: src/packages/fileIO/blockchainIO.c.s
@@ -352,6 +370,7 @@ src/packages/fileIO/blockchainIO.s: src/packages/fileIO/blockchainIO.c.s
 src/packages/fileIO/blockchainIO.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/blockchainIO.c.s
 .PHONY : src/packages/fileIO/blockchainIO.c.s
 
 src/packages/fileIO/compression.o: src/packages/fileIO/compression.c.o
@@ -361,6 +380,7 @@ src/packages/fileIO/compression.o: src/packages/fileIO/compression.c.o
 src/packages/fileIO/compression.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/compression.c.o
 .PHONY : src/packages/fileIO/compression.c.o
 
 src/packages/fileIO/compression.i: src/packages/fileIO/compression.c.i
@@ -370,6 +390,7 @@ src/packages/fileIO/compression.i: src/packages/fileIO/compression.c.i
 src/packages/fileIO/compression.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/compression.c.i
 .PHONY : src/packages/fileIO/compression.c.i
 
 src/packages/fileIO/compression.s: src/packages/fileIO/compression.c.s
@@ -379,7 +400,62 @@ src/packages/fileIO/compression.s: src/packages/fileIO/compression.c.s
 src/packages/fileIO/compression.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/compression.c.s
 .PHONY : src/packages/fileIO/compression.c.s
+
+src/packages/initialization/init.o: src/packages/initialization/init.c.o
+.PHONY : src/packages/initialization/init.o
+
+# target to build an object file
+src/packages/initialization/init.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/initialization/init.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.o
+.PHONY : src/packages/initialization/init.c.o
+
+src/packages/initialization/init.i: src/packages/initialization/init.c.i
+.PHONY : src/packages/initialization/init.i
+
+# target to preprocess a source file
+src/packages/initialization/init.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/initialization/init.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.i
+.PHONY : src/packages/initialization/init.c.i
+
+src/packages/initialization/init.s: src/packages/initialization/init.c.s
+.PHONY : src/packages/initialization/init.s
+
+# target to generate assembly for a file
+src/packages/initialization/init.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/initialization/init.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.s
+.PHONY : src/packages/initialization/init.c.s
+
+src/packages/initialization/init_tool.o: src/packages/initialization/init_tool.c.o
+.PHONY : src/packages/initialization/init_tool.o
+
+# target to build an object file
+src/packages/initialization/init_tool.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init_tool.c.o
+.PHONY : src/packages/initialization/init_tool.c.o
+
+src/packages/initialization/init_tool.i: src/packages/initialization/init_tool.c.i
+.PHONY : src/packages/initialization/init_tool.i
+
+# target to preprocess a source file
+src/packages/initialization/init_tool.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init_tool.c.i
+.PHONY : src/packages/initialization/init_tool.c.i
+
+src/packages/initialization/init_tool.s: src/packages/initialization/init_tool.c.s
+.PHONY : src/packages/initialization/init_tool.s
+
+# target to generate assembly for a file
+src/packages/initialization/init_tool.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init_tool.c.s
+.PHONY : src/packages/initialization/init_tool.c.s
 
 src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.o
@@ -388,6 +464,7 @@ src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 src/packages/keystore/keystore.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.c.o
 
 src/packages/keystore/keystore.i: src/packages/keystore/keystore.c.i
@@ -397,6 +474,7 @@ src/packages/keystore/keystore.i: src/packages/keystore/keystore.c.i
 src/packages/keystore/keystore.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.i
 .PHONY : src/packages/keystore/keystore.c.i
 
 src/packages/keystore/keystore.s: src/packages/keystore/keystore.c.s
@@ -406,6 +484,7 @@ src/packages/keystore/keystore.s: src/packages/keystore/keystore.c.s
 src/packages/keystore/keystore.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.s
 .PHONY : src/packages/keystore/keystore.c.s
 
 src/packages/signing/signing.o: src/packages/signing/signing.c.o
@@ -415,6 +494,7 @@ src/packages/signing/signing.o: src/packages/signing/signing.c.o
 src/packages/signing/signing.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.o
 .PHONY : src/packages/signing/signing.c.o
 
 src/packages/signing/signing.i: src/packages/signing/signing.c.i
@@ -424,6 +504,7 @@ src/packages/signing/signing.i: src/packages/signing/signing.c.i
 src/packages/signing/signing.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.i
 .PHONY : src/packages/signing/signing.c.i
 
 src/packages/signing/signing.s: src/packages/signing/signing.c.s
@@ -433,6 +514,7 @@ src/packages/signing/signing.s: src/packages/signing/signing.c.s
 src/packages/signing/signing.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.s
 .PHONY : src/packages/signing/signing.c.s
 
 src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/block.c.o
@@ -442,6 +524,7 @@ src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/b
 src/packages/structures/blockChain/block.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/block.c.o
 .PHONY : src/packages/structures/blockChain/block.c.o
 
 src/packages/structures/blockChain/block.i: src/packages/structures/blockChain/block.c.i
@@ -451,6 +534,7 @@ src/packages/structures/blockChain/block.i: src/packages/structures/blockChain/b
 src/packages/structures/blockChain/block.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/block.c.i
 .PHONY : src/packages/structures/blockChain/block.c.i
 
 src/packages/structures/blockChain/block.s: src/packages/structures/blockChain/block.c.s
@@ -460,6 +544,7 @@ src/packages/structures/blockChain/block.s: src/packages/structures/blockChain/b
 src/packages/structures/blockChain/block.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/block.c.s
 .PHONY : src/packages/structures/blockChain/block.c.s
 
 src/packages/structures/blockChain/blockchain.o: src/packages/structures/blockChain/blockchain.c.o
@@ -469,6 +554,7 @@ src/packages/structures/blockChain/blockchain.o: src/packages/structures/blockCh
 src/packages/structures/blockChain/blockchain.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/blockchain.c.o
 .PHONY : src/packages/structures/blockChain/blockchain.c.o
 
 src/packages/structures/blockChain/blockchain.i: src/packages/structures/blockChain/blockchain.c.i
@@ -478,6 +564,7 @@ src/packages/structures/blockChain/blockchain.i: src/packages/structures/blockCh
 src/packages/structures/blockChain/blockchain.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/blockchain.c.i
 .PHONY : src/packages/structures/blockChain/blockchain.c.i
 
 src/packages/structures/blockChain/blockchain.s: src/packages/structures/blockChain/blockchain.c.s
@@ -487,6 +574,7 @@ src/packages/structures/blockChain/blockchain.s: src/packages/structures/blockCh
 src/packages/structures/blockChain/blockchain.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/blockchain.c.s
 .PHONY : src/packages/structures/blockChain/blockchain.c.s
 
 src/packages/structures/blockChain/internalTransaction.o: src/packages/structures/blockChain/internalTransaction.c.o
@@ -577,6 +665,7 @@ src/packages/structures/blockChain/transaction.o: src/packages/structures/blockC
 src/packages/structures/blockChain/transaction.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction.c.o
 .PHONY : src/packages/structures/blockChain/transaction.c.o
 
 src/packages/structures/blockChain/transaction.i: src/packages/structures/blockChain/transaction.c.i
@@ -586,6 +675,7 @@ src/packages/structures/blockChain/transaction.i: src/packages/structures/blockC
 src/packages/structures/blockChain/transaction.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction.c.i
 .PHONY : src/packages/structures/blockChain/transaction.c.i
 
 src/packages/structures/blockChain/transaction.s: src/packages/structures/blockChain/transaction.c.s
@@ -595,6 +685,7 @@ src/packages/structures/blockChain/transaction.s: src/packages/structures/blockC
 src/packages/structures/blockChain/transaction.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction.c.s
 .PHONY : src/packages/structures/blockChain/transaction.c.s
 
 src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o
@@ -604,6 +695,7 @@ src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o
 src/packages/utils/byteorder.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/byteorder.c.o
 .PHONY : src/packages/utils/byteorder.c.o
 
 src/packages/utils/byteorder.i: src/packages/utils/byteorder.c.i
@@ -613,6 +705,7 @@ src/packages/utils/byteorder.i: src/packages/utils/byteorder.c.i
 src/packages/utils/byteorder.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/byteorder.c.i
 .PHONY : src/packages/utils/byteorder.c.i
 
 src/packages/utils/byteorder.s: src/packages/utils/byteorder.c.s
@@ -622,6 +715,7 @@ src/packages/utils/byteorder.s: src/packages/utils/byteorder.c.s
 src/packages/utils/byteorder.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/byteorder.c.s
 .PHONY : src/packages/utils/byteorder.c.s
 
 src/packages/utils/print.o: src/packages/utils/print.c.o
@@ -838,6 +932,7 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... test"
 	@echo "... check"
+	@echo "... init_tool"
 	@echo "... tinyweb"
 	@echo "... tinyweb_tests"
 	@echo "... src/external/mongoose/mongoose.o"
@@ -864,6 +959,12 @@ help:
 	@echo "... src/packages/fileIO/compression.o"
 	@echo "... src/packages/fileIO/compression.i"
 	@echo "... src/packages/fileIO/compression.s"
+	@echo "... src/packages/initialization/init.o"
+	@echo "... src/packages/initialization/init.i"
+	@echo "... src/packages/initialization/init.s"
+	@echo "... src/packages/initialization/init_tool.o"
+	@echo "... src/packages/initialization/init_tool.i"
+	@echo "... src/packages/initialization/init_tool.s"
 	@echo "... src/packages/keystore/keystore.o"
 	@echo "... src/packages/keystore/keystore.i"
 	@echo "... src/packages/keystore/keystore.s"

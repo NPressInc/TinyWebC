@@ -2,7 +2,7 @@ valgrind --leak-check=full --track-origins=yes  ./tinyweb
 
 gcc main.c -o tinyweb
 
-cmake . && make && ./tinyweb
+cmake . && make && ./tinyweb_tests
 
 find src/ -name "*.c" -exec cproto {} \; > myheader.h
 
