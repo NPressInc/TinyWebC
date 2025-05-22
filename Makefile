@@ -688,6 +688,33 @@ src/packages/structures/blockChain/transaction.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction.c.s
 .PHONY : src/packages/structures/blockChain/transaction.c.s
 
+src/packages/structures/blockChain/transaction_types.o: src/packages/structures/blockChain/transaction_types.c.o
+.PHONY : src/packages/structures/blockChain/transaction_types.o
+
+# target to build an object file
+src/packages/structures/blockChain/transaction_types.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.o
+.PHONY : src/packages/structures/blockChain/transaction_types.c.o
+
+src/packages/structures/blockChain/transaction_types.i: src/packages/structures/blockChain/transaction_types.c.i
+.PHONY : src/packages/structures/blockChain/transaction_types.i
+
+# target to preprocess a source file
+src/packages/structures/blockChain/transaction_types.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.i
+.PHONY : src/packages/structures/blockChain/transaction_types.c.i
+
+src/packages/structures/blockChain/transaction_types.s: src/packages/structures/blockChain/transaction_types.c.s
+.PHONY : src/packages/structures/blockChain/transaction_types.s
+
+# target to generate assembly for a file
+src/packages/structures/blockChain/transaction_types.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.s
+.PHONY : src/packages/structures/blockChain/transaction_types.c.s
+
 src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o
 .PHONY : src/packages/utils/byteorder.o
 
@@ -744,87 +771,6 @@ src/packages/utils/print.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/print.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.s
 .PHONY : src/packages/utils/print.c.s
-
-src/structs/group/group.o: src/structs/group/group.c.o
-.PHONY : src/structs/group/group.o
-
-# target to build an object file
-src/structs/group/group.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/group/group.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/group/group.c.o
-.PHONY : src/structs/group/group.c.o
-
-src/structs/group/group.i: src/structs/group/group.c.i
-.PHONY : src/structs/group/group.i
-
-# target to preprocess a source file
-src/structs/group/group.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/group/group.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/group/group.c.i
-.PHONY : src/structs/group/group.c.i
-
-src/structs/group/group.s: src/structs/group/group.c.s
-.PHONY : src/structs/group/group.s
-
-# target to generate assembly for a file
-src/structs/group/group.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/group/group.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/group/group.c.s
-.PHONY : src/structs/group/group.c.s
-
-src/structs/permission/permission.o: src/structs/permission/permission.c.o
-.PHONY : src/structs/permission/permission.o
-
-# target to build an object file
-src/structs/permission/permission.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.o
-.PHONY : src/structs/permission/permission.c.o
-
-src/structs/permission/permission.i: src/structs/permission/permission.c.i
-.PHONY : src/structs/permission/permission.i
-
-# target to preprocess a source file
-src/structs/permission/permission.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.i
-.PHONY : src/structs/permission/permission.c.i
-
-src/structs/permission/permission.s: src/structs/permission/permission.c.s
-.PHONY : src/structs/permission/permission.s
-
-# target to generate assembly for a file
-src/structs/permission/permission.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.s
-.PHONY : src/structs/permission/permission.c.s
-
-src/structs/role/role.o: src/structs/role/role.c.o
-.PHONY : src/structs/role/role.o
-
-# target to build an object file
-src/structs/role/role.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/role/role.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/role/role.c.o
-.PHONY : src/structs/role/role.c.o
-
-src/structs/role/role.i: src/structs/role/role.c.i
-.PHONY : src/structs/role/role.i
-
-# target to preprocess a source file
-src/structs/role/role.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/role/role.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/role/role.c.i
-.PHONY : src/structs/role/role.c.i
-
-src/structs/role/role.s: src/structs/role/role.c.s
-.PHONY : src/structs/role/role.s
-
-# target to generate assembly for a file
-src/structs/role/role.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/role/role.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/role/role.c.s
-.PHONY : src/structs/role/role.c.s
 
 src/tests/blockchain_test.o: src/tests/blockchain_test.c.o
 .PHONY : src/tests/blockchain_test.o
@@ -989,21 +935,15 @@ help:
 	@echo "... src/packages/structures/blockChain/transaction.o"
 	@echo "... src/packages/structures/blockChain/transaction.i"
 	@echo "... src/packages/structures/blockChain/transaction.s"
+	@echo "... src/packages/structures/blockChain/transaction_types.o"
+	@echo "... src/packages/structures/blockChain/transaction_types.i"
+	@echo "... src/packages/structures/blockChain/transaction_types.s"
 	@echo "... src/packages/utils/byteorder.o"
 	@echo "... src/packages/utils/byteorder.i"
 	@echo "... src/packages/utils/byteorder.s"
 	@echo "... src/packages/utils/print.o"
 	@echo "... src/packages/utils/print.i"
 	@echo "... src/packages/utils/print.s"
-	@echo "... src/structs/group/group.o"
-	@echo "... src/structs/group/group.i"
-	@echo "... src/structs/group/group.s"
-	@echo "... src/structs/permission/permission.o"
-	@echo "... src/structs/permission/permission.i"
-	@echo "... src/structs/permission/permission.s"
-	@echo "... src/structs/role/role.o"
-	@echo "... src/structs/role/role.i"
-	@echo "... src/structs/role/role.s"
 	@echo "... src/tests/blockchain_test.o"
 	@echo "... src/tests/blockchain_test.i"
 	@echo "... src/tests/blockchain_test.s"

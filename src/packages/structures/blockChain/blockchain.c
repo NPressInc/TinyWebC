@@ -79,8 +79,8 @@ void TW_BlockChain_create_genesis_block(TW_BlockChain* blockchain, const unsigne
     // Initialize to NULL first
     txns[0] = NULL;
     
-    // Create the transaction
-    txns[0] = TW_Transaction_create(TW_TXN_MISC, sender, sender, 1, NULL, genesis_payload, NULL);
+    // Create the genesis transaction
+    txns[0] = TW_Transaction_create(TW_TXN_SYSTEM_CONFIG, sender, sender, 1, NULL, genesis_payload, NULL);
     
     // The transaction now owns the payload
     genesis_payload = NULL;

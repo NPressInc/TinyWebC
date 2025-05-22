@@ -98,50 +98,73 @@ size_t TW_Transaction_get_size(const TW_Transaction* tx) {
 
 
 void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
-    if (!tx || !hash_out) return;
-
-    // First, calculate the size of the buffer, excluding the signature
-    size_t buffer_size = TW_Transaction_get_size(tx) - SIGNATURE_SIZE;
-    
-    unsigned char* buffer = malloc(buffer_size);
-    if (!buffer) {
-        printf("malloc failed\n");
+    if (!tx || !hash_out) {
+        if (hash_out) memset(hash_out, 0, SHA256_DIGEST_LENGTH);
         return;
     }
 
-    size_t offset = 0;
+    // Calculate buffer size for hashing
+    size_t buffer_alloc_size = 0;
+    buffer_alloc_size += sizeof(tx->type);
+    buffer_alloc_size += PUBKEY_SIZE; // sender
+    buffer_alloc_size += sizeof(tx->timestamp);
+    buffer_alloc_size += sizeof(tx->recipient_count);
+    if (tx->recipient_count > 0 && tx->recipients) {
+        buffer_alloc_size += PUBKEY_SIZE * tx->recipient_count;
+    }
+    buffer_alloc_size += GROUP_ID_SIZE;
 
-    // Copy the transaction fields into the buffer
-    memcpy(buffer + offset, &tx->type, sizeof(tx->type));
-    offset += sizeof(tx->type);
-    
-    memcpy(buffer + offset, tx->sender, PUBKEY_SIZE);
-    offset += PUBKEY_SIZE;
-    
-    memcpy(buffer + offset, &tx->timestamp, sizeof(tx->timestamp));
-    offset += sizeof(tx->timestamp);
-    
-    memcpy(buffer + offset, tx->recipients, PUBKEY_SIZE * tx->recipient_count);
-    offset += PUBKEY_SIZE * tx->recipient_count;
-    
-    memcpy(buffer + offset, &tx->recipient_count, sizeof(tx->recipient_count));
-    offset += sizeof(tx->recipient_count);
-    
-    memcpy(buffer + offset, tx->group_id, GROUP_ID_SIZE);
-    offset += GROUP_ID_SIZE;
-    
-    // Serialize the payload
-    memcpy(buffer + offset, &tx->payload_size, sizeof(tx->payload_size));
-    offset += sizeof(tx->payload_size);
-    
-    // Avoid including the signature
-    memcpy(buffer + offset, tx->payload, encrypted_payload_get_size(tx->payload));
-    offset += encrypted_payload_get_size(tx->payload);
+    // Add size for payload if it exists
+    if (tx->payload && tx->payload_size > 0) {
+        buffer_alloc_size += tx->payload_size;
+    }
 
-    // Now, compute the hash using SHA256
-    SHA256(buffer, offset, hash_out);
+    unsigned char* buffer = malloc(buffer_alloc_size);
+    if (!buffer) {
+        fprintf(stderr, "TW_Transaction_hash: malloc failed\n");
+        if (hash_out) memset(hash_out, 0, SHA256_DIGEST_LENGTH);
+        return;
+    }
 
-    // Clean up the allocated buffer
+    unsigned char* ptr = buffer; // Use a temporary pointer for filling the buffer
+
+    // Copy transaction fields into buffer
+    memcpy(ptr, &tx->type, sizeof(tx->type));
+    ptr += sizeof(tx->type);
+
+    memcpy(ptr, tx->sender, PUBKEY_SIZE);
+    ptr += PUBKEY_SIZE;
+
+    uint64_t timestamp_net = htonll(tx->timestamp); // Use network byte order for consistency
+    memcpy(ptr, &timestamp_net, sizeof(timestamp_net));
+    ptr += sizeof(timestamp_net);
+    
+    memcpy(ptr, &tx->recipient_count, sizeof(tx->recipient_count));
+    ptr += sizeof(tx->recipient_count);
+
+    if (tx->recipient_count > 0 && tx->recipients) {
+        memcpy(ptr, tx->recipients, PUBKEY_SIZE * tx->recipient_count);
+        ptr += PUBKEY_SIZE * tx->recipient_count;
+    }
+
+    memcpy(ptr, tx->group_id, GROUP_ID_SIZE);
+    ptr += GROUP_ID_SIZE;
+
+    // Serialize the EncryptedPayload if it exists
+    if (tx->payload && tx->payload_size > 0) {
+        // The 'ptr' is advanced by encrypted_payload_serialize itself
+        if (encrypted_payload_serialize(tx->payload, &ptr) != 0) {
+            fprintf(stderr, "TW_Transaction_hash: Error serializing encrypted payload for hashing\n");
+            free(buffer);
+            memset(hash_out, 0, SHA256_DIGEST_LENGTH);
+            return;
+        }
+    }
+
+    // Compute hash using SHA256 on the actual number of bytes written
+    size_t actual_bytes_written = ptr - buffer;
+    SHA256(buffer, actual_bytes_written, hash_out);
+
     free(buffer);
 }
 
