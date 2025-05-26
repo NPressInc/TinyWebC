@@ -1,0 +1,311 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tinyweb.family/schemas/network-config.json",
+  "title": "Network Configuration",
+  "description": "Configuration schema for initializing a family blockchain network",
+  "type": "object",
+  "required": ["network", "storage", "nodes", "family"],
+  "properties": {
+    "network": {
+      "type": "object",
+      "required": ["name", "base_port"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable name for the family network"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional description of the network"
+        },
+        "base_port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Base port number for network nodes"
+        },
+        "max_connections": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10,
+          "description": "Maximum number of peer connections"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "required": ["keystore_path", "blockchain_path", "passphrase"],
+      "properties": {
+        "keystore_path": {
+          "type": "string",
+          "pattern": "^[^\\0]+/$",
+          "description": "Directory path for storing cryptographic keys"
+        },
+        "blockchain_path": {
+          "type": "string", 
+          "pattern": "^[^\\0]+/$",
+          "description": "Directory path for storing blockchain data"
+        },
+        "passphrase": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "description": "Passphrase for encrypting stored keys"
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "type", "ip", "port"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^node_[0-9]{3}$",
+            "description": "Unique identifier for the node"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Human-readable name for the node"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["primary", "backup", "validator"],
+            "description": "Type of node in the network"
+          },
+          "ip": {
+            "type": "string",
+            "format": "ipv4",
+            "description": "IP address of the node"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535,
+            "description": "Port number for the node"
+          },
+          "is_validator": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether this node participates in consensus"
+          }
+        }
+      }
+    },
+    "family": {
+      "type": "object",
+      "required": ["parents", "children"],
+      "properties": {
+        "parents": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/definitions/parent"
+          }
+        },
+        "children": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/definitions/child"
+          }
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "encryption": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": ["Ed25519", "RSA-2048", "RSA-4096"],
+              "default": "Ed25519"
+            },
+            "key_rotation_days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 90
+            }
+          }
+        },
+        "content_filtering": {
+          "type": "object",
+          "properties": {
+            "default_policy": {
+              "type": "string",
+              "enum": ["allow_all", "block_unknown", "parent_approval"],
+              "default": "block_unknown"
+            },
+            "categories": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "enum": ["allow", "block", "allow_with_limits", "parent_approval", "time_limited"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "messaging": {
+          "type": "object",
+          "additionalProperties": {"type": "boolean"}
+        },
+        "location": {
+          "type": "object", 
+          "additionalProperties": {"type": "boolean"}
+        },
+        "content": {
+          "type": "object",
+          "additionalProperties": {"type": "boolean"}
+        }
+      }
+    },
+    "initial_transactions": {
+      "type": "object",
+      "additionalProperties": {"type": "boolean"}
+    }
+  },
+  "definitions": {
+    "parent": {
+      "type": "object",
+      "required": ["id", "name", "role", "permissions"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^parent_[0-9]{3}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": ["father", "mother", "guardian", "parent"]
+        },
+        "permissions": {
+          "type": "string",
+          "enum": ["ROLE_PERMISSIONS_PARENT", "ROLE_PERMISSIONS_ADMIN"]
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "devices": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/device"}
+        }
+      }
+    },
+    "child": {
+      "type": "object", 
+      "required": ["id", "name", "role", "permissions", "supervised_by"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^child_[0-9]{3}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": ["child", "teen", "young_adult"]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 25
+        },
+        "permissions": {
+          "type": "string",
+          "enum": ["ROLE_PERMISSIONS_CHILD", "ROLE_PERMISSIONS_TEEN", "ROLE_PERMISSIONS_FRIEND"]
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "supervised_by": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^parent_[0-9]{3}$"
+          }
+        },
+        "devices": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/device"}
+        },
+        "restrictions": {
+          "type": "object",
+          "properties": {
+            "content_filter": {
+              "type": "string",
+              "enum": ["none", "basic", "strict", "very_strict"]
+            },
+            "time_limits": {
+              "type": "object",
+              "properties": {
+                "weekday_hours": {
+                  "type": "string",
+                  "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+                },
+                "weekend_hours": {
+                  "type": "string", 
+                  "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+                }
+              }
+            },
+            "friend_approval_required": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "device": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "type": {
+          "type": "string",
+          "enum": ["mobile", "tablet", "computer", "laptop", "smartwatch", "other"]
+        },
+        "trusted": {
+          "type": "boolean",
+          "default": true
+        },
+        "parental_controls": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
+} 

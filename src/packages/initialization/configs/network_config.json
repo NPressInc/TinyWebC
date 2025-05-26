@@ -1,0 +1,172 @@
+{
+  "network": {
+    "name": "Smith Family Network",
+    "description": "Private family blockchain network for the Smith family",
+    "base_port": 8000,
+    "max_connections": 10
+  },
+  "storage": {
+    "keystore_path": "state/keys/",
+    "blockchain_path": "state/blockchain/",
+    "passphrase": "SmithFamily2024!"
+  },
+  "nodes": [
+    {
+      "id": "node_001",
+      "name": "Primary Family Node",
+      "type": "primary",
+      "ip": "127.0.0.1",
+      "port": 8000,
+      "is_validator": true
+    },
+    {
+      "id": "node_002", 
+      "name": "Backup Family Node",
+      "type": "backup",
+      "ip": "127.0.0.1",
+      "port": 8001,
+      "is_validator": true
+    }
+  ],
+  "family": {
+    "parents": [
+      {
+        "id": "parent_001",
+        "name": "John Smith",
+        "role": "father",
+        "permissions": "ROLE_PERMISSIONS_PARENT",
+        "email": "john.smith@family.local",
+        "devices": [
+          {
+            "name": "John's Phone",
+            "type": "mobile",
+            "trusted": true
+          },
+          {
+            "name": "John's Laptop", 
+            "type": "computer",
+            "trusted": true
+          }
+        ]
+      },
+      {
+        "id": "parent_002",
+        "name": "Jane Smith",
+        "role": "mother", 
+        "permissions": "ROLE_PERMISSIONS_PARENT",
+        "email": "jane.smith@family.local",
+        "devices": [
+          {
+            "name": "Jane's Phone",
+            "type": "mobile", 
+            "trusted": true
+          },
+          {
+            "name": "Jane's Tablet",
+            "type": "tablet",
+            "trusted": true
+          }
+        ]
+      }
+    ],
+    "children": [
+      {
+        "id": "child_001",
+        "name": "Emma Smith",
+        "role": "child",
+        "age": 12,
+        "permissions": "ROLE_PERMISSIONS_CHILD",
+        "email": "emma.smith@family.local",
+        "supervised_by": ["parent_001", "parent_002"],
+        "devices": [
+          {
+            "name": "Emma's Phone",
+            "type": "mobile",
+            "trusted": true,
+            "parental_controls": true
+          }
+        ],
+        "restrictions": {
+          "content_filter": "strict",
+          "time_limits": {
+            "weekday_hours": "16:00-20:00",
+            "weekend_hours": "09:00-21:00"
+          },
+          "friend_approval_required": true
+        }
+      },
+      {
+        "id": "child_002", 
+        "name": "Alex Smith",
+        "role": "child",
+        "age": 8,
+        "permissions": "ROLE_PERMISSIONS_CHILD",
+        "email": "alex.smith@family.local", 
+        "supervised_by": ["parent_001", "parent_002"],
+        "devices": [
+          {
+            "name": "Alex's Tablet",
+            "type": "tablet",
+            "trusted": true,
+            "parental_controls": true
+          }
+        ],
+        "restrictions": {
+          "content_filter": "very_strict",
+          "time_limits": {
+            "weekday_hours": "17:00-19:00", 
+            "weekend_hours": "10:00-18:00"
+          },
+          "friend_approval_required": true
+        }
+      }
+    ]
+  },
+  "security": {
+    "encryption": {
+      "algorithm": "Ed25519",
+      "key_rotation_days": 90
+    },
+    "content_filtering": {
+      "default_policy": "block_unknown",
+      "categories": {
+        "educational": "allow",
+        "entertainment": "allow_with_limits", 
+        "social_media": "parent_approval",
+        "gaming": "time_limited",
+        "adult_content": "block"
+      }
+    },
+    "privacy": {
+      "location_sharing": "family_only",
+      "message_encryption": "end_to_end",
+      "data_retention_days": 365
+    }
+  },
+  "features": {
+    "messaging": {
+      "family_chat": true,
+      "private_messages": true,
+      "group_chats": true,
+      "message_history": true
+    },
+    "location": {
+      "family_tracking": true,
+      "geofencing": true,
+      "emergency_alerts": true
+    },
+    "content": {
+      "photo_sharing": true,
+      "document_sharing": true,
+      "calendar_sync": true,
+      "task_management": true
+    }
+  },
+  "initial_transactions": {
+    "create_family_group": true,
+    "assign_roles": true,
+    "setup_content_filters": true,
+    "configure_permissions": true,
+    "create_emergency_contacts": true
+  }
+} 
