@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sodium.h>
 #include <assert.h>
+#include <openssl/sha.h>
 #include "packages/keystore/keystore.h"
 #include "packages/utils/print.h"
 #include "packages/signing/signing.h"
@@ -36,10 +37,14 @@ int signing_test_main(void) {
         return 1;
     }
 
-    // Test 1: Sign a message
+    // Hash the message first (this is what blockchain applications do)
+    unsigned char message_hash[SHA256_DIGEST_LENGTH];
+    SHA256((unsigned char*)test_message, message_len, message_hash);
+
+    // Test 1: Sign the message hash
     printf("Test 1: Sign message... ");
     unsigned char signature[SIGNATURE_SIZE];
-    if (sign_message(test_message, signature) == 0) {
+    if (sign_message((const char*)message_hash, signature) == 0) {
         printf("✓ Passed\n");
         tests_passed++;
     } else {
@@ -47,9 +52,9 @@ int signing_test_main(void) {
         tests_failed++;
     }
 
-    // Test 2: Verify the signature
+    // Test 2: Verify the signature using the hash
     printf("Test 2: Verify signature... ");
-    if (verify_signature(signature, (unsigned char*)test_message, message_len, public_key) == 0) {
+    if (verify_signature(signature, message_hash, SHA256_DIGEST_LENGTH, public_key) == 0) {
         printf("✓ Passed\n");
         tests_passed++;
     } else {
@@ -57,12 +62,16 @@ int signing_test_main(void) {
         tests_failed++;
     }
 
-    // Test 3: Verify with tampered message
+    // Test 3: Verify with tampered message hash
     printf("Test 3: Verify tampered message... ");
     char tampered_message[message_len + 1];
     strcpy(tampered_message, test_message);
     tampered_message[0] = 'X'; // Tamper with the message
-    if (verify_signature(signature, (unsigned char*)tampered_message, message_len, public_key) != 0) {
+    
+    unsigned char tampered_hash[SHA256_DIGEST_LENGTH];
+    SHA256((unsigned char*)tampered_message, message_len, tampered_hash);
+    
+    if (verify_signature(signature, tampered_hash, SHA256_DIGEST_LENGTH, public_key) != 0) {
         printf("✓ Passed (correctly rejected tampered message)\n");
         tests_passed++;
     } else {

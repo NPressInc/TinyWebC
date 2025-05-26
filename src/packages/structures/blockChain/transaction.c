@@ -56,12 +56,18 @@ TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned ch
 }
 
 void TW_Transaction_add_signature(TW_Transaction* txn){
+    if (!txn) return;
 
-    unsigned char txn_hash[SIGNATURE_SIZE];
-
+    unsigned char txn_hash[SHA256_DIGEST_LENGTH]; // Use correct size (32 bytes)
     TW_Transaction_hash(txn, txn_hash);
 
-    sign_message(txn_hash, txn->signature);
+    // sign_message expects a string, but we have binary hash data
+    // We need to either modify sign_message or convert hash to string
+    // For now, let's treat the hash as binary data with fixed length
+    if (sign_message((const char*)txn_hash, txn->signature) != 0) {
+        fprintf(stderr, "Failed to sign transaction\n");
+        memset(txn->signature, 0, SIGNATURE_SIZE);
+    }
 }
 
 size_t TW_Transaction_get_size(const TW_Transaction* tx) {

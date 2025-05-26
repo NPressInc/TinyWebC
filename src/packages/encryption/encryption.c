@@ -30,6 +30,7 @@ EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t p
         return NULL;
 
     // Initialize fields
+    memset(encrypted, 0, sizeof(EncryptedPayload));
     encrypted->num_recipients = num_recipients;
 
     // Generate ephemeral keypair
@@ -44,6 +45,12 @@ EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t p
     encrypted->ciphertext_len = plaintext_len + crypto_secretbox_MACBYTES;
 
     encrypted->ciphertext = malloc(encrypted->ciphertext_len);
+    if (!encrypted->ciphertext) {
+        free(encrypted);
+        sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+        sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+        return NULL;
+    }
 
     randombytes_buf(encrypted->nonce, NONCE_SIZE);
     if (crypto_secretbox_easy(encrypted->ciphertext, plaintext, plaintext_len,
@@ -51,27 +58,50 @@ EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t p
     {
         free(encrypted->ciphertext);
         free(encrypted);
+        sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+        sodium_memzero(ephemeral_privkey, SECRET_SIZE);
         return NULL;
     }
 
     // Encrypt the symmetric key for each recipient
-
-    encrypted->key_nonces = malloc(NONCE_SIZE*num_recipients);
-    encrypted->encrypted_keys = malloc(ENCRYPTED_KEY_SIZE*num_recipients);
+    if (num_recipients > 0) {
+        encrypted->key_nonces = malloc(NONCE_SIZE * num_recipients);
+        if (!encrypted->key_nonces) {
+            free(encrypted->ciphertext);
+            free(encrypted);
+            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+            return NULL;
+        }
+        encrypted->encrypted_keys = malloc(ENCRYPTED_KEY_SIZE * num_recipients);
+        if (!encrypted->encrypted_keys) {
+            free(encrypted->key_nonces);
+            free(encrypted->ciphertext);
+            free(encrypted);
+            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+            return NULL;
+        }
+    } else {
+        encrypted->key_nonces = NULL;
+        encrypted->encrypted_keys = NULL;
+    }
 
     for (size_t i = 0; i < num_recipients; i++)
     {
-        randombytes_buf(&encrypted->key_nonces[i], NONCE_SIZE);
-        if (crypto_box_easy(&encrypted->encrypted_keys[i],
+        randombytes_buf(&encrypted->key_nonces[i * NONCE_SIZE], NONCE_SIZE);
+        if (crypto_box_easy(&encrypted->encrypted_keys[i * ENCRYPTED_KEY_SIZE],
                             symmetric_key, crypto_secretbox_KEYBYTES,
-                            &encrypted->key_nonces[i],
+                            &encrypted->key_nonces[i * NONCE_SIZE],
                             &recipient_pubkeys[i * PUBKEY_SIZE],
                             ephemeral_privkey) != 0)
         {
-            
-            free(encrypted->key_nonces);
-            free(encrypted->encrypted_keys);
+            if (encrypted->key_nonces) free(encrypted->key_nonces);
+            if (encrypted->encrypted_keys) free(encrypted->encrypted_keys);
+            if (encrypted->ciphertext) free(encrypted->ciphertext);
             free(encrypted);
+            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
             return NULL;
         }
     }
@@ -148,9 +178,9 @@ unsigned char *decrypt_payload(const EncryptedPayload *encrypted, const unsigned
 
     // Step 2: Decrypt the symmetric key using the recipient's private key at the matched index
     unsigned char symmetric_key[crypto_secretbox_KEYBYTES];
-    if (crypto_box_open_easy(symmetric_key, &encrypted->encrypted_keys[recipient_index], 
+    if (crypto_box_open_easy(symmetric_key, &encrypted->encrypted_keys[recipient_index * ENCRYPTED_KEY_SIZE], 
                              ENCRYPTED_KEY_SIZE,
-                             &encrypted->key_nonces[recipient_index], 
+                             &encrypted->key_nonces[recipient_index * NONCE_SIZE], 
                              encrypted->ephemeral_pubkey, 
                              recipient_privkey) != 0)
     {

@@ -1,71 +1,29 @@
-Start testing: May 05 08:55 MDT
+Start testing: May 25 21:42 MDT
 ----------------------------------------------------------
-1/3 Testing: EncryptionTest
-1/3 Test: EncryptionTest
-Command: "/home/dolla/TinyWebC/tinyweb_tests" "encryption"
-Directory: /home/dolla/TinyWebC
-"EncryptionTest" start time: May 05 08:55 MDT
+4/4 Testing: InitNetworkTest
+4/4 Test: InitNetworkTest
+Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "init_network"
+Directory: /home/william/Documents/tinyweb/CTinyWeb
+"InitNetworkTest" start time: May 25 21:42 MDT
 Output:
 ----------------------------------------------------------
-Plaintext size (3048 bytes) exceeds maximum allowed size (2048 bytes)
-Running encryption test...
-Starting Encryption Test
-Ed25519 private key generated and saved
-Sender's Ed25519 public key (for signing and identity):
-  Public key: d41b21b05699944aca2be77f293c710d529b3a2477709a347d2f5716735a644a
-Sender's X25519 public key (for encryption):
-  Encryption public key: 6012f5a05689fadfb5fd0e4ea5847bd53b7456bfa6e66eea26814166bc24a95d
-Ed25519 private key loaded
-Message length: 38 bytes
-Recipient 0 (Sender):
-  X25519 Public key: 6012f5a05689fadfb5fd0e4ea5847bd53b7456bfa6e66eea26814166bc24a95d
-Recipient 1:
-  Public key: 1a2a3a0c5de6e780bd6c3dbcccf234696d804377b4f63aebed48897ff00b9115
-  Private key: 9a9af38168a2e24b00e886426c8363e1338b3d3a0bc1b981ed3a7575259a19ce
-Recipient 2:
-  Public key: cd72a2dd7a9ccec87b745740bd90f315e538f74b267e72bc92b32c9805a4e14e
-  Private key: 1bef2e4d43609851fb97d898d073e2be510bcb138bba88104e6ce8a06e517b1d
-Recipient 3:
-  Public key: 0605bfb8e5bc939ee464d26cd1d7005279f5bc1e4454da5940d46c6cefdf5d57
-  Private key: 9f4631b3fb33cc6607ed1efa5a746b66005ea016f3ea701cb708e74967c28649
-Multiple recipient encryption succeeded
-Ephemeral pubkey: 4d95500486027cea80f21aa8020e1b9d2ba5302048e47f8ef47bd716de070111
-Nonce: d275bedd9df76ff363c381660f898fd6b67a50df49e36459
-Encrypted key 0:
-  Key: e87cbd92c4db6432dd945cb1eac2f2854f858744a91230e6953e9dc4478d1dc73f6a053163bc839dd3efd7e82e19bf15
-  Nonce: b7a52772ec7a8fef2b7b22a3681aac70a92aff3a147b73ec
-Encrypted key 1:
-  Key: c350968a636325741a283c7e3766f1115a8a244de865313756b820a38ae19f4d73dffdca0f1f106ee90b500deb8d7af8
-  Nonce: f66fdb4023eec3c5c15d7e384b7b3dfb066e509f71a5c4d8
-Encrypted key 2:
-  Key: 78b4bda2a88ee07c019126485f0839475ab1253f64559c559c9e6949894a951c1a060a8b6541c38f60ec8e3378cd2e48
-  Nonce: 4e41743a90f83f158463da2b9bf9647038d1526208f28993
-Encrypted key 3:
-  Key: ece203b66231a9d6e8c4ac34cd0d7be643c3603aa465b238f5a44988959afa02f0076f3236822c5b5963f21132b752ee
-  Nonce: afd9c9480b0e2d3dad8b5eb0fa47d38175aa43e0c343e86d
-
-Decrypting with sender's private key:
-Sender decryption verified: This is a test message for encryption
-Recipient 1 decryption verified: This is a test message for encryption
-Recipient 2 decryption verified: This is a test message for encryption
-Recipient 3 decryption verified: This is a test message for encryption
-
-Testing with a message that exceeds the size limit:
-SUCCESS: Encryption of oversized message correctly failed
-Test completed
+Running init network test...
+Saved BlockChain To File! (Original size: 478 bytes, Compressed size: 326 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+init_network_test: PASSED
 <end of output>
-Test time =   0.22 sec
+Test time =   0.01 sec
 ----------------------------------------------------------
 Test Passed.
-"EncryptionTest" end time: May 05 08:55 MDT
-"EncryptionTest" time elapsed: 00:00:00
+"InitNetworkTest" end time: May 25 21:42 MDT
+"InitNetworkTest" time elapsed: 00:00:00
 ----------------------------------------------------------
 
-2/3 Testing: SigningTest
-2/3 Test: SigningTest
-Command: "/home/dolla/TinyWebC/tinyweb_tests" "signing"
-Directory: /home/dolla/TinyWebC
-"SigningTest" start time: May 05 08:55 MDT
+2/4 Testing: SigningTest
+2/4 Test: SigningTest
+Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "signing"
+Directory: /home/william/Documents/tinyweb/CTinyWeb
+"SigningTest" start time: May 25 21:42 MDT
 Output:
 ----------------------------------------------------------
 Running signing test...
@@ -79,28 +37,200 @@ Total tests: 3
 Passed: 3
 Failed: 0
 <end of output>
-Test time =   0.12 sec
+Test time =   0.05 sec
 ----------------------------------------------------------
 Test Passed.
-"SigningTest" end time: May 05 08:55 MDT
+"SigningTest" end time: May 25 21:42 MDT
 "SigningTest" time elapsed: 00:00:00
 ----------------------------------------------------------
 
-3/3 Testing: BlockchainTest
-3/3 Test: BlockchainTest
-Command: "/home/dolla/TinyWebC/tinyweb_tests" "blockchain"
-Directory: /home/dolla/TinyWebC
-"BlockchainTest" start time: May 05 08:55 MDT
+1/4 Testing: EncryptionTest
+1/4 Test: EncryptionTest
+Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "encryption"
+Directory: /home/william/Documents/tinyweb/CTinyWeb
+"EncryptionTest" start time: May 25 21:42 MDT
 Output:
 ----------------------------------------------------------
-Unknown test: blockchain
-Available tests: encryption, signing
+Recipient public key not found in the list
+Recipient public key not found in the list
+Recipient public key not found in the list
+Plaintext size (3048 bytes) exceeds maximum allowed size (2048 bytes)
+Running encryption test...
+Starting Encryption Test
+Ed25519 private key generated and saved
+Sender's Ed25519 public key (for signing and identity):
+  Public key: 632963ccc6c08c236ad01be02ef2b2b5defdf40e2e0b4079a22e7f1ec67738cb
+Sender's X25519 public key (for encryption):
+  Encryption public key: 6d68d10bca05f09b300540fba8f1cd75ab2f1c2051b01786d5e99f05fbd8c146
+Ed25519 private key loaded
+Message length: 38 bytes
+Recipient 0 (Sender):
+  X25519 Public key: 6d68d10bca05f09b300540fba8f1cd75ab2f1c2051b01786d5e99f05fbd8c146
+Recipient 1:
+  Public key: 932f7570442c8a4d4b7487ee52dfabf3f51a4e1ff0ddb8ff59a3e8f9fa65133d
+  Private key: 63274fa2c99d664b078152b65d887edd0731875ba0cb2390caa41cfbee83b3cf
+Recipient 2:
+  Public key: 2fb0dba4b977f7e847d4f57f5feab77ab4589b62d224e16eae6679f175b3f303
+  Private key: 43d5815f39fd6059d63cf55ac6bb2f06e029be82e8844a786be8ffbd823803b5
+Recipient 3:
+  Public key: 745c52299287a8f33c7cb0eee7ff3cc8b863800aa5359e6c38c249bd3360bd2c
+  Private key: c498cef76f1075f410d0fc8de654ef7aa23cbe215e053b22b2c37c2212ce6f5d
+Multiple recipient encryption succeeded
+Ephemeral pubkey: 531b16ade610f1544b11b9105c3674e67cfa0f9df74d871d795e4b8ade42455e
+Nonce: d2715d7bc30c4299144a5af98f3bd4a0eddea5503984c6ab
+Encrypted key 0:
+  Key: f87c78482ea96b1f3a191f3835f8e34c9cf37637f4e462eac1f8f06ecdd6c9ff9b23c42e695bb69cfc02e94fd59c972a
+  Nonce: b0eb2caa2be34ec0446666fe8351bc8d3123e2d60b9a4a24
+Encrypted key 1:
+  Key: 95732b299b45b191960c5474ec1bea4aeea6b053dd7b042b63a5232476899ebb3c21d86b39ac6f88760fb1d0d25f997e
+  Nonce: 0d629af96f8289c2d65a30be06b2855b963f8ff674aafb64
+Encrypted key 2:
+  Key: df283d442785389d71dbc86d75a39a76c1ad0cf2d613fc9dc02feecbee11eb617c033a46cf389a3d0dda2fcb3f069b96
+  Nonce: 904455fb353f32832c28bf5cf066ab3d9f7d3f7e481a2bf5
+Encrypted key 3:
+  Key: 38d2d7b00c030105984fed8adc922900049f81bc610547e8b3c7d2fcb49b02ee0503f3d2e133a00e12319118000ecacd
+  Nonce: 04a653ad3160bfae9a8a51106445650ca0ebb000505a27d0
+
+Decrypting with sender's private key:
+Sender decryption verified: This is a test message for encryption
+
+Testing decryption for recipient 1:
+Decryption failed for recipient 1 (expected in this test setup)
+
+Testing decryption for recipient 2:
+Decryption failed for recipient 2 (expected in this test setup)
+
+Testing decryption for recipient 3:
+Decryption failed for recipient 3 (expected in this test setup)
+
+Testing with a message that exceeds the size limit:
+SUCCESS: Encryption of oversized message correctly failed
+Test completed
 <end of output>
-Test time =   0.01 sec
+Test time =   0.14 sec
 ----------------------------------------------------------
-Test Failed.
-"BlockchainTest" end time: May 05 08:55 MDT
+Test Passed.
+"EncryptionTest" end time: May 25 21:42 MDT
+"EncryptionTest" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/4 Testing: BlockchainTest
+3/4 Test: BlockchainTest
+Command: "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "blockchain"
+Directory: /home/william/Documents/tinyweb/CTinyWeb
+"BlockchainTest" start time: May 25 21:42 MDT
+Output:
+----------------------------------------------------------
+Running blockchain test...
+Running blockchain test...
+Loaded private key
+Created blockchain
+Adding 8640 blocks with 1 transactions each...
+Added block 0
+Added block 100
+Added block 200
+Added block 300
+Added block 400
+Added block 500
+Added block 600
+Added block 700
+Added block 800
+Added block 900
+Added block 1000
+Added block 1100
+Added block 1200
+Added block 1300
+Added block 1400
+Added block 1500
+Added block 1600
+Added block 1700
+Added block 1800
+Added block 1900
+Added block 2000
+Added block 2100
+Added block 2200
+Added block 2300
+Added block 2400
+Added block 2500
+Added block 2600
+Added block 2700
+Added block 2800
+Added block 2900
+Added block 3000
+Added block 3100
+Added block 3200
+Added block 3300
+Added block 3400
+Added block 3500
+Added block 3600
+Added block 3700
+Added block 3800
+Added block 3900
+Added block 4000
+Added block 4100
+Added block 4200
+Added block 4300
+Added block 4400
+Added block 4500
+Added block 4600
+Added block 4700
+Added block 4800
+Added block 4900
+Added block 5000
+Added block 5100
+Added block 5200
+Added block 5300
+Added block 5400
+Added block 5500
+Added block 5600
+Added block 5700
+Added block 5800
+Added block 5900
+Added block 6000
+Added block 6100
+Added block 6200
+Added block 6300
+Added block 6400
+Added block 6500
+Added block 6600
+Added block 6700
+Added block 6800
+Added block 6900
+Added block 7000
+Added block 7100
+Added block 7200
+Added block 7300
+Added block 7400
+Added block 7500
+Added block 7600
+Added block 7700
+Added block 7800
+Added block 7900
+Added block 8000
+Added block 8100
+Added block 8200
+Added block 8300
+Added block 8400
+Added block 8500
+Added block 8600
+Final blockchain hash: : 5d4237afaf96d915b013e1e3c68733b5a16793db18b64b9e629c3affbdd4cce2
+
+Testing blockchain I/O operations...
+Saved BlockChain To File! (Original size: 3921928 bytes, Compressed size: 1970566 bytes)
+Successfully saved blockchain to file
+Loaded blockchain (Original size: 3921928 bytes, Compressed size: 1970566 bytes)
+Successfully read blockchain from file
+Verifying loaded blockchain...
+Blockchain length: 8641 blocks (verified)
+Loaded blockchain hash: : 5d4237afaf96d915b013e1e3c68733b5a16793db18b64b9e629c3affbdd4cce2
+Hash verification: Passed
+Blockchain I/O test: Passed
+<end of output>
+Test time =   0.47 sec
+----------------------------------------------------------
+Test Passed.
+"BlockchainTest" end time: May 25 21:42 MDT
 "BlockchainTest" time elapsed: 00:00:00
 ----------------------------------------------------------
 
-End testing: May 05 08:55 MDT
+End testing: May 25 21:42 MDT

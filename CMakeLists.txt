@@ -38,6 +38,7 @@ file(GLOB_RECURSE LIB_SOURCES "src/*.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/main.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/tests/.*")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/initialization/init_tool.c")
+# Note: init_network_test.c is now included since it has init_network_test_main instead of main
 
 # Ensure test_runner.c is the main entry point for tests
 list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/test_runner.c")
@@ -65,6 +66,7 @@ enable_testing()
 add_test(NAME EncryptionTest COMMAND tinyweb_tests encryption)
 add_test(NAME SigningTest COMMAND tinyweb_tests signing)
 add_test(NAME BlockchainTest COMMAND tinyweb_tests blockchain)
+add_test(NAME InitNetworkTest COMMAND tinyweb_tests init_network)
 
 # Custom target for "make check"
 add_custom_target(check
@@ -84,6 +86,7 @@ add_executable(init_tool
     src/packages/fileIO/blockchainIO.c
     src/packages/encryption/encryption.c
     src/packages/structures/blockChain/transaction.c
+    src/packages/structures/blockChain/transaction_types.c
     src/packages/utils/byteorder.c
     src/packages/fileIO/compression.c
     # Add any other required source files here

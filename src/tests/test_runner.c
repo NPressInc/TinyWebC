@@ -6,6 +6,7 @@
 #include "tests/encryption_test.h"
 #include "tests/signing_test.h"
 #include "tests/blockchain_test.h"
+#include "tests/init_network_test.h"
 
 
 int main(int argc, char* argv[]) {
@@ -19,7 +20,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 3;
+        int total_tests = 4;
 
         printf("Running all tests...\n\n");
 
@@ -59,6 +60,18 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         printf("\n");
 
+        // Run init network tests
+        printf("Running init network tests...\n");
+        if (init_network_test_main() == 0) {
+            printf("✓ Init network tests passed\n");
+            tests_passed++;
+        } else {
+            printf("✗ Init network tests failed\n");
+            tests_failed++;
+        }
+        keystore_cleanup();
+        printf("\n");
+
         // Print summary
         printf("Test Summary:\n");
         printf("Total tests: %d\n", total_tests);
@@ -87,9 +100,15 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         return result;
     }
+    else if (strcmp(argv[1], "init_network") == 0) {
+        printf("Running init network test...\n");
+        int result = init_network_test_main();
+        keystore_cleanup();
+        return result;
+    }
     else {
         printf("Unknown test: %s\n", argv[1]);
-        printf("Available tests: encryption, signing, blockchain\n");
+        printf("Available tests: encryption, signing, blockchain, init_network\n");
         return 1;
     }
 

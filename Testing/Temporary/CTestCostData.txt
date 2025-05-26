@@ -1,6 +1,6 @@
 AllTests 9 0.0159946
-EncryptionTest 4 0.0560965
-SigningTest 4 0.0305483
-BlockchainTest 0 0
+EncryptionTest 10 0.042375
+SigningTest 11 0.0141808
+BlockchainTest 6 0.234088
+InitNetworkTest 6 0.00707387
 ---
-BlockchainTest

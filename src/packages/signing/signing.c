@@ -15,10 +15,10 @@ int sign_message(const char* message, unsigned char* signature_out) {
         return -1;
     }
 
-    // Sign the message directly into the provided buffer
-    size_t message_len = strlen(message);
+    // For blockchain applications, we sign fixed-size hashes (32 bytes)
+    // The message parameter should be a 32-byte hash, not a null-terminated string
     if (crypto_sign_detached(signature_out, NULL,
-                           (unsigned char*)message, message_len,
+                           (unsigned char*)message, SIGNED_MESSAGE_SIZE,
                            private_key) != 0) {
         return -1;
     }

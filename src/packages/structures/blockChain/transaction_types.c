@@ -39,14 +39,14 @@ int deserialize_user_registration(const unsigned char* buffer, TW_TXN_UserRegist
 int serialize_role_assignment(const TW_TXN_RoleAssignment* role, unsigned char** buffer) {
     if (!role || !buffer) return -1;
     
-    size_t size = MAX_ROLE_NAME_LENGTH + sizeof(uint8_t);
+    size_t size = MAX_ROLE_NAME_LENGTH + sizeof(uint64_t);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
     unsigned char* ptr = *buffer;
     memcpy(ptr, role->role_name, MAX_ROLE_NAME_LENGTH);
     ptr += MAX_ROLE_NAME_LENGTH;
-    memcpy(ptr, &role->permissions, sizeof(uint8_t));
+    memcpy(ptr, &role->permissions, sizeof(uint64_t));
     
     return size;
 }
@@ -57,9 +57,9 @@ int deserialize_role_assignment(const unsigned char* buffer, TW_TXN_RoleAssignme
     const unsigned char* ptr = buffer;
     memcpy(role->role_name, ptr, MAX_ROLE_NAME_LENGTH);
     ptr += MAX_ROLE_NAME_LENGTH;
-    memcpy(&role->permissions, ptr, sizeof(uint8_t));
+    memcpy(&role->permissions, ptr, sizeof(uint64_t));
     
-    return MAX_ROLE_NAME_LENGTH + sizeof(uint8_t);
+    return MAX_ROLE_NAME_LENGTH + sizeof(uint64_t);
 }
 
 // Group Create

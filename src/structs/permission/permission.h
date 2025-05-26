@@ -3,89 +3,96 @@
 
 #include <stdint.h>
 
-// Role Permission Bit Flags (32-bit)
-// Basic Communication & Group Permissions (0-7)
-#define PERMISSION_SEND_MESSAGE     (1U << 0)  // Can send direct messages
-#define PERMISSION_CREATE_GROUP     (1U << 1)  // Can create new groups
-#define PERMISSION_INVITE_USERS     (1U << 2)  // Can invite users to groups
-#define PERMISSION_REMOVE_USERS     (1U << 3)  // Can remove users from groups
-#define PERMISSION_EDIT_GROUP       (1U << 4)  // Can edit group settings
-#define PERMISSION_VIEW_LOCATION    (1U << 5)  // Can view other users' locations
-#define PERMISSION_SET_CONTROLS     (1U << 6)  // Can set parental controls
-#define PERMISSION_EMERGENCY_ALERT  (1U << 7)  // Can send emergency alerts
+// Role Permission Bit Flags (64-bit)
+// Core Family Communication (0-15)
+#define PERMISSION_DIRECT_MESSAGE     (1ULL << 0)  // Can send direct messages to family members
+#define PERMISSION_FAMILY_GROUP_MSG   (1ULL << 1)  // Can send messages in family groups
+#define PERMISSION_EXTENDED_FAMILY_MSG (1ULL << 2) // Can message extended family
+#define PERMISSION_FRIEND_GROUP_MSG   (1ULL << 3)  // Can message in friend groups
+#define PERMISSION_COMMUNITY_MSG      (1ULL << 4)  // Can message in community groups
+#define PERMISSION_EMERGENCY_ALERT    (1ULL << 5)  // Can send emergency alerts
+#define PERMISSION_VIEW_FAMILY_STATUS (1ULL << 6)  // Can view family member status/activity
+#define PERMISSION_VIEW_EXTENDED_STATUS (1ULL << 7) // Can view extended family status
+#define PERMISSION_VIEW_FRIEND_STATUS (1ULL << 8)  // Can view friend status
+#define PERMISSION_VIEW_COMMUNITY_STATUS (1ULL << 9) // Can view community status
+// Reserved for future family communication (10-15)
 
-// Content & Media Permissions (8-15)
-#define PERMISSION_CREATE_CONTENT   (1U << 8)  // Can create and share content
-#define PERMISSION_SHARE_MEDIA      (1U << 9)  // Can share photos/videos
-#define PERMISSION_ACCESS_MEDIA     (1U << 10) // Can access shared media
-#define PERMISSION_CREATE_ALBUM     (1U << 11) // Can create shared albums
-#define PERMISSION_EDIT_CONTENT     (1U << 12) // Can edit shared content
-#define PERMISSION_DELETE_CONTENT   (1U << 13) // Can delete shared content
-#define PERMISSION_MODERATE_CONTENT (1U << 14) // Can moderate content
-#define PERMISSION_ACCESS_LIBRARY   (1U << 15) // Can access digital library
+// Group Management (16-31)
+#define PERMISSION_CREATE_FAMILY_GROUP (1ULL << 16) // Can create family groups
+#define PERMISSION_CREATE_FRIEND_GROUP (1ULL << 17) // Can create friend groups
+#define PERMISSION_CREATE_COMMUNITY_GROUP (1ULL << 18) // Can create community groups
+#define PERMISSION_INVITE_FAMILY      (1ULL << 19) // Can invite to family groups
+#define PERMISSION_INVITE_FRIENDS     (1ULL << 20) // Can invite friends to groups
+#define PERMISSION_INVITE_COMMUNITY   (1ULL << 21) // Can invite community members
+#define PERMISSION_REMOVE_FAMILY      (1ULL << 22) // Can remove from family groups
+#define PERMISSION_REMOVE_FRIENDS     (1ULL << 23) // Can remove from friend groups
+#define PERMISSION_REMOVE_COMMUNITY   (1ULL << 24) // Can remove from community groups
+#define PERMISSION_EDIT_FAMILY_GROUP  (1ULL << 25) // Can edit family group settings
+#define PERMISSION_EDIT_FRIEND_GROUP  (1ULL << 26) // Can edit friend group settings
+#define PERMISSION_EDIT_COMMUNITY_GROUP (1ULL << 27) // Can edit community group settings
+// Reserved for future group management (28-31)
 
-// Educational & Learning Permissions (16-23)
-#define PERMISSION_ACCESS_EDUCATION (1U << 16) // Can access educational content
-#define PERMISSION_CREATE_CHALLENGE (1U << 17) // Can create learning challenges
-#define PERMISSION_COMPLETE_CHALLENGE (1U << 18) // Can complete challenges
-#define PERMISSION_TRACK_PROGRESS   (1U << 19) // Can track learning progress
-#define PERMISSION_ACCESS_GAMES     (1U << 20) // Can access educational games
-#define PERMISSION_CREATE_GAME      (1U << 21) // Can create game sessions
-#define PERMISSION_JOIN_GAME        (1U << 22) // Can join game sessions
-#define PERMISSION_LEAD_ACTIVITY    (1U << 23) // Can lead group activities
+// Safety & Control (32-47)
+#define PERMISSION_SET_PARENTAL_CONTROLS (1ULL << 32) // Can set parental controls
+#define PERMISSION_VIEW_PARENTAL_CONTROLS (1ULL << 33) // Can view parental controls
+#define PERMISSION_SET_CONTENT_FILTERS (1ULL << 34) // Can set content filters
+#define PERMISSION_VIEW_CONTENT_FILTERS (1ULL << 35) // Can view content filters
+#define PERMISSION_TRACK_LOCATION    (1ULL << 36) // Can track family location
+#define PERMISSION_VIEW_LOCATION     (1ULL << 37) // Can view location data
+#define PERMISSION_MANAGE_FRIENDS    (1ULL << 38) // Can manage child's friends
+#define PERMISSION_APPROVE_FRIENDS   (1ULL << 39) // Can approve new friends
+#define PERMISSION_MONITOR_ACTIVITY  (1ULL << 40) // Can monitor activity
+#define PERMISSION_SET_BOUNDARIES    (1ULL << 41) // Can set communication boundaries
+// Reserved for future safety features (42-47)
 
-// Family & Community Permissions (24-31)
-#define PERMISSION_CREATE_EVENT     (1U << 24) // Can create family events
-#define PERMISSION_INVITE_TO_EVENT  (1U << 25) // Can invite to events
-#define PERMISSION_VIEW_CALENDAR    (1U << 26) // Can view family calendar
-#define PERMISSION_EDIT_CALENDAR    (1U << 27) // Can edit family calendar
-#define PERMISSION_CREATE_CHORE     (1U << 28) // Can create chores
-#define PERMISSION_ASSIGN_CHORE     (1U << 29) // Can assign chores
-#define PERMISSION_VIEW_REWARDS     (1U << 30) // Can view reward system
-#define PERMISSION_MANAGE_REWARDS   (1U << 31) // Can manage rewards
+// System Management (48-63)
+#define PERMISSION_MANAGE_ROLES      (1ULL << 48) // Can manage user roles
+#define PERMISSION_VIEW_LOGS         (1ULL << 49) // Can view system logs
+#define PERMISSION_MANAGE_SETTINGS   (1ULL << 50) // Can manage system settings
+#define PERMISSION_VIEW_SETTINGS     (1ULL << 51) // Can view system settings
+// Reserved for future system management (52-63)
 
 // Predefined role permission sets
-#define ROLE_PERMISSIONS_PARENT     (PERMISSION_SEND_MESSAGE | PERMISSION_CREATE_GROUP | \
-                                    PERMISSION_INVITE_USERS | PERMISSION_REMOVE_USERS | \
-                                    PERMISSION_EDIT_GROUP | PERMISSION_VIEW_LOCATION | \
-                                    PERMISSION_SET_CONTROLS | PERMISSION_EMERGENCY_ALERT | \
-                                    PERMISSION_CREATE_CONTENT | PERMISSION_SHARE_MEDIA | \
-                                    PERMISSION_ACCESS_MEDIA | PERMISSION_CREATE_ALBUM | \
-                                    PERMISSION_EDIT_CONTENT | PERMISSION_DELETE_CONTENT | \
-                                    PERMISSION_MODERATE_CONTENT | PERMISSION_ACCESS_LIBRARY | \
-                                    PERMISSION_ACCESS_EDUCATION | PERMISSION_CREATE_CHALLENGE | \
-                                    PERMISSION_TRACK_PROGRESS | PERMISSION_ACCESS_GAMES | \
-                                    PERMISSION_CREATE_GAME | PERMISSION_LEAD_ACTIVITY | \
-                                    PERMISSION_CREATE_EVENT | PERMISSION_INVITE_TO_EVENT | \
-                                    PERMISSION_VIEW_CALENDAR | PERMISSION_EDIT_CALENDAR | \
-                                    PERMISSION_CREATE_CHORE | PERMISSION_ASSIGN_CHORE | \
-                                    PERMISSION_VIEW_REWARDS | PERMISSION_MANAGE_REWARDS)
+#define ROLE_PERMISSIONS_PARENT     (PERMISSION_DIRECT_MESSAGE | PERMISSION_FAMILY_GROUP_MSG | \
+                                    PERMISSION_EXTENDED_FAMILY_MSG | PERMISSION_FRIEND_GROUP_MSG | \
+                                    PERMISSION_COMMUNITY_MSG | PERMISSION_EMERGENCY_ALERT | \
+                                    PERMISSION_VIEW_FAMILY_STATUS | PERMISSION_VIEW_EXTENDED_STATUS | \
+                                    PERMISSION_VIEW_FRIEND_STATUS | PERMISSION_VIEW_COMMUNITY_STATUS | \
+                                    PERMISSION_CREATE_FAMILY_GROUP | PERMISSION_CREATE_FRIEND_GROUP | \
+                                    PERMISSION_CREATE_COMMUNITY_GROUP | PERMISSION_INVITE_FAMILY | \
+                                    PERMISSION_INVITE_FRIENDS | PERMISSION_INVITE_COMMUNITY | \
+                                    PERMISSION_REMOVE_FAMILY | PERMISSION_REMOVE_FRIENDS | \
+                                    PERMISSION_REMOVE_COMMUNITY | PERMISSION_EDIT_FAMILY_GROUP | \
+                                    PERMISSION_EDIT_FRIEND_GROUP | PERMISSION_EDIT_COMMUNITY_GROUP | \
+                                    PERMISSION_SET_PARENTAL_CONTROLS | PERMISSION_VIEW_PARENTAL_CONTROLS | \
+                                    PERMISSION_SET_CONTENT_FILTERS | PERMISSION_VIEW_CONTENT_FILTERS | \
+                                    PERMISSION_TRACK_LOCATION | PERMISSION_VIEW_LOCATION | \
+                                    PERMISSION_MANAGE_FRIENDS | PERMISSION_APPROVE_FRIENDS | \
+                                    PERMISSION_MONITOR_ACTIVITY | PERMISSION_SET_BOUNDARIES | \
+                                    PERMISSION_MANAGE_ROLES | PERMISSION_VIEW_LOGS | \
+                                    PERMISSION_MANAGE_SETTINGS | PERMISSION_VIEW_SETTINGS)
 
-#define ROLE_PERMISSIONS_CHILD      (PERMISSION_SEND_MESSAGE | PERMISSION_EMERGENCY_ALERT | \
-                                    PERMISSION_CREATE_CONTENT | PERMISSION_SHARE_MEDIA | \
-                                    PERMISSION_ACCESS_MEDIA | PERMISSION_ACCESS_LIBRARY | \
-                                    PERMISSION_ACCESS_EDUCATION | PERMISSION_COMPLETE_CHALLENGE | \
-                                    PERMISSION_ACCESS_GAMES | PERMISSION_JOIN_GAME | \
-                                    PERMISSION_VIEW_CALENDAR)
+#define ROLE_PERMISSIONS_CHILD      (PERMISSION_DIRECT_MESSAGE | PERMISSION_FAMILY_GROUP_MSG | \
+                                    PERMISSION_FRIEND_GROUP_MSG | PERMISSION_EMERGENCY_ALERT | \
+                                    PERMISSION_VIEW_FAMILY_STATUS | PERMISSION_VIEW_FRIEND_STATUS | \
+                                    PERMISSION_VIEW_LOCATION)
 
-#define ROLE_PERMISSIONS_COMMUNITY  (PERMISSION_SEND_MESSAGE | PERMISSION_VIEW_LOCATION | \
-                                    PERMISSION_EMERGENCY_ALERT | PERMISSION_CREATE_CONTENT | \
-                                    PERMISSION_SHARE_MEDIA | PERMISSION_ACCESS_MEDIA | \
-                                    PERMISSION_ACCESS_LIBRARY | PERMISSION_ACCESS_EDUCATION | \
-                                    PERMISSION_CREATE_CHALLENGE | PERMISSION_ACCESS_GAMES | \
-                                    PERMISSION_JOIN_GAME | PERMISSION_LEAD_ACTIVITY | \
-                                    PERMISSION_VIEW_CALENDAR)
+#define ROLE_PERMISSIONS_FRIEND     (PERMISSION_DIRECT_MESSAGE | PERMISSION_FRIEND_GROUP_MSG | \
+                                    PERMISSION_EMERGENCY_ALERT | PERMISSION_VIEW_FRIEND_STATUS)
+
+#define ROLE_PERMISSIONS_COMMUNITY  (PERMISSION_COMMUNITY_MSG | PERMISSION_EMERGENCY_ALERT | \
+                                    PERMISSION_VIEW_COMMUNITY_STATUS)
 
 // Helper functions for permission management
-static inline int has_permission(uint32_t permissions, uint32_t permission) {
+static inline int has_permission(uint64_t permissions, uint64_t permission) {
     return (permissions & permission) != 0;
 }
 
-static inline void add_permission(uint32_t* permissions, uint32_t permission) {
+static inline void add_permission(uint64_t* permissions, uint64_t permission) {
     *permissions |= permission;
 }
 
-static inline void remove_permission(uint32_t* permissions, uint32_t permission) {
+static inline void remove_permission(uint64_t* permissions, uint64_t permission) {
     *permissions &= ~permission;
 }
 

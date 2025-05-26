@@ -7,6 +7,8 @@
 #include "packages/structures/blockChain/blockchain.h"
 #include "packages/signing/signing.h"
 #include "packages/fileIO/blockchainIO.h"
+#include "packages/structures/blockChain/transaction_types.h"
+#include "structs/permission/permission.h"
 
 // Main initialization function
 int initialize_network(const InitConfig* config) {
@@ -73,15 +75,6 @@ int initialize_network(const InitConfig* config) {
         return -1;
     }
 
-    // 7. Create genesis block
-    if (create_genesis_block(blockchain) != 0) {
-        fprintf(stderr, "Error: Failed to create genesis block\n");
-        free(peers);
-        free_generated_keys(&keys);
-        TW_BlockChain_destroy(blockchain);
-        return -1;
-    }
-
     // 8. Setup network parameters
     if (setup_network_parameters(blockchain) != 0) {
         fprintf(stderr, "Error: Failed to setup network parameters\n");
@@ -139,7 +132,7 @@ int generate_initial_keys(GeneratedKeys* keys, const InitConfig* config) {
             free_generated_keys(keys);
             return -1;
         }
-        if (!keystore_get_public_key(keys->node_public_keys[i]) || !_keystore_get_private_key(keys->node_private_keys[i])) {
+        if (!keystore_get_encryption_public_key(keys->node_public_keys[i]) || !_keystore_get_private_key(keys->node_private_keys[i])) {
             free_generated_keys(keys);
             return -1;
         }
@@ -155,7 +148,7 @@ int generate_initial_keys(GeneratedKeys* keys, const InitConfig* config) {
             free_generated_keys(keys);
             return -1;
         }
-        if (!keystore_get_public_key(keys->user_public_keys[i]) || !_keystore_get_private_key(keys->user_private_keys[i])) {
+        if (!keystore_get_encryption_public_key(keys->user_public_keys[i]) || !_keystore_get_private_key(keys->user_private_keys[i])) {
             free_generated_keys(keys);
             return -1;
         }
@@ -221,22 +214,156 @@ int create_peer_transactions(const PeerInfo* peers, TW_BlockChain* blockchain) {
 int setup_initial_permissions(const GeneratedKeys* keys, TW_BlockChain* blockchain) {
     if (!keys || !blockchain) return -1;
 
-    // TODO: Setup initial permissions
-    // This will depend on your permission system implementation
-    // For now, we'll just return success
+    // Create role assignment transactions for each user
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        TW_TXN_RoleAssignment role_data;
+        memset(&role_data, 0, sizeof(role_data));
+        uint64_t permissions = 0;
+
+        if (i == 0) {
+            strncpy(role_data.role_name, "parent", MAX_ROLE_NAME_LENGTH - 1);
+            permissions = ROLE_PERMISSIONS_PARENT;
+        } else {
+            strncpy(role_data.role_name, "child", MAX_ROLE_NAME_LENGTH - 1);
+            permissions = ROLE_PERMISSIONS_CHILD;
+        }
+        role_data.permissions = permissions;
+
+        unsigned char* serialized_role_buffer = NULL;
+        int serialized_role_size = serialize_role_assignment(&role_data, &serialized_role_buffer);
+        if (serialized_role_size < 0 || !serialized_role_buffer) {
+            return -1; 
+        }
+
+        // Encrypt the serialized role data
+        EncryptedPayload* encrypted_payload = encrypt_payload_multi(
+            serialized_role_buffer, 
+            serialized_role_size, 
+            keys->user_public_keys[i], // Sender is the user
+            1                          // Only one recipient (the user themselves for now)
+        );
+        free(serialized_role_buffer); // Free the temporary buffer
+        if (!encrypted_payload) {
+            return -1;
+        }
+
+        TW_Transaction* txn = TW_Transaction_create(
+            TW_TXN_ROLE_ASSIGNMENT,
+            keys->user_public_keys[i],      // Sender is the user
+            keys->user_public_keys[i],      // Recipient is the user (for role assignment)
+            1,
+            NULL,                           // No group for role assignment
+            encrypted_payload,              // Assign the encrypted payload
+            NULL                            // Signature will be added later
+        );
+        
+        if (!txn) {
+            free_encrypted_payload(encrypted_payload);
+            return -1;
+        }
+        // NOTE: TW_Transaction_create now takes ownership of encrypted_payload if successful,
+        // so no need to free it separately if txn is created.
+
+        TW_Transaction_add_signature(txn);
+
+        // Since TW_BlockChain_add_transaction doesn't exist and we don't want it,
+        // we'll just destroy the transaction for now to avoid memory leaks
+        // TODO: Implement proper block-based transaction handling
+        TW_Transaction_destroy(txn);
+    }
+
     return 0;
 }
 
 int create_permission_transactions(TW_BlockChain* blockchain) {
     if (!blockchain) return -1;
 
-    // TODO: Create permission transactions
-    // This will depend on your transaction structure and blockchain implementation
-    // For now, we'll just return success
+    // Create initial system configuration transaction
+    TW_TXN_SystemConfig config_data;
+    memset(&config_data, 0, sizeof(config_data));
+    config_data.config_type = 0;  // Network settings
+    config_data.config_value = 1; // Enable basic features
+
+    unsigned char* serialized_config_buffer = NULL;
+    int serialized_config_size = serialize_system_config(&config_data, &serialized_config_buffer);
+    if (serialized_config_size < 0 || !serialized_config_buffer) {
+        return -1;
+    }
+
+    EncryptedPayload* encrypted_config_payload = encrypt_payload_multi(
+        serialized_config_buffer, 
+        serialized_config_size, 
+        blockchain->creator_pubkey, // Sender is the blockchain creator
+        1                           // Recipient is the blockchain creator (or a system key)
+    );
+    free(serialized_config_buffer);
+    if (!encrypted_config_payload) {
+        return -1;
+    }
+
+    TW_Transaction* txn_config = TW_Transaction_create(
+        TW_TXN_SYSTEM_CONFIG,
+        blockchain->creator_pubkey,      // Sender
+        blockchain->creator_pubkey,      // Recipient
+        1,
+        NULL,                           // No group
+        encrypted_config_payload,
+        NULL                            // Signature
+    );
+    if (!txn_config) {
+        free_encrypted_payload(encrypted_config_payload);
+        return -1;
+    }
+    TW_Transaction_add_signature(txn_config);
+    // TODO: Add transaction to a block instead of directly to blockchain
+    TW_Transaction_destroy(txn_config);
+
+    // Create initial content filter transaction
+    TW_TXN_ContentFilter filter_data;
+    memset(&filter_data, 0, sizeof(filter_data));
+    strncpy(filter_data.rule, "default_safety_rules", MAX_CONTENT_FILTER_RULE_LENGTH - 1);
+    filter_data.rule_type = 0;    // Block
+    filter_data.rule_action = 1;  // Notify parent
+
+    unsigned char* serialized_filter_buffer = NULL;
+    int serialized_filter_size = serialize_content_filter(&filter_data, &serialized_filter_buffer);
+    if (serialized_filter_size < 0 || !serialized_filter_buffer) {
+        return -1;
+    }
+
+    EncryptedPayload* encrypted_filter_payload = encrypt_payload_multi(
+        serialized_filter_buffer, 
+        serialized_filter_size, 
+        blockchain->creator_pubkey, // Sender
+        1                           // Recipient
+    );
+    free(serialized_filter_buffer);
+    if (!encrypted_filter_payload) {
+        return -1;
+    }
+
+    TW_Transaction* txn_filter = TW_Transaction_create(
+        TW_TXN_CONTENT_FILTER,
+        blockchain->creator_pubkey,      // Sender
+        blockchain->creator_pubkey,      // Recipient
+        1,
+        NULL,                           // No group
+        encrypted_filter_payload,
+        NULL                            // Signature
+    );
+    if (!txn_filter) {
+        free_encrypted_payload(encrypted_filter_payload);
+        return -1;
+    }
+    TW_Transaction_add_signature(txn_filter);
+    // TODO: Add transaction to a block instead of directly to blockchain
+    TW_Transaction_destroy(txn_filter);
+
     return 0;
 }
 
 // Helper functions
+/*
 int create_genesis_block(TW_BlockChain* blockchain) {
     if (!blockchain) return -1;
     
@@ -250,6 +377,7 @@ int create_genesis_block(TW_BlockChain* blockchain) {
     
     return 0;
 }
+*/
 
 int setup_network_parameters(TW_BlockChain* blockchain) {
     if (!blockchain) return -1;

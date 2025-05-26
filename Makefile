@@ -695,6 +695,7 @@ src/packages/structures/blockChain/transaction_types.o: src/packages/structures/
 src/packages/structures/blockChain/transaction_types.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction_types.c.o
 .PHONY : src/packages/structures/blockChain/transaction_types.c.o
 
 src/packages/structures/blockChain/transaction_types.i: src/packages/structures/blockChain/transaction_types.c.i
@@ -704,6 +705,7 @@ src/packages/structures/blockChain/transaction_types.i: src/packages/structures/
 src/packages/structures/blockChain/transaction_types.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction_types.c.i
 .PHONY : src/packages/structures/blockChain/transaction_types.c.i
 
 src/packages/structures/blockChain/transaction_types.s: src/packages/structures/blockChain/transaction_types.c.s
@@ -713,6 +715,7 @@ src/packages/structures/blockChain/transaction_types.s: src/packages/structures/
 src/packages/structures/blockChain/transaction_types.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction_types.c.s
 .PHONY : src/packages/structures/blockChain/transaction_types.c.s
 
 src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o
@@ -819,6 +822,30 @@ src/tests/encryption_test.s: src/tests/encryption_test.c.s
 src/tests/encryption_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/encryption_test.c.s
 .PHONY : src/tests/encryption_test.c.s
+
+src/tests/init_network_test.o: src/tests/init_network_test.c.o
+.PHONY : src/tests/init_network_test.o
+
+# target to build an object file
+src/tests/init_network_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/init_network_test.c.o
+.PHONY : src/tests/init_network_test.c.o
+
+src/tests/init_network_test.i: src/tests/init_network_test.c.i
+.PHONY : src/tests/init_network_test.i
+
+# target to preprocess a source file
+src/tests/init_network_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/init_network_test.c.i
+.PHONY : src/tests/init_network_test.c.i
+
+src/tests/init_network_test.s: src/tests/init_network_test.c.s
+.PHONY : src/tests/init_network_test.s
+
+# target to generate assembly for a file
+src/tests/init_network_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/init_network_test.c.s
+.PHONY : src/tests/init_network_test.c.s
 
 src/tests/signing_test.o: src/tests/signing_test.c.o
 .PHONY : src/tests/signing_test.o
@@ -950,6 +977,9 @@ help:
 	@echo "... src/tests/encryption_test.o"
 	@echo "... src/tests/encryption_test.i"
 	@echo "... src/tests/encryption_test.s"
+	@echo "... src/tests/init_network_test.o"
+	@echo "... src/tests/init_network_test.i"
+	@echo "... src/tests/init_network_test.s"
 	@echo "... src/tests/signing_test.o"
 	@echo "... src/tests/signing_test.i"
 	@echo "... src/tests/signing_test.s"

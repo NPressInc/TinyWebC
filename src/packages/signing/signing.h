@@ -9,9 +9,9 @@
 #define SIGNATURE_SIZE 64
 
 /**
- * Sign a message using the node's private key
+ * Sign a message hash using the node's private key
  * 
- * @param message The message to sign (null-terminated string)
+ * @param message A 32-byte hash to sign (not a null-terminated string)
  * @param signature_out Buffer to store the signature (must be at least SIGNATURE_SIZE bytes)
  * @return 0 on success, -1 on failure
  */
