@@ -7,7 +7,6 @@
 
 // Maximum lengths for string fields
 #define MAX_USERNAME_LENGTH 32
-#define MAX_ROLE_NAME_LENGTH 16
 #define MAX_GROUP_NAME_LENGTH 32
 #define MAX_PERMISSION_NAME_LENGTH 32
 #define MAX_CONTENT_FILTER_RULE_LENGTH 64
@@ -16,8 +15,8 @@
 typedef enum {
     PERM_CATEGORY_MESSAGING = 0,    // Direct and group messaging
     PERM_CATEGORY_GROUP_MGMT = 1,   // Group creation and management
-    PERM_CATEGORY_SAFETY = 2,       // Safety and control features
-    PERM_CATEGORY_SYSTEM = 3,       // System management
+    PERM_CATEGORY_USER_MGMT = 2,    // User management and monitoring
+    PERM_CATEGORY_ADMIN = 3,        // Administrative functions
     PERM_CATEGORY_COUNT             // Number of categories
 } TW_PermissionCategory;
 
@@ -26,6 +25,7 @@ typedef struct {
     TW_TransactionType type;
     TW_PermissionCategory category;
     uint64_t required_permissions;  // Bit flags of required permissions
+    permission_scope_t required_scope; // Required scope for the transaction
 } TW_TransactionPermission;
 
 // User Management Structs
@@ -37,36 +37,43 @@ typedef struct {
 
 typedef struct {
     char role_name[MAX_ROLE_NAME_LENGTH];
-    uint64_t permissions;  // Bit flags for role permissions (64 bits)
+    PermissionSet permission_sets[MAX_PERMISSION_SETS_PER_ROLE];
+    uint8_t permission_set_count;
 } TW_TXN_RoleAssignment;
 
 // Group Management Structs
 typedef struct {
     char group_name[MAX_GROUP_NAME_LENGTH];
-    uint8_t group_type;  // e.g., family, friends, community
+    uint8_t group_type;  // e.g., primary, extended, contact, community
+    permission_scope_t group_scope; // What scope this group represents
     uint8_t default_permissions;
 } TW_TXN_GroupCreate;
 
 typedef struct {
     uint8_t setting_type;  // e.g., name, type, permissions
     uint8_t new_value;     // New value for the setting
+    permission_scope_t target_scope; // Which scope this update applies to
 } TW_TXN_GroupUpdate;
 
-// Safety & Control Structs
+// Permission Management Structs
 typedef struct {
     char permission_name[MAX_PERMISSION_NAME_LENGTH];
-    uint8_t permission_value;  // New permission value
+    uint64_t permission_flags;  // New permission flags
+    uint32_t scope_flags;       // New scope flags
+    uint64_t condition_flags;   // New condition flags
 } TW_TXN_PermissionEdit;
 
 typedef struct {
     uint8_t control_type;  // e.g., screen time, content type, app access
     uint8_t control_value; // New control value
-} TW_TXN_ParentalControl;
+    permission_scope_t target_scope; // Which scope this control applies to
+} TW_TXN_AdminControl;
 
 typedef struct {
     char rule[MAX_CONTENT_FILTER_RULE_LENGTH];
     uint8_t rule_type;    // e.g., block, allow, warn
     uint8_t rule_action;  // What to do when rule is triggered
+    permission_scope_t target_scope; // Which scope this filter applies to
 } TW_TXN_ContentFilter;
 
 typedef struct {
@@ -74,61 +81,64 @@ typedef struct {
     double longitude;
     uint64_t timestamp;
     uint8_t accuracy;  // Location accuracy in meters
+    permission_scope_t visibility_scope; // Who can see this location
 } TW_TXN_LocationUpdate;
 
 typedef struct {
     uint8_t alert_type;  // e.g., medical, safety, lost
     char message[128];   // Emergency message
+    permission_scope_t broadcast_scope; // How widely to broadcast
 } TW_TXN_EmergencyAlert;
 
 // Network Management Structs
 typedef struct {
     uint8_t config_type;  // e.g., network settings, security settings
     uint8_t config_value; // New configuration value
+    permission_scope_t config_scope; // Which scope this config applies to
 } TW_TXN_SystemConfig;
 
 // Transaction Permission Mappings
 static const TW_TransactionPermission TXN_PERMISSIONS[] = {
     // User Management
-    {TW_TXN_USER_REGISTRATION, PERM_CATEGORY_SYSTEM, PERMISSION_MANAGE_ROLES},
-    {TW_TXN_ROLE_ASSIGNMENT, PERM_CATEGORY_SYSTEM, PERMISSION_MANAGE_ROLES},
+    {TW_TXN_USER_REGISTRATION, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_ROLES, SCOPE_ORGANIZATION},
+    {TW_TXN_ROLE_ASSIGNMENT, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_ROLES, SCOPE_ORGANIZATION},
     
     // Messaging
-    {TW_TXN_MESSAGE, PERM_CATEGORY_MESSAGING, PERMISSION_DIRECT_MESSAGE},
-    {TW_TXN_GROUP_MESSAGE, PERM_CATEGORY_MESSAGING, 
-        PERMISSION_FAMILY_GROUP_MSG | PERMISSION_FRIEND_GROUP_MSG | PERMISSION_COMMUNITY_MSG},
+    {TW_TXN_MESSAGE, PERM_CATEGORY_MESSAGING, PERMISSION_SEND_MESSAGE, SCOPE_DIRECT},
+    {TW_TXN_GROUP_MESSAGE, PERM_CATEGORY_MESSAGING, PERMISSION_SEND_MESSAGE, SCOPE_PRIMARY_GROUP},
     
     // Group Management
-    {TW_TXN_GROUP_CREATE, PERM_CATEGORY_GROUP_MGMT, 
-        PERMISSION_CREATE_FAMILY_GROUP | PERMISSION_CREATE_FRIEND_GROUP | PERMISSION_CREATE_COMMUNITY_GROUP},
-    {TW_TXN_GROUP_UPDATE, PERM_CATEGORY_GROUP_MGMT, 
-        PERMISSION_EDIT_FAMILY_GROUP | PERMISSION_EDIT_FRIEND_GROUP | PERMISSION_EDIT_COMMUNITY_GROUP},
-    {TW_TXN_GROUP_MEMBER_ADD, PERM_CATEGORY_GROUP_MGMT, 
-        PERMISSION_INVITE_FAMILY | PERMISSION_INVITE_FRIENDS | PERMISSION_INVITE_COMMUNITY},
-    {TW_TXN_GROUP_MEMBER_REMOVE, PERM_CATEGORY_GROUP_MGMT, 
-        PERMISSION_REMOVE_FAMILY | PERMISSION_REMOVE_FRIENDS | PERMISSION_REMOVE_COMMUNITY},
-    {TW_TXN_GROUP_MEMBER_LEAVE, PERM_CATEGORY_GROUP_MGMT, 0}, // No special permission needed
+    {TW_TXN_GROUP_CREATE, PERM_CATEGORY_GROUP_MGMT, PERMISSION_CREATE_GROUP, SCOPE_ORGANIZATION},
+    {TW_TXN_GROUP_UPDATE, PERM_CATEGORY_GROUP_MGMT, PERMISSION_EDIT_GROUP, SCOPE_PRIMARY_GROUP},
+    {TW_TXN_GROUP_MEMBER_ADD, PERM_CATEGORY_GROUP_MGMT, PERMISSION_INVITE_USERS, SCOPE_PRIMARY_GROUP},
+    {TW_TXN_GROUP_MEMBER_REMOVE, PERM_CATEGORY_GROUP_MGMT, PERMISSION_REMOVE_USERS, SCOPE_PRIMARY_GROUP},
+    {TW_TXN_GROUP_MEMBER_LEAVE, PERM_CATEGORY_GROUP_MGMT, 0, SCOPE_SELF}, // No special permission needed
     
-    // Safety & Control
-    {TW_TXN_PERMISSION_EDIT, PERM_CATEGORY_SAFETY, PERMISSION_SET_PARENTAL_CONTROLS},
-    {TW_TXN_PARENTAL_CONTROL, PERM_CATEGORY_SAFETY, PERMISSION_SET_PARENTAL_CONTROLS},
-    {TW_TXN_CONTENT_FILTER, PERM_CATEGORY_SAFETY, PERMISSION_SET_CONTENT_FILTERS},
-    {TW_TXN_LOCATION_UPDATE, PERM_CATEGORY_SAFETY, PERMISSION_TRACK_LOCATION},
-    {TW_TXN_EMERGENCY_ALERT, PERM_CATEGORY_SAFETY, PERMISSION_EMERGENCY_ALERT},
+    // User Management
+    {TW_TXN_PERMISSION_EDIT, PERM_CATEGORY_USER_MGMT, PERMISSION_SET_CONTROLS, SCOPE_SUPERVISED_USERS},
+    {TW_TXN_PARENTAL_CONTROL, PERM_CATEGORY_USER_MGMT, PERMISSION_SET_CONTROLS, SCOPE_SUPERVISED_USERS},
+    {TW_TXN_CONTENT_FILTER, PERM_CATEGORY_USER_MGMT, PERMISSION_SET_CONTENT_FILTERS, SCOPE_SUPERVISED_USERS},
+    {TW_TXN_LOCATION_UPDATE, PERM_CATEGORY_USER_MGMT, PERMISSION_TRACK_LOCATION, SCOPE_PRIMARY_GROUP},
+    {TW_TXN_EMERGENCY_ALERT, PERM_CATEGORY_MESSAGING, PERMISSION_SEND_EMERGENCY, SCOPE_COMMUNITY},
     
     // System Management
-    {TW_TXN_SYSTEM_CONFIG, PERM_CATEGORY_SYSTEM, PERMISSION_MANAGE_SETTINGS}
+    {TW_TXN_SYSTEM_CONFIG, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_SETTINGS, SCOPE_GLOBAL}
 };
 
-// Helper function to check if a user has permission for a transaction type
-static inline int has_transaction_permission(TW_TransactionType type, uint64_t user_permissions) {
+// Helper function to check if a role has permission for a transaction type in a specific scope
+static inline bool has_transaction_permission(const Role* role, TW_TransactionType type, permission_scope_t scope) {
+    if (!role) return false;
+    
     for (size_t i = 0; i < sizeof(TXN_PERMISSIONS) / sizeof(TXN_PERMISSIONS[0]); i++) {
         if (TXN_PERMISSIONS[i].type == type) {
-            return (user_permissions & TXN_PERMISSIONS[i].required_permissions) == 
-                   TXN_PERMISSIONS[i].required_permissions;
+            // If no special permission required, allow
+            if (TXN_PERMISSIONS[i].required_permissions == 0) return true;
+            
+            // Check if the role has the required permission in the required scope
+            return has_permission_in_scope(role, TXN_PERMISSIONS[i].required_permissions, scope);
         }
     }
-    return 0; // Unknown transaction type
+    return false; // Unknown transaction type
 }
 
 // Helper function to get required permissions for a transaction type
@@ -139,6 +149,16 @@ static inline uint64_t get_transaction_permissions(TW_TransactionType type) {
         }
     }
     return 0; // Unknown transaction type
+}
+
+// Helper function to get required scope for a transaction type
+static inline permission_scope_t get_transaction_scope(TW_TransactionType type) {
+    for (size_t i = 0; i < sizeof(TXN_PERMISSIONS) / sizeof(TXN_PERMISSIONS[0]); i++) {
+        if (TXN_PERMISSIONS[i].type == type) {
+            return TXN_PERMISSIONS[i].required_scope;
+        }
+    }
+    return SCOPE_MAX; // Unknown transaction type
 }
 
 // Helper function to get permission category for a transaction type
@@ -167,8 +187,8 @@ int deserialize_group_update(const unsigned char* buffer, TW_TXN_GroupUpdate* up
 int serialize_permission_edit(const TW_TXN_PermissionEdit* perm, unsigned char** buffer);
 int deserialize_permission_edit(const unsigned char* buffer, TW_TXN_PermissionEdit* perm);
 
-int serialize_parental_control(const TW_TXN_ParentalControl* control, unsigned char** buffer);
-int deserialize_parental_control(const unsigned char* buffer, TW_TXN_ParentalControl* control);
+int serialize_admin_control(const TW_TXN_AdminControl* control, unsigned char** buffer);
+int deserialize_admin_control(const unsigned char* buffer, TW_TXN_AdminControl* control);
 
 int serialize_content_filter(const TW_TXN_ContentFilter* filter, unsigned char** buffer);
 int deserialize_content_filter(const unsigned char* buffer, TW_TXN_ContentFilter* filter);

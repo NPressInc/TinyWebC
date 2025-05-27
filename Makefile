@@ -775,6 +775,33 @@ src/packages/utils/print.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.s
 .PHONY : src/packages/utils/print.c.s
 
+src/structs/permission/permission.o: src/structs/permission/permission.c.o
+.PHONY : src/structs/permission/permission.o
+
+# target to build an object file
+src/structs/permission/permission.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.o
+.PHONY : src/structs/permission/permission.c.o
+
+src/structs/permission/permission.i: src/structs/permission/permission.c.i
+.PHONY : src/structs/permission/permission.i
+
+# target to preprocess a source file
+src/structs/permission/permission.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.i
+.PHONY : src/structs/permission/permission.c.i
+
+src/structs/permission/permission.s: src/structs/permission/permission.c.s
+.PHONY : src/structs/permission/permission.s
+
+# target to generate assembly for a file
+src/structs/permission/permission.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.s
+.PHONY : src/structs/permission/permission.c.s
+
 src/tests/blockchain_test.o: src/tests/blockchain_test.c.o
 .PHONY : src/tests/blockchain_test.o
 
@@ -971,6 +998,9 @@ help:
 	@echo "... src/packages/utils/print.o"
 	@echo "... src/packages/utils/print.i"
 	@echo "... src/packages/utils/print.s"
+	@echo "... src/structs/permission/permission.o"
+	@echo "... src/structs/permission/permission.i"
+	@echo "... src/structs/permission/permission.s"
 	@echo "... src/tests/blockchain_test.o"
 	@echo "... src/tests/blockchain_test.i"
 	@echo "... src/tests/blockchain_test.s"

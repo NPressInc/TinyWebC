@@ -2,89 +2,184 @@
 #define TW_PERMISSION_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-// Role Permission Bit Flags (64-bit)
-// Core Family Communication (0-15)
-#define PERMISSION_DIRECT_MESSAGE     (1ULL << 0)  // Can send direct messages to family members
-#define PERMISSION_FAMILY_GROUP_MSG   (1ULL << 1)  // Can send messages in family groups
-#define PERMISSION_EXTENDED_FAMILY_MSG (1ULL << 2) // Can message extended family
-#define PERMISSION_FRIEND_GROUP_MSG   (1ULL << 3)  // Can message in friend groups
-#define PERMISSION_COMMUNITY_MSG      (1ULL << 4)  // Can message in community groups
-#define PERMISSION_EMERGENCY_ALERT    (1ULL << 5)  // Can send emergency alerts
-#define PERMISSION_VIEW_FAMILY_STATUS (1ULL << 6)  // Can view family member status/activity
-#define PERMISSION_VIEW_EXTENDED_STATUS (1ULL << 7) // Can view extended family status
-#define PERMISSION_VIEW_FRIEND_STATUS (1ULL << 8)  // Can view friend status
-#define PERMISSION_VIEW_COMMUNITY_STATUS (1ULL << 9) // Can view community status
-// Reserved for future family communication (10-15)
+// Maximum lengths for permission system
+#define MAX_ROLE_NAME_LENGTH 32
+#define MAX_PERMISSION_SETS_PER_ROLE 16
 
-// Group Management (16-31)
-#define PERMISSION_CREATE_FAMILY_GROUP (1ULL << 16) // Can create family groups
-#define PERMISSION_CREATE_FRIEND_GROUP (1ULL << 17) // Can create friend groups
-#define PERMISSION_CREATE_COMMUNITY_GROUP (1ULL << 18) // Can create community groups
-#define PERMISSION_INVITE_FAMILY      (1ULL << 19) // Can invite to family groups
-#define PERMISSION_INVITE_FRIENDS     (1ULL << 20) // Can invite friends to groups
-#define PERMISSION_INVITE_COMMUNITY   (1ULL << 21) // Can invite community members
-#define PERMISSION_REMOVE_FAMILY      (1ULL << 22) // Can remove from family groups
-#define PERMISSION_REMOVE_FRIENDS     (1ULL << 23) // Can remove from friend groups
-#define PERMISSION_REMOVE_COMMUNITY   (1ULL << 24) // Can remove from community groups
-#define PERMISSION_EDIT_FAMILY_GROUP  (1ULL << 25) // Can edit family group settings
-#define PERMISSION_EDIT_FRIEND_GROUP  (1ULL << 26) // Can edit friend group settings
-#define PERMISSION_EDIT_COMMUNITY_GROUP (1ULL << 27) // Can edit community group settings
-// Reserved for future group management (28-31)
+// Base Permission Flags (What actions can be performed)
+// Communication Permissions (0-15)
+#define PERMISSION_SEND_MESSAGE         (1ULL << 0)   // Can send messages
+#define PERMISSION_READ_MESSAGE         (1ULL << 1)   // Can read messages
+#define PERMISSION_DELETE_MESSAGE       (1ULL << 2)   // Can delete messages
+#define PERMISSION_EDIT_MESSAGE         (1ULL << 3)   // Can edit messages
+#define PERMISSION_FORWARD_MESSAGE      (1ULL << 4)   // Can forward messages
+#define PERMISSION_SEND_EMERGENCY       (1ULL << 5)   // Can send emergency alerts
+// Reserved for future communication (6-15)
 
-// Safety & Control (32-47)
-#define PERMISSION_SET_PARENTAL_CONTROLS (1ULL << 32) // Can set parental controls
-#define PERMISSION_VIEW_PARENTAL_CONTROLS (1ULL << 33) // Can view parental controls
-#define PERMISSION_SET_CONTENT_FILTERS (1ULL << 34) // Can set content filters
-#define PERMISSION_VIEW_CONTENT_FILTERS (1ULL << 35) // Can view content filters
-#define PERMISSION_TRACK_LOCATION    (1ULL << 36) // Can track family location
-#define PERMISSION_VIEW_LOCATION     (1ULL << 37) // Can view location data
-#define PERMISSION_MANAGE_FRIENDS    (1ULL << 38) // Can manage child's friends
-#define PERMISSION_APPROVE_FRIENDS   (1ULL << 39) // Can approve new friends
-#define PERMISSION_MONITOR_ACTIVITY  (1ULL << 40) // Can monitor activity
-#define PERMISSION_SET_BOUNDARIES    (1ULL << 41) // Can set communication boundaries
-// Reserved for future safety features (42-47)
+// Group Management Permissions (16-31)
+#define PERMISSION_CREATE_GROUP         (1ULL << 16)  // Can create groups
+#define PERMISSION_DELETE_GROUP         (1ULL << 17)  // Can delete groups
+#define PERMISSION_EDIT_GROUP           (1ULL << 18)  // Can edit group settings
+#define PERMISSION_INVITE_USERS         (1ULL << 19)  // Can invite users to groups
+#define PERMISSION_REMOVE_USERS         (1ULL << 20)  // Can remove users from groups
+#define PERMISSION_APPROVE_MEMBERS      (1ULL << 21)  // Can approve group membership
+#define PERMISSION_MODERATE_GROUP       (1ULL << 22)  // Can moderate group content
+// Reserved for future group management (23-31)
 
-// System Management (48-63)
-#define PERMISSION_MANAGE_ROLES      (1ULL << 48) // Can manage user roles
-#define PERMISSION_VIEW_LOGS         (1ULL << 49) // Can view system logs
-#define PERMISSION_MANAGE_SETTINGS   (1ULL << 50) // Can manage system settings
-#define PERMISSION_VIEW_SETTINGS     (1ULL << 51) // Can view system settings
-// Reserved for future system management (52-63)
+// User Management Permissions (32-47)
+#define PERMISSION_VIEW_STATUS          (1ULL << 32)  // Can view user status/activity
+#define PERMISSION_VIEW_LOCATION        (1ULL << 33)  // Can view location data
+#define PERMISSION_TRACK_LOCATION       (1ULL << 34)  // Can actively track location
+#define PERMISSION_MANAGE_CONTACTS      (1ULL << 35)  // Can manage user's contacts
+#define PERMISSION_APPROVE_CONTACTS     (1ULL << 36)  // Can approve new contacts
+#define PERMISSION_MONITOR_ACTIVITY     (1ULL << 37)  // Can monitor user activity
+#define PERMISSION_SET_BOUNDARIES       (1ULL << 38)  // Can set communication boundaries
+// Reserved for future user management (39-47)
 
-// Predefined role permission sets
-#define ROLE_PERMISSIONS_PARENT     (PERMISSION_DIRECT_MESSAGE | PERMISSION_FAMILY_GROUP_MSG | \
-                                    PERMISSION_EXTENDED_FAMILY_MSG | PERMISSION_FRIEND_GROUP_MSG | \
-                                    PERMISSION_COMMUNITY_MSG | PERMISSION_EMERGENCY_ALERT | \
-                                    PERMISSION_VIEW_FAMILY_STATUS | PERMISSION_VIEW_EXTENDED_STATUS | \
-                                    PERMISSION_VIEW_FRIEND_STATUS | PERMISSION_VIEW_COMMUNITY_STATUS | \
-                                    PERMISSION_CREATE_FAMILY_GROUP | PERMISSION_CREATE_FRIEND_GROUP | \
-                                    PERMISSION_CREATE_COMMUNITY_GROUP | PERMISSION_INVITE_FAMILY | \
-                                    PERMISSION_INVITE_FRIENDS | PERMISSION_INVITE_COMMUNITY | \
-                                    PERMISSION_REMOVE_FAMILY | PERMISSION_REMOVE_FRIENDS | \
-                                    PERMISSION_REMOVE_COMMUNITY | PERMISSION_EDIT_FAMILY_GROUP | \
-                                    PERMISSION_EDIT_FRIEND_GROUP | PERMISSION_EDIT_COMMUNITY_GROUP | \
-                                    PERMISSION_SET_PARENTAL_CONTROLS | PERMISSION_VIEW_PARENTAL_CONTROLS | \
-                                    PERMISSION_SET_CONTENT_FILTERS | PERMISSION_VIEW_CONTENT_FILTERS | \
-                                    PERMISSION_TRACK_LOCATION | PERMISSION_VIEW_LOCATION | \
-                                    PERMISSION_MANAGE_FRIENDS | PERMISSION_APPROVE_FRIENDS | \
-                                    PERMISSION_MONITOR_ACTIVITY | PERMISSION_SET_BOUNDARIES | \
-                                    PERMISSION_MANAGE_ROLES | PERMISSION_VIEW_LOGS | \
-                                    PERMISSION_MANAGE_SETTINGS | PERMISSION_VIEW_SETTINGS)
+// Administrative Permissions (48-63)
+#define PERMISSION_SET_CONTROLS         (1ULL << 48)  // Can set administrative controls
+#define PERMISSION_VIEW_CONTROLS        (1ULL << 49)  // Can view administrative controls
+#define PERMISSION_SET_CONTENT_FILTERS  (1ULL << 50)  // Can set content filters
+#define PERMISSION_VIEW_CONTENT_FILTERS (1ULL << 51)  // Can view content filters
+#define PERMISSION_MANAGE_ROLES         (1ULL << 52)  // Can manage user roles
+#define PERMISSION_VIEW_LOGS            (1ULL << 53)  // Can view system logs
+#define PERMISSION_MANAGE_SETTINGS      (1ULL << 54)  // Can manage system settings
+#define PERMISSION_VIEW_SETTINGS        (1ULL << 55)  // Can view system settings
+// Reserved for future administrative (56-63)
 
-#define ROLE_PERMISSIONS_CHILD      (PERMISSION_DIRECT_MESSAGE | PERMISSION_FAMILY_GROUP_MSG | \
-                                    PERMISSION_FRIEND_GROUP_MSG | PERMISSION_EMERGENCY_ALERT | \
-                                    PERMISSION_VIEW_FAMILY_STATUS | PERMISSION_VIEW_FRIEND_STATUS | \
-                                    PERMISSION_VIEW_LOCATION)
+// Scope Definitions (Where permissions can be applied)
+typedef enum {
+    SCOPE_SELF = 0,              // Only applies to yourself
+    SCOPE_DIRECT,                // Direct 1-on-1 interactions
+    SCOPE_PRIMARY_GROUP,         // Your primary/core group
+    SCOPE_EXTENDED_GROUP,        // Extended groups you're part of
+    SCOPE_CONTACT_GROUP,         // Contact/peer groups
+    SCOPE_COMMUNITY,             // Community-wide
+    SCOPE_ORGANIZATION,          // Organization-wide
+    SCOPE_GLOBAL,                // System-wide (admin only)
+    SCOPE_SUPERVISED_USERS,      // Users under your supervision
+    SCOPE_PEER_USERS,            // Users at your level
+    SCOPE_MAX
+} permission_scope_t;
 
-#define ROLE_PERMISSIONS_FRIEND     (PERMISSION_DIRECT_MESSAGE | PERMISSION_FRIEND_GROUP_MSG | \
-                                    PERMISSION_EMERGENCY_ALERT | PERMISSION_VIEW_FRIEND_STATUS)
+// Condition Flags (When permissions apply)
+#define CONDITION_ALWAYS            (1ULL << 0)   // Always active
+#define CONDITION_TIME_RESTRICTED   (1ULL << 1)   // Time-based restrictions
+#define CONDITION_APPROVAL_REQUIRED (1ULL << 2)   // Requires approval
+#define CONDITION_EMERGENCY_ONLY    (1ULL << 3)   // Only during emergencies
+// Reserved for future conditions (4-63)
 
-#define ROLE_PERMISSIONS_COMMUNITY  (PERMISSION_COMMUNITY_MSG | PERMISSION_EMERGENCY_ALERT | \
-                                    PERMISSION_VIEW_COMMUNITY_STATUS)
+// Permission Set Structure
+typedef struct {
+    uint64_t permissions;        // What actions are allowed (bit flags)
+    uint32_t scopes;            // Which scopes this applies to (bit flags)
+    uint64_t conditions;        // Additional conditions (bit flags)
+    uint64_t time_start;        // Start time for time-based restrictions (Unix timestamp)
+    uint64_t time_end;          // End time for time-based restrictions (Unix timestamp)
+} PermissionSet;
+
+// Role Structure
+typedef struct {
+    char role_name[MAX_ROLE_NAME_LENGTH];
+    PermissionSet* permission_sets;
+    size_t permission_set_count;
+    uint64_t created_timestamp;
+    uint64_t modified_timestamp;
+} Role;
+
+// Predefined role permission sets for common use cases
+// Admin/Manager Role
+static const PermissionSet ADMIN_MESSAGING = {
+    .permissions = PERMISSION_SEND_MESSAGE | PERMISSION_READ_MESSAGE | 
+                  PERMISSION_DELETE_MESSAGE | PERMISSION_EDIT_MESSAGE | 
+                  PERMISSION_FORWARD_MESSAGE | PERMISSION_SEND_EMERGENCY,
+    .scopes = (1 << SCOPE_DIRECT) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_EXTENDED_GROUP) | (1 << SCOPE_CONTACT_GROUP) | 
+              (1 << SCOPE_COMMUNITY) | (1 << SCOPE_ORGANIZATION),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+static const PermissionSet ADMIN_GROUP_MANAGEMENT = {
+    .permissions = PERMISSION_CREATE_GROUP | PERMISSION_DELETE_GROUP | 
+                  PERMISSION_EDIT_GROUP | PERMISSION_INVITE_USERS | 
+                  PERMISSION_REMOVE_USERS | PERMISSION_APPROVE_MEMBERS | 
+                  PERMISSION_MODERATE_GROUP,
+    .scopes = (1 << SCOPE_PRIMARY_GROUP) | (1 << SCOPE_EXTENDED_GROUP) | 
+              (1 << SCOPE_CONTACT_GROUP) | (1 << SCOPE_COMMUNITY) | 
+              (1 << SCOPE_ORGANIZATION),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+static const PermissionSet ADMIN_USER_MANAGEMENT = {
+    .permissions = PERMISSION_VIEW_STATUS | PERMISSION_VIEW_LOCATION | 
+                  PERMISSION_TRACK_LOCATION | PERMISSION_MANAGE_CONTACTS | 
+                  PERMISSION_APPROVE_CONTACTS | PERMISSION_MONITOR_ACTIVITY | 
+                  PERMISSION_SET_BOUNDARIES,
+    .scopes = (1 << SCOPE_SUPERVISED_USERS) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_EXTENDED_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+static const PermissionSet ADMIN_SYSTEM = {
+    .permissions = PERMISSION_SET_CONTROLS | PERMISSION_VIEW_CONTROLS | 
+                  PERMISSION_SET_CONTENT_FILTERS | PERMISSION_VIEW_CONTENT_FILTERS | 
+                  PERMISSION_MANAGE_ROLES | PERMISSION_VIEW_LOGS | 
+                  PERMISSION_MANAGE_SETTINGS | PERMISSION_VIEW_SETTINGS,
+    .scopes = (1 << SCOPE_ORGANIZATION) | (1 << SCOPE_GLOBAL),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+// Member/User Role
+static const PermissionSet MEMBER_MESSAGING = {
+    .permissions = PERMISSION_SEND_MESSAGE | PERMISSION_READ_MESSAGE | 
+                  PERMISSION_FORWARD_MESSAGE | PERMISSION_SEND_EMERGENCY,
+    .scopes = (1 << SCOPE_DIRECT) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+static const PermissionSet MEMBER_BASIC = {
+    .permissions = PERMISSION_VIEW_STATUS | PERMISSION_VIEW_LOCATION,
+    .scopes = (1 << SCOPE_SELF) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+// Contact/Peer Role
+static const PermissionSet CONTACT_MESSAGING = {
+    .permissions = PERMISSION_SEND_MESSAGE | PERMISSION_READ_MESSAGE | 
+                  PERMISSION_SEND_EMERGENCY,
+    .scopes = (1 << SCOPE_DIRECT) | (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+static const PermissionSet CONTACT_BASIC = {
+    .permissions = PERMISSION_VIEW_STATUS,
+    .scopes = (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
 
 // Helper functions for permission management
-static inline int has_permission(uint64_t permissions, uint64_t permission) {
+static inline bool has_permission(uint64_t permissions, uint64_t permission) {
     return (permissions & permission) != 0;
 }
 
@@ -95,5 +190,46 @@ static inline void add_permission(uint64_t* permissions, uint64_t permission) {
 static inline void remove_permission(uint64_t* permissions, uint64_t permission) {
     *permissions &= ~permission;
 }
+
+static inline bool has_scope(uint32_t scopes, permission_scope_t scope) {
+    return (scopes & (1 << scope)) != 0;
+}
+
+static inline void add_scope(uint32_t* scopes, permission_scope_t scope) {
+    *scopes |= (1 << scope);
+}
+
+static inline void remove_scope(uint32_t* scopes, permission_scope_t scope) {
+    *scopes &= ~(1 << scope);
+}
+
+static inline bool has_condition(uint64_t conditions, uint64_t condition) {
+    return (conditions & condition) != 0;
+}
+
+// Check if a user has a specific permission in a specific scope
+bool has_permission_in_scope(const Role* role, uint64_t permission, permission_scope_t scope);
+
+// Get all scopes where a user has a specific permission
+uint32_t get_scopes_for_permission(const Role* role, uint64_t permission);
+
+// Check if user can perform action on target in given context
+bool can_perform_action(const Role* role, uint64_t permission, permission_scope_t scope, 
+                       const void* target, const void* context);
+
+// Check if permission set is valid for current time
+bool is_permission_set_active(const PermissionSet* perm_set, uint64_t current_time);
+
+// Role management functions
+Role* create_role(const char* role_name);
+void destroy_role(Role* role);
+int add_permission_set(Role* role, const PermissionSet* perm_set);
+int remove_permission_set(Role* role, size_t index);
+
+// Predefined role creation helpers
+Role* create_admin_role(void);
+Role* create_member_role(void);
+Role* create_contact_role(void);
+Role* create_community_role(void);
 
 #endif // TW_PERMISSION_H 

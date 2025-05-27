@@ -39,14 +39,21 @@ int deserialize_user_registration(const unsigned char* buffer, TW_TXN_UserRegist
 int serialize_role_assignment(const TW_TXN_RoleAssignment* role, unsigned char** buffer) {
     if (!role || !buffer) return -1;
     
-    size_t size = MAX_ROLE_NAME_LENGTH + sizeof(uint64_t);
+    size_t size = MAX_ROLE_NAME_LENGTH + sizeof(uint8_t) + 
+                  (sizeof(PermissionSet) * role->permission_set_count);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
     unsigned char* ptr = *buffer;
     memcpy(ptr, role->role_name, MAX_ROLE_NAME_LENGTH);
     ptr += MAX_ROLE_NAME_LENGTH;
-    memcpy(ptr, &role->permissions, sizeof(uint64_t));
+    memcpy(ptr, &role->permission_set_count, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    
+    for (uint8_t i = 0; i < role->permission_set_count; i++) {
+        memcpy(ptr, &role->permission_sets[i], sizeof(PermissionSet));
+        ptr += sizeof(PermissionSet);
+    }
     
     return size;
 }
@@ -57,16 +64,27 @@ int deserialize_role_assignment(const unsigned char* buffer, TW_TXN_RoleAssignme
     const unsigned char* ptr = buffer;
     memcpy(role->role_name, ptr, MAX_ROLE_NAME_LENGTH);
     ptr += MAX_ROLE_NAME_LENGTH;
-    memcpy(&role->permissions, ptr, sizeof(uint64_t));
+    memcpy(&role->permission_set_count, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
     
-    return MAX_ROLE_NAME_LENGTH + sizeof(uint64_t);
+    if (role->permission_set_count > MAX_PERMISSION_SETS_PER_ROLE) {
+        return -1; // Invalid data
+    }
+    
+    for (uint8_t i = 0; i < role->permission_set_count; i++) {
+        memcpy(&role->permission_sets[i], ptr, sizeof(PermissionSet));
+        ptr += sizeof(PermissionSet);
+    }
+    
+    return MAX_ROLE_NAME_LENGTH + sizeof(uint8_t) + 
+           (sizeof(PermissionSet) * role->permission_set_count);
 }
 
 // Group Create
 int serialize_group_create(const TW_TXN_GroupCreate* group, unsigned char** buffer) {
     if (!group || !buffer) return -1;
     
-    size_t size = MAX_GROUP_NAME_LENGTH + 2 * sizeof(uint8_t);
+    size_t size = MAX_GROUP_NAME_LENGTH + 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -75,6 +93,8 @@ int serialize_group_create(const TW_TXN_GroupCreate* group, unsigned char** buff
     ptr += MAX_GROUP_NAME_LENGTH;
     memcpy(ptr, &group->group_type, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
+    memcpy(ptr, &group->group_scope, sizeof(permission_scope_t));
+    ptr += sizeof(permission_scope_t);
     memcpy(ptr, &group->default_permissions, sizeof(uint8_t));
     
     return size;
@@ -88,16 +108,18 @@ int deserialize_group_create(const unsigned char* buffer, TW_TXN_GroupCreate* gr
     ptr += MAX_GROUP_NAME_LENGTH;
     memcpy(&group->group_type, ptr, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
+    memcpy(&group->group_scope, ptr, sizeof(permission_scope_t));
+    ptr += sizeof(permission_scope_t);
     memcpy(&group->default_permissions, ptr, sizeof(uint8_t));
     
-    return MAX_GROUP_NAME_LENGTH + 2 * sizeof(uint8_t);
+    return MAX_GROUP_NAME_LENGTH + 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
 }
 
 // Group Update
 int serialize_group_update(const TW_TXN_GroupUpdate* update, unsigned char** buffer) {
     if (!update || !buffer) return -1;
     
-    size_t size = 2 * sizeof(uint8_t);
+    size_t size = 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -105,6 +127,8 @@ int serialize_group_update(const TW_TXN_GroupUpdate* update, unsigned char** buf
     memcpy(ptr, &update->setting_type, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(ptr, &update->new_value, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(ptr, &update->target_scope, sizeof(permission_scope_t));
     
     return size;
 }
@@ -116,22 +140,28 @@ int deserialize_group_update(const unsigned char* buffer, TW_TXN_GroupUpdate* up
     memcpy(&update->setting_type, ptr, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(&update->new_value, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(&update->target_scope, ptr, sizeof(permission_scope_t));
     
-    return 2 * sizeof(uint8_t);
+    return 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
 }
 
 // Permission Edit
 int serialize_permission_edit(const TW_TXN_PermissionEdit* perm, unsigned char** buffer) {
     if (!perm || !buffer) return -1;
     
-    size_t size = MAX_PERMISSION_NAME_LENGTH + sizeof(uint8_t);
+    size_t size = MAX_PERMISSION_NAME_LENGTH + sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint64_t);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
     unsigned char* ptr = *buffer;
     memcpy(ptr, perm->permission_name, MAX_PERMISSION_NAME_LENGTH);
     ptr += MAX_PERMISSION_NAME_LENGTH;
-    memcpy(ptr, &perm->permission_value, sizeof(uint8_t));
+    memcpy(ptr, &perm->permission_flags, sizeof(uint64_t));
+    ptr += sizeof(uint64_t);
+    memcpy(ptr, &perm->scope_flags, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+    memcpy(ptr, &perm->condition_flags, sizeof(uint64_t));
     
     return size;
 }
@@ -142,16 +172,20 @@ int deserialize_permission_edit(const unsigned char* buffer, TW_TXN_PermissionEd
     const unsigned char* ptr = buffer;
     memcpy(perm->permission_name, ptr, MAX_PERMISSION_NAME_LENGTH);
     ptr += MAX_PERMISSION_NAME_LENGTH;
-    memcpy(&perm->permission_value, ptr, sizeof(uint8_t));
+    memcpy(&perm->permission_flags, ptr, sizeof(uint64_t));
+    ptr += sizeof(uint64_t);
+    memcpy(&perm->scope_flags, ptr, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+    memcpy(&perm->condition_flags, ptr, sizeof(uint64_t));
     
-    return MAX_PERMISSION_NAME_LENGTH + sizeof(uint8_t);
+    return MAX_PERMISSION_NAME_LENGTH + sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint64_t);
 }
 
-// Parental Control
-int serialize_parental_control(const TW_TXN_ParentalControl* control, unsigned char** buffer) {
+// Admin Control (renamed from Parental Control)
+int serialize_admin_control(const TW_TXN_AdminControl* control, unsigned char** buffer) {
     if (!control || !buffer) return -1;
     
-    size_t size = 2 * sizeof(uint8_t);
+    size_t size = 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -159,26 +193,30 @@ int serialize_parental_control(const TW_TXN_ParentalControl* control, unsigned c
     memcpy(ptr, &control->control_type, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(ptr, &control->control_value, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(ptr, &control->target_scope, sizeof(permission_scope_t));
     
     return size;
 }
 
-int deserialize_parental_control(const unsigned char* buffer, TW_TXN_ParentalControl* control) {
+int deserialize_admin_control(const unsigned char* buffer, TW_TXN_AdminControl* control) {
     if (!buffer || !control) return -1;
     
     const unsigned char* ptr = buffer;
     memcpy(&control->control_type, ptr, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(&control->control_value, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(&control->target_scope, ptr, sizeof(permission_scope_t));
     
-    return 2 * sizeof(uint8_t);
+    return 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
 }
 
 // Content Filter
 int serialize_content_filter(const TW_TXN_ContentFilter* filter, unsigned char** buffer) {
     if (!filter || !buffer) return -1;
     
-    size_t size = MAX_CONTENT_FILTER_RULE_LENGTH + 2 * sizeof(uint8_t);
+    size_t size = MAX_CONTENT_FILTER_RULE_LENGTH + 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -188,6 +226,8 @@ int serialize_content_filter(const TW_TXN_ContentFilter* filter, unsigned char**
     memcpy(ptr, &filter->rule_type, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(ptr, &filter->rule_action, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(ptr, &filter->target_scope, sizeof(permission_scope_t));
     
     return size;
 }
@@ -201,15 +241,17 @@ int deserialize_content_filter(const unsigned char* buffer, TW_TXN_ContentFilter
     memcpy(&filter->rule_type, ptr, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(&filter->rule_action, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(&filter->target_scope, ptr, sizeof(permission_scope_t));
     
-    return MAX_CONTENT_FILTER_RULE_LENGTH + 2 * sizeof(uint8_t);
+    return MAX_CONTENT_FILTER_RULE_LENGTH + 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
 }
 
 // Location Update
 int serialize_location_update(const TW_TXN_LocationUpdate* location, unsigned char** buffer) {
     if (!location || !buffer) return -1;
     
-    size_t size = 2 * sizeof(double) + sizeof(uint64_t) + sizeof(uint8_t);
+    size_t size = 2 * sizeof(double) + sizeof(uint64_t) + sizeof(uint8_t) + sizeof(permission_scope_t);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -221,6 +263,8 @@ int serialize_location_update(const TW_TXN_LocationUpdate* location, unsigned ch
     memcpy(ptr, &location->timestamp, sizeof(uint64_t));
     ptr += sizeof(uint64_t);
     memcpy(ptr, &location->accuracy, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(ptr, &location->visibility_scope, sizeof(permission_scope_t));
     
     return size;
 }
@@ -236,15 +280,17 @@ int deserialize_location_update(const unsigned char* buffer, TW_TXN_LocationUpda
     memcpy(&location->timestamp, ptr, sizeof(uint64_t));
     ptr += sizeof(uint64_t);
     memcpy(&location->accuracy, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(&location->visibility_scope, ptr, sizeof(permission_scope_t));
     
-    return 2 * sizeof(double) + sizeof(uint64_t) + sizeof(uint8_t);
+    return 2 * sizeof(double) + sizeof(uint64_t) + sizeof(uint8_t) + sizeof(permission_scope_t);
 }
 
 // Emergency Alert
 int serialize_emergency_alert(const TW_TXN_EmergencyAlert* alert, unsigned char** buffer) {
     if (!alert || !buffer) return -1;
     
-    size_t size = sizeof(uint8_t) + 128;  // alert_type + message
+    size_t size = sizeof(uint8_t) + 128 + sizeof(permission_scope_t);  // alert_type + message + scope
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -252,6 +298,8 @@ int serialize_emergency_alert(const TW_TXN_EmergencyAlert* alert, unsigned char*
     memcpy(ptr, &alert->alert_type, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(ptr, alert->message, 128);
+    ptr += 128;
+    memcpy(ptr, &alert->broadcast_scope, sizeof(permission_scope_t));
     
     return size;
 }
@@ -263,15 +311,17 @@ int deserialize_emergency_alert(const unsigned char* buffer, TW_TXN_EmergencyAle
     memcpy(&alert->alert_type, ptr, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(alert->message, ptr, 128);
+    ptr += 128;
+    memcpy(&alert->broadcast_scope, ptr, sizeof(permission_scope_t));
     
-    return sizeof(uint8_t) + 128;
+    return sizeof(uint8_t) + 128 + sizeof(permission_scope_t);
 }
 
 // System Config
 int serialize_system_config(const TW_TXN_SystemConfig* config, unsigned char** buffer) {
     if (!config || !buffer) return -1;
     
-    size_t size = 2 * sizeof(uint8_t);
+    size_t size = 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -279,6 +329,8 @@ int serialize_system_config(const TW_TXN_SystemConfig* config, unsigned char** b
     memcpy(ptr, &config->config_type, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(ptr, &config->config_value, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(ptr, &config->config_scope, sizeof(permission_scope_t));
     
     return size;
 }
@@ -290,6 +342,8 @@ int deserialize_system_config(const unsigned char* buffer, TW_TXN_SystemConfig* 
     memcpy(&config->config_type, ptr, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(&config->config_value, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(&config->config_scope, ptr, sizeof(permission_scope_t));
     
-    return 2 * sizeof(uint8_t);
+    return 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
 } 

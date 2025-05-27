@@ -1,10 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tinyweb.family/schemas/network-config.json",
+  "$id": "https://tinyweb.network/schemas/network-config.json",
   "title": "Network Configuration",
-  "description": "Configuration schema for initializing a family blockchain network",
+  "description": "Configuration schema for initializing a TinyWeb blockchain network",
   "type": "object",
-  "required": ["network", "storage", "nodes", "family"],
+  "required": ["network", "storage", "nodes", "users"],
   "properties": {
     "network": {
       "type": "object",
@@ -14,12 +14,18 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 100,
-          "description": "Human-readable name for the family network"
+          "description": "Human-readable name for the network"
         },
         "description": {
           "type": "string",
           "maxLength": 500,
           "description": "Optional description of the network"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["family", "corporate", "educational", "community", "gaming", "custom"],
+          "default": "custom",
+          "description": "Type of organization this network serves"
         },
         "base_port": {
           "type": "integer",
@@ -101,24 +107,32 @@
         }
       }
     },
-    "family": {
+    "users": {
       "type": "object",
-      "required": ["parents", "children"],
+      "required": ["admins", "members"],
       "properties": {
-        "parents": {
+        "admins": {
           "type": "array",
           "minItems": 1,
           "maxItems": 10,
           "items": {
-            "$ref": "#/definitions/parent"
+            "$ref": "#/definitions/admin"
           }
         },
-        "children": {
+        "members": {
           "type": "array",
           "minItems": 0,
-          "maxItems": 20,
+          "maxItems": 50,
           "items": {
-            "$ref": "#/definitions/child"
+            "$ref": "#/definitions/member"
+          }
+        },
+        "contacts": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/contact"
           }
         }
       }
@@ -147,14 +161,14 @@
           "properties": {
             "default_policy": {
               "type": "string",
-              "enum": ["allow_all", "block_unknown", "parent_approval"],
+              "enum": ["allow_all", "block_unknown", "admin_approval"],
               "default": "block_unknown"
             },
             "categories": {
               "type": "object",
               "additionalProperties": {
                 "type": "string",
-                "enum": ["allow", "block", "allow_with_limits", "parent_approval", "time_limited"]
+                "enum": ["allow", "block", "allow_with_limits", "admin_approval", "time_limited"]
               }
             }
           }
@@ -184,13 +198,13 @@
     }
   },
   "definitions": {
-    "parent": {
+    "admin": {
       "type": "object",
-      "required": ["id", "name", "role", "permissions"],
+      "required": ["id", "name", "role"],
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^parent_[0-9]{3}$"
+          "pattern": "^admin_[0-9]{3}$"
         },
         "name": {
           "type": "string",
@@ -199,29 +213,22 @@
         },
         "role": {
           "type": "string",
-          "enum": ["father", "mother", "guardian", "parent"]
-        },
-        "permissions": {
-          "type": "string",
-          "enum": ["ROLE_PERMISSIONS_PARENT", "ROLE_PERMISSIONS_ADMIN"]
+          "enum": ["admin"]
         },
         "email": {
           "type": "string",
-          "format": "email"
-        },
-        "devices": {
-          "type": "array",
-          "items": {"$ref": "#/definitions/device"}
+          "format": "email",
+          "description": "Optional email for external communication"
         }
       }
     },
-    "child": {
+    "member": {
       "type": "object", 
-      "required": ["id", "name", "role", "permissions", "supervised_by"],
+      "required": ["id", "name", "role"],
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^child_[0-9]{3}$"
+          "pattern": "^member_[0-9]{3}$"
         },
         "name": {
           "type": "string",
@@ -230,78 +237,54 @@
         },
         "role": {
           "type": "string",
-          "enum": ["child", "teen", "young_adult"]
+          "enum": ["member"]
         },
         "age": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 25
+          "maximum": 150
         },
-        "permissions": {
+        "email": {
           "type": "string",
-          "enum": ["ROLE_PERMISSIONS_CHILD", "ROLE_PERMISSIONS_TEEN", "ROLE_PERMISSIONS_FRIEND"]
+          "format": "email",
+          "description": "Optional email for external communication"
+        },
+        "supervised_by": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "string",
+            "pattern": "^admin_[0-9]{3}$"
+          }
+        }
+      }
+    },
+    "contact": {
+      "type": "object",
+      "required": ["id", "name", "role"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^contact_[0-9]{3}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": ["contact", "peer", "friend", "colleague", "external"]
         },
         "email": {
           "type": "string",
           "format": "email"
         },
-        "supervised_by": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "pattern": "^parent_[0-9]{3}$"
-          }
-        },
-        "devices": {
-          "type": "array",
-          "items": {"$ref": "#/definitions/device"}
-        },
-        "restrictions": {
-          "type": "object",
-          "properties": {
-            "content_filter": {
-              "type": "string",
-              "enum": ["none", "basic", "strict", "very_strict"]
-            },
-            "time_limits": {
-              "type": "object",
-              "properties": {
-                "weekday_hours": {
-                  "type": "string",
-                  "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
-                },
-                "weekend_hours": {
-                  "type": "string", 
-                  "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
-                }
-              }
-            },
-            "friend_approval_required": {
-              "type": "boolean"
-            }
-          }
-        }
-      }
-    },
-    "device": {
-      "type": "object",
-      "required": ["name", "type"],
-      "properties": {
-        "name": {
+        "organization": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 50
-        },
-        "type": {
-          "type": "string",
-          "enum": ["mobile", "tablet", "computer", "laptop", "smartwatch", "other"]
+          "maxLength": 100
         },
         "trusted": {
-          "type": "boolean",
-          "default": true
-        },
-        "parental_controls": {
           "type": "boolean",
           "default": false
         }

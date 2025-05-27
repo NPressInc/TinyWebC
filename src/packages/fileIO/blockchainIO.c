@@ -285,6 +285,74 @@ bool writeBlockChainToJson(TW_BlockChain* blockChain) {
             }
             cJSON_AddStringToObject(tx_obj, "signature", sig_hex);
 
+            // Add encrypted payload if it exists
+            if (tx->payload && tx->payload_size > 0) {
+                cJSON* payload_obj = cJSON_CreateObject();
+                if (payload_obj) {
+                    // Add payload size
+                    cJSON_AddNumberToObject(payload_obj, "size", tx->payload_size);
+                    
+                    // Add ephemeral public key
+                    char ephemeral_hex[PUBKEY_SIZE * 2 + 1];
+                    for (int k = 0; k < PUBKEY_SIZE; k++) {
+                        sprintf(ephemeral_hex + (k * 2), "%02x", tx->payload->ephemeral_pubkey[k]);
+                    }
+                    cJSON_AddStringToObject(payload_obj, "ephemeral_pubkey", ephemeral_hex);
+                    
+                    // Add nonce
+                    char nonce_hex[NONCE_SIZE * 2 + 1];
+                    for (int k = 0; k < NONCE_SIZE; k++) {
+                        sprintf(nonce_hex + (k * 2), "%02x", tx->payload->nonce[k]);
+                    }
+                    cJSON_AddStringToObject(payload_obj, "nonce", nonce_hex);
+                    
+                    // Add encrypted ciphertext
+                    if (tx->payload->ciphertext && tx->payload->ciphertext_len > 0) {
+                        char* encrypted_hex = malloc(tx->payload->ciphertext_len * 2 + 1);
+                        if (encrypted_hex) {
+                            for (size_t k = 0; k < tx->payload->ciphertext_len; k++) {
+                                sprintf(encrypted_hex + (k * 2), "%02x", tx->payload->ciphertext[k]);
+                            }
+                            cJSON_AddStringToObject(payload_obj, "ciphertext", encrypted_hex);
+                            free(encrypted_hex);
+                        }
+                        cJSON_AddNumberToObject(payload_obj, "ciphertext_len", tx->payload->ciphertext_len);
+                    }
+                    
+                    // Add recipient count and encrypted keys
+                    cJSON_AddNumberToObject(payload_obj, "num_recipients", tx->payload->num_recipients);
+                    
+                    if (tx->payload->encrypted_keys && tx->payload->num_recipients > 0) {
+                        cJSON* keys_array = cJSON_CreateArray();
+                        if (keys_array) {
+                            for (size_t k = 0; k < tx->payload->num_recipients; k++) {
+                                cJSON* key_obj = cJSON_CreateObject();
+                                if (key_obj) {
+                                    // Add encrypted key
+                                    char key_hex[ENCRYPTED_KEY_SIZE * 2 + 1];
+                                    for (int l = 0; l < ENCRYPTED_KEY_SIZE; l++) {
+                                        sprintf(key_hex + (l * 2), "%02x", tx->payload->encrypted_keys[k * ENCRYPTED_KEY_SIZE + l]);
+                                    }
+                                    cJSON_AddStringToObject(key_obj, "encrypted_key", key_hex);
+                                    
+                                    // Add key nonce
+                                    char key_nonce_hex[NONCE_SIZE * 2 + 1];
+                                    for (int l = 0; l < NONCE_SIZE; l++) {
+                                        sprintf(key_nonce_hex + (l * 2), "%02x", tx->payload->key_nonces[k * NONCE_SIZE + l]);
+                                    }
+                                    cJSON_AddStringToObject(key_obj, "key_nonce", key_nonce_hex);
+                                    
+                                    cJSON_AddItemToArray(keys_array, key_obj);
+                                }
+                            }
+                            cJSON_AddItemToObject(payload_obj, "encrypted_keys", keys_array);
+                        }
+                    }
+                    
+                    cJSON_AddItemToObject(tx_obj, "payload", payload_obj);
+                }
+            }
+
             cJSON_AddItemToArray(txns_array, tx_obj);
         }
 
