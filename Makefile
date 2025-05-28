@@ -775,6 +775,33 @@ src/packages/utils/print.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.s
 .PHONY : src/packages/utils/print.c.s
 
+src/packages/validation/block_validation.o: src/packages/validation/block_validation.c.o
+.PHONY : src/packages/validation/block_validation.o
+
+# target to build an object file
+src/packages/validation/block_validation.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/block_validation.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/block_validation.c.o
+.PHONY : src/packages/validation/block_validation.c.o
+
+src/packages/validation/block_validation.i: src/packages/validation/block_validation.c.i
+.PHONY : src/packages/validation/block_validation.i
+
+# target to preprocess a source file
+src/packages/validation/block_validation.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/block_validation.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/block_validation.c.i
+.PHONY : src/packages/validation/block_validation.c.i
+
+src/packages/validation/block_validation.s: src/packages/validation/block_validation.c.s
+.PHONY : src/packages/validation/block_validation.s
+
+# target to generate assembly for a file
+src/packages/validation/block_validation.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/block_validation.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/block_validation.c.s
+.PHONY : src/packages/validation/block_validation.c.s
+
 src/structs/permission/permission.o: src/structs/permission/permission.c.o
 .PHONY : src/structs/permission/permission.o
 
@@ -998,6 +1025,9 @@ help:
 	@echo "... src/packages/utils/print.o"
 	@echo "... src/packages/utils/print.i"
 	@echo "... src/packages/utils/print.s"
+	@echo "... src/packages/validation/block_validation.o"
+	@echo "... src/packages/validation/block_validation.i"
+	@echo "... src/packages/validation/block_validation.s"
 	@echo "... src/structs/permission/permission.o"
 	@echo "... src/structs/permission/permission.i"
 	@echo "... src/structs/permission/permission.s"

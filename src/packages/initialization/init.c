@@ -184,46 +184,6 @@ int generate_peer_list(PeerInfo* peers, const GeneratedKeys* keys, uint16_t base
     return 0;
 }
 
-int create_peer_transactions(const PeerInfo* peers, TW_BlockChain* blockchain) {
-    // This function is now replaced by create_peer_registration_transaction
-    // which is called from create_initialization_block
-    return 0;
-}
-
-// Permission setup functions
-int setup_initial_permissions(const GeneratedKeys* keys, TW_BlockChain* blockchain) {
-    // This function is now replaced by create_role_assignment_transaction
-    // which is called from create_initialization_block
-    return 0;
-}
-
-int create_permission_transactions(TW_BlockChain* blockchain) {
-    // This function is now replaced by create_system_config_transaction
-    // and create_content_filter_transaction which are called from create_initialization_block
-    return 0;
-}
-
-// Helper functions
-/*
-int create_genesis_block(TW_BlockChain* blockchain) {
-    if (!blockchain) return -1;
-    
-    // Get the creator's public key from the blockchain
-    TW_BlockChain_create_genesis_block(blockchain, blockchain->creator_pubkey);
-    
-    // Verify that the genesis block was created
-    if (blockchain->length == 0 || !blockchain->blocks[0]) {
-        return -1;
-    }
-    
-    return 0;
-}
-*/
-
-int setup_network_parameters(TW_BlockChain* blockchain) {
-    // Network parameters are now set via transactions in create_initialization_block
-    return 0;
-}
 
 // Memory management
 void free_generated_keys(GeneratedKeys* keys) {
@@ -277,7 +237,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     // 1. Create user registration transactions
     printf("Creating user registration transactions...\n");
     for (uint32_t i = 0; i < keys->user_count; i++) {
-        TW_Transaction* user_txn = create_user_registration_transaction(keys, i);
+        TW_Transaction* user_txn = create_user_registration_transaction(keys, i, blockchain->creator_pubkey);
         if (user_txn) {
             init_transactions[txn_count++] = user_txn;
             printf("Created user registration transaction for user %u\n", i);
@@ -289,7 +249,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     // 2. Create role assignment transactions
     printf("Creating role assignment transactions...\n");
     for (uint32_t i = 0; i < keys->user_count; i++) {
-        TW_Transaction* role_txn = create_role_assignment_transaction(keys, i);
+        TW_Transaction* role_txn = create_role_assignment_transaction(keys, i, blockchain->creator_pubkey);
         if (role_txn) {
             init_transactions[txn_count++] = role_txn;
             printf("Created role assignment transaction for user %u\n", i);
@@ -301,7 +261,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     // 3. Create peer registration transactions
     printf("Creating peer registration transactions...\n");
     for (uint32_t i = 0; i < keys->node_count; i++) {
-        TW_Transaction* peer_txn = create_peer_registration_transaction(peers, i, blockchain->creator_pubkey);
+        TW_Transaction* peer_txn = create_peer_registration_transaction(peers, i, blockchain->creator_pubkey, keys);
         if (peer_txn) {
             init_transactions[txn_count++] = peer_txn;
             printf("Created peer registration transaction for peer %u\n", i);
@@ -312,7 +272,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
 
     // 4. Create system configuration transaction
     printf("Creating system configuration transaction...\n");
-    TW_Transaction* config_txn = create_system_config_transaction(blockchain->creator_pubkey);
+    TW_Transaction* config_txn = create_system_config_transaction(blockchain->creator_pubkey, keys);
     if (config_txn) {
         init_transactions[txn_count++] = config_txn;
         printf("Created system config transaction\n");
@@ -322,7 +282,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
 
     // 5. Create content filter transaction
     printf("Creating content filter transaction...\n");
-    TW_Transaction* filter_txn = create_content_filter_transaction(blockchain->creator_pubkey);
+    TW_Transaction* filter_txn = create_content_filter_transaction(blockchain->creator_pubkey, keys);
     if (filter_txn) {
         init_transactions[txn_count++] = filter_txn;
         printf("Created content filter transaction\n");
@@ -391,9 +351,51 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     return 0;
 }
 
+// Helper function to create a flat array of all recipients (nodes + users)
+unsigned char* create_all_recipients_flat(const GeneratedKeys* keys, uint32_t* total_count) {
+    if (!keys || !total_count) return NULL;
+    
+    *total_count = keys->node_count + keys->user_count;
+    unsigned char* all_recipients = malloc(PUBKEY_SIZE * (*total_count));
+    if (!all_recipients) return NULL;
+    
+    // Add all node public keys
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        memcpy(all_recipients + (i * PUBKEY_SIZE), keys->node_public_keys[i], PUBKEY_SIZE);
+    }
+    
+    // Add all user public keys
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        memcpy(all_recipients + ((keys->node_count + i) * PUBKEY_SIZE), keys->user_public_keys[i], PUBKEY_SIZE);
+    }
+    
+    return all_recipients;
+}
+
+// Helper function to create a list of all recipients (nodes + users) as pointers for transaction
+unsigned char** create_all_recipients_list(const GeneratedKeys* keys, uint32_t* total_count) {
+    if (!keys || !total_count) return NULL;
+    
+    *total_count = keys->node_count + keys->user_count;
+    unsigned char** all_recipients = malloc(sizeof(unsigned char*) * (*total_count));
+    if (!all_recipients) return NULL;
+    
+    // Add all node public keys
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        all_recipients[i] = keys->node_public_keys[i];
+    }
+    
+    // Add all user public keys
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        all_recipients[keys->node_count + i] = keys->user_public_keys[i];
+    }
+    
+    return all_recipients;
+}
+
 // Transaction creation functions
-TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, uint32_t user_index) {
-    if (!keys || user_index >= keys->user_count) return NULL;
+TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, uint32_t user_index, const unsigned char* creator_pubkey) {
+    if (!keys || user_index >= keys->user_count || !creator_pubkey) return NULL;
 
     TW_TXN_UserRegistration user_data;
     memset(&user_data, 0, sizeof(user_data));
@@ -408,22 +410,54 @@ TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, 
         return NULL;
     }
 
+    // Create flat array of all recipients (nodes + users)
+    uint32_t total_recipients;
+    unsigned char* all_recipients_flat = create_all_recipients_flat(keys, &total_recipients);
+    if (!all_recipients_flat) {
+        free(serialized_buffer);
+        return NULL;
+    }
+
     EncryptedPayload* encrypted_payload = encrypt_payload_multi(
         serialized_buffer, 
         serialized_size, 
-        keys->user_public_keys[user_index],
-        1
+        all_recipients_flat,
+        total_recipients
     );
     free(serialized_buffer);
+    free(all_recipients_flat);
     if (!encrypted_payload) {
         return NULL;
     }
 
+    // Create recipients array for transaction
+    unsigned char** txn_recipients = create_all_recipients_list(keys, &total_recipients);
+    if (!txn_recipients) {
+        free_encrypted_payload(encrypted_payload);
+        return NULL;
+    }
+
+    // Create flat array for transaction (TW_Transaction_create expects flat array)
+    unsigned char* txn_recipients_flat = malloc(PUBKEY_SIZE * total_recipients);
+    if (!txn_recipients_flat) {
+        free(txn_recipients);
+        free_encrypted_payload(encrypted_payload);
+        return NULL;
+    }
+    
+    // Copy all recipients to flat array for transaction
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        memcpy(txn_recipients_flat + (i * PUBKEY_SIZE), keys->node_public_keys[i], PUBKEY_SIZE);
+    }
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        memcpy(txn_recipients_flat + ((keys->node_count + i) * PUBKEY_SIZE), keys->user_public_keys[i], PUBKEY_SIZE);
+    }
+
     TW_Transaction* txn = TW_Transaction_create(
         TW_TXN_USER_REGISTRATION,
-        keys->user_public_keys[user_index],
-        keys->user_public_keys[user_index],
-        1,
+        creator_pubkey,
+        txn_recipients_flat,
+        total_recipients,
         NULL,
         encrypted_payload,
         NULL
@@ -435,11 +469,13 @@ TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, 
         free_encrypted_payload(encrypted_payload);
     }
     
+    free(txn_recipients);
+    free(txn_recipients_flat);
     return txn;
 }
 
-TW_Transaction* create_role_assignment_transaction(const GeneratedKeys* keys, uint32_t user_index) {
-    if (!keys || user_index >= keys->user_count) return NULL;
+TW_Transaction* create_role_assignment_transaction(const GeneratedKeys* keys, uint32_t user_index, const unsigned char* creator_pubkey) {
+    if (!keys || user_index >= keys->user_count || !creator_pubkey) return NULL;
 
     TW_TXN_RoleAssignment role_data;
     memset(&role_data, 0, sizeof(role_data));
@@ -468,22 +504,46 @@ TW_Transaction* create_role_assignment_transaction(const GeneratedKeys* keys, ui
         return NULL;
     }
 
+    // Create flat array of all recipients (nodes + users)
+    uint32_t total_recipients;
+    unsigned char* all_recipients_flat = create_all_recipients_flat(keys, &total_recipients);
+    if (!all_recipients_flat) {
+        free(serialized_buffer);
+        return NULL;
+    }
+
     EncryptedPayload* encrypted_payload = encrypt_payload_multi(
         serialized_buffer, 
         serialized_size, 
-        keys->user_public_keys[user_index],
-        1
+        all_recipients_flat,
+        total_recipients
     );
     free(serialized_buffer);
+    free(all_recipients_flat);
     if (!encrypted_payload) {
         return NULL;
     }
 
+    // Create flat array for transaction (TW_Transaction_create expects flat array)
+    unsigned char* txn_recipients_flat = malloc(PUBKEY_SIZE * total_recipients);
+    if (!txn_recipients_flat) {
+        free_encrypted_payload(encrypted_payload);
+        return NULL;
+    }
+    
+    // Copy all recipients to flat array for transaction
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        memcpy(txn_recipients_flat + (i * PUBKEY_SIZE), keys->node_public_keys[i], PUBKEY_SIZE);
+    }
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        memcpy(txn_recipients_flat + ((keys->node_count + i) * PUBKEY_SIZE), keys->user_public_keys[i], PUBKEY_SIZE);
+    }
+
     TW_Transaction* txn = TW_Transaction_create(
         TW_TXN_ROLE_ASSIGNMENT,
-        keys->user_public_keys[user_index],
-        keys->user_public_keys[user_index],
-        1,
+        creator_pubkey,
+        txn_recipients_flat,
+        total_recipients,
         NULL,
         encrypted_payload,
         NULL
@@ -491,13 +551,16 @@ TW_Transaction* create_role_assignment_transaction(const GeneratedKeys* keys, ui
     
     if (txn) {
         TW_Transaction_add_signature(txn);
+    } else {
+        free_encrypted_payload(encrypted_payload);
     }
     
+    free(txn_recipients_flat);
     return txn;
 }
 
-TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint32_t peer_index, const unsigned char* creator_pubkey) {
-    if (!peers || !creator_pubkey) return NULL;
+TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint32_t peer_index, const unsigned char* creator_pubkey, const GeneratedKeys* keys) {
+    if (!peers || !creator_pubkey || !keys) return NULL;
 
     // Create a simple peer registration transaction
     // For now, we'll use a system config transaction to register the peer
@@ -513,22 +576,46 @@ TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint
         return NULL;
     }
 
+    // Create flat array of all recipients (nodes + users)
+    uint32_t total_recipients;
+    unsigned char* all_recipients_flat = create_all_recipients_flat(keys, &total_recipients);
+    if (!all_recipients_flat) {
+        free(serialized_buffer);
+        return NULL;
+    }
+
     EncryptedPayload* encrypted_payload = encrypt_payload_multi(
         serialized_buffer, 
         serialized_size, 
-        creator_pubkey,
-        1
+        all_recipients_flat,
+        total_recipients
     );
     free(serialized_buffer);
+    free(all_recipients_flat);
     if (!encrypted_payload) {
         return NULL;
+    }
+
+    // Create flat array for transaction (TW_Transaction_create expects flat array)
+    unsigned char* txn_recipients_flat = malloc(PUBKEY_SIZE * total_recipients);
+    if (!txn_recipients_flat) {
+        free_encrypted_payload(encrypted_payload);
+        return NULL;
+    }
+    
+    // Copy all recipients to flat array for transaction
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        memcpy(txn_recipients_flat + (i * PUBKEY_SIZE), keys->node_public_keys[i], PUBKEY_SIZE);
+    }
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        memcpy(txn_recipients_flat + ((keys->node_count + i) * PUBKEY_SIZE), keys->user_public_keys[i], PUBKEY_SIZE);
     }
 
     TW_Transaction* txn = TW_Transaction_create(
         TW_TXN_SYSTEM_CONFIG,
         creator_pubkey,
-        creator_pubkey,
-        1,
+        txn_recipients_flat,
+        total_recipients,
         NULL,
         encrypted_payload,
         NULL
@@ -536,13 +623,16 @@ TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint
     
     if (txn) {
         TW_Transaction_add_signature(txn);
+    } else {
+        free_encrypted_payload(encrypted_payload);
     }
     
+    free(txn_recipients_flat);
     return txn;
 }
 
-TW_Transaction* create_system_config_transaction(const unsigned char* creator_pubkey) {
-    if (!creator_pubkey) return NULL;
+TW_Transaction* create_system_config_transaction(const unsigned char* creator_pubkey, const GeneratedKeys* keys) {
+    if (!creator_pubkey || !keys) return NULL;
 
     TW_TXN_SystemConfig config_data;
     memset(&config_data, 0, sizeof(config_data));
@@ -556,22 +646,46 @@ TW_Transaction* create_system_config_transaction(const unsigned char* creator_pu
         return NULL;
     }
 
+    // Create flat array of all recipients (nodes + users)
+    uint32_t total_recipients;
+    unsigned char* all_recipients_flat = create_all_recipients_flat(keys, &total_recipients);
+    if (!all_recipients_flat) {
+        free(serialized_buffer);
+        return NULL;
+    }
+
     EncryptedPayload* encrypted_payload = encrypt_payload_multi(
         serialized_buffer, 
         serialized_size, 
-        creator_pubkey,
-        1
+        all_recipients_flat,
+        total_recipients
     );
     free(serialized_buffer);
+    free(all_recipients_flat);
     if (!encrypted_payload) {
         return NULL;
+    }
+
+    // Create flat array for transaction (TW_Transaction_create expects flat array)
+    unsigned char* txn_recipients_flat = malloc(PUBKEY_SIZE * total_recipients);
+    if (!txn_recipients_flat) {
+        free_encrypted_payload(encrypted_payload);
+        return NULL;
+    }
+    
+    // Copy all recipients to flat array for transaction
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        memcpy(txn_recipients_flat + (i * PUBKEY_SIZE), keys->node_public_keys[i], PUBKEY_SIZE);
+    }
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        memcpy(txn_recipients_flat + ((keys->node_count + i) * PUBKEY_SIZE), keys->user_public_keys[i], PUBKEY_SIZE);
     }
 
     TW_Transaction* txn = TW_Transaction_create(
         TW_TXN_SYSTEM_CONFIG,
         creator_pubkey,
-        creator_pubkey,
-        1,
+        txn_recipients_flat,
+        total_recipients,
         NULL,
         encrypted_payload,
         NULL
@@ -579,13 +693,16 @@ TW_Transaction* create_system_config_transaction(const unsigned char* creator_pu
     
     if (txn) {
         TW_Transaction_add_signature(txn);
+    } else {
+        free_encrypted_payload(encrypted_payload);
     }
     
+    free(txn_recipients_flat);
     return txn;
 }
 
-TW_Transaction* create_content_filter_transaction(const unsigned char* creator_pubkey) {
-    if (!creator_pubkey) return NULL;
+TW_Transaction* create_content_filter_transaction(const unsigned char* creator_pubkey, const GeneratedKeys* keys) {
+    if (!creator_pubkey || !keys) return NULL;
 
     TW_TXN_ContentFilter filter_data;
     memset(&filter_data, 0, sizeof(filter_data));
@@ -600,22 +717,46 @@ TW_Transaction* create_content_filter_transaction(const unsigned char* creator_p
         return NULL;
     }
 
+    // Create flat array of all recipients (nodes + users)
+    uint32_t total_recipients;
+    unsigned char* all_recipients_flat = create_all_recipients_flat(keys, &total_recipients);
+    if (!all_recipients_flat) {
+        free(serialized_buffer);
+        return NULL;
+    }
+
     EncryptedPayload* encrypted_payload = encrypt_payload_multi(
         serialized_buffer, 
         serialized_size, 
-        creator_pubkey,
-        1
+        all_recipients_flat,
+        total_recipients
     );
     free(serialized_buffer);
+    free(all_recipients_flat);
     if (!encrypted_payload) {
         return NULL;
+    }
+
+    // Create flat array for transaction (TW_Transaction_create expects flat array)
+    unsigned char* txn_recipients_flat = malloc(PUBKEY_SIZE * total_recipients);
+    if (!txn_recipients_flat) {
+        free_encrypted_payload(encrypted_payload);
+        return NULL;
+    }
+    
+    // Copy all recipients to flat array for transaction
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        memcpy(txn_recipients_flat + (i * PUBKEY_SIZE), keys->node_public_keys[i], PUBKEY_SIZE);
+    }
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        memcpy(txn_recipients_flat + ((keys->node_count + i) * PUBKEY_SIZE), keys->user_public_keys[i], PUBKEY_SIZE);
     }
 
     TW_Transaction* txn = TW_Transaction_create(
         TW_TXN_CONTENT_FILTER,
         creator_pubkey,
-        creator_pubkey,
-        1,
+        txn_recipients_flat,
+        total_recipients,
         NULL,
         encrypted_payload,
         NULL
@@ -623,7 +764,10 @@ TW_Transaction* create_content_filter_transaction(const unsigned char* creator_p
     
     if (txn) {
         TW_Transaction_add_signature(txn);
+    } else {
+        free_encrypted_payload(encrypted_payload);
     }
     
+    free(txn_recipients_flat);
     return txn;
 } 

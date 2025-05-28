@@ -9,6 +9,7 @@
 #include "packages/encryption/encryption.h"
 #include "packages/utils/print.h"
 #include "packages/fileIO/blockchainIO.h"
+#include "packages/validation/block_validation.h"
 
 #define NUM_BLOCKS 8640
 #define TXNS_PER_BLOCK 1
@@ -58,6 +59,9 @@ static TW_Block* create_block_with_transactions(int block_index, const unsigned 
             free(transactions);
             return NULL;
         }
+        
+        // Sign the transaction
+        TW_Transaction_add_signature(transactions[i]);
     }
 
     // Create proposer_id
@@ -116,6 +120,22 @@ int blockchain_test_main(void) {
 
     printf("Created blockchain\n");
 
+    // Create validation configuration for testing
+    ValidationConfig* validation_config = create_default_validation_config();
+    if (!validation_config) {
+        printf("Failed to create validation configuration\n");
+        TW_BlockChain_destroy(blockchain);
+        keystore_cleanup();
+        return 1;
+    }
+    
+    // Enable all validation features for comprehensive testing
+    validation_config->validate_signatures = true;
+    validation_config->validate_merkle_tree = true;
+    validation_config->strict_ordering = true;
+    validation_config->max_timestamp_drift = 600; // 10 minutes for testing
+    printf("Created validation configuration\n");
+
     // Create group_id
     unsigned char group_id[GROUP_ID_SIZE] = {0};
     strncpy((char*)group_id, "test_group_id", GROUP_ID_SIZE-1);
@@ -124,36 +144,80 @@ int blockchain_test_main(void) {
     printf("Adding %d blocks with %d transactions each...\n", NUM_BLOCKS, TXNS_PER_BLOCK);
     
     unsigned char last_hash[HASH_SIZE];
+    int validation_failures = 0;
+    
     for (int i = 0; i < NUM_BLOCKS; i++) {
         // Get the hash of the last block
         TW_BlockChain_get_hash(blockchain, last_hash);
         
-        // Create a new block
-        TW_Block* new_block = create_block_with_transactions(i, last_hash, publicKey, group_id);
+        // Create a new block with index = current blockchain length
+        // This ensures the block index matches what the blockchain expects
+        uint32_t block_index = blockchain->length;
+        TW_Block* new_block = create_block_with_transactions(block_index, last_hash, publicKey, group_id);
         if (!new_block) {
-            printf("Failed to create block %d\n", i);
+            printf("Failed to create block %d\n", block_index);
+            free_validation_config(validation_config);
             TW_BlockChain_destroy(blockchain);
             keystore_cleanup();
             return 1;
         }
         
+        // Validate the block before adding it to the chain
+        ValidationResult validation_result = validate_block(new_block, blockchain, validation_config);
+        if (validation_result != VALIDATION_SUCCESS) {
+            printf("Block %d validation failed with error: %s\n", block_index, validation_error_string(validation_result));
+            validation_failures++;
+            
+            // For testing purposes, we'll continue but track failures
+            // In a real system, you might want to reject the block
+        }
+        
         // Add the block to the chain
         if (!TW_BlockChain_add_block(blockchain, new_block)) {
-            printf("Failed to add block %d to chain\n", i);
+            printf("Failed to add block %d to chain\n", block_index);
             TW_Block_destroy(new_block);
+            free_validation_config(validation_config);
             TW_BlockChain_destroy(blockchain);
             keystore_cleanup();
             return 1;
         }
         
         if (i % 100 == 0) {
-            printf("Added block %d\n", i);
+            printf("Added block %d\n", block_index);
+        }
+        
+        // Validate every 1000th block for performance sampling
+        if (i % 1000 == 0 && i > 0) {
+            ValidationResult block_validation = validate_block(blockchain->blocks[block_index], blockchain, validation_config);
+            if (block_validation != VALIDATION_SUCCESS) {
+                printf("Post-addition validation failed for block %d: %s\n", block_index, validation_error_string(block_validation));
+                validation_failures++;
+            }
         }
     }
+    
+    printf("Block creation completed with %d validation failures\n", validation_failures);
 
     // Get final blockchain hash
     TW_BlockChain_get_hash(blockchain, last_hash);
     print_hex("Final blockchain hash: ", last_hash, HASH_SIZE);
+
+    // Perform comprehensive blockchain validation
+    printf("\nPerforming comprehensive blockchain validation...\n");
+    ValidationResult blockchain_validation = validate_blockchain(blockchain, validation_config);
+    if (blockchain_validation == VALIDATION_SUCCESS) {
+        printf("✓ Comprehensive blockchain validation: PASSED\n");
+    } else {
+        printf("✗ Comprehensive blockchain validation: FAILED (%s)\n", validation_error_string(blockchain_validation));
+    }
+    
+    // Validate blockchain integrity
+    ValidationResult integrity_validation = validate_blockchain_integrity(blockchain);
+    if (integrity_validation == VALIDATION_SUCCESS) {
+        printf("✓ Blockchain integrity validation: PASSED\n");
+    } else {
+        printf("✗ Blockchain integrity validation: FAILED (%s)\n", validation_error_string(integrity_validation));
+    }
 
     // Test blockchain I/O
     printf("\nTesting blockchain I/O operations...\n");
@@ -161,6 +225,7 @@ int blockchain_test_main(void) {
     // Save blockchain to file
     if (!saveBlockChainToFile(blockchain)) {
         printf("Failed to save blockchain to file\n");
+        free_validation_config(validation_config);
         TW_BlockChain_destroy(blockchain);
         keystore_cleanup();
         return 1;
@@ -171,6 +236,7 @@ int blockchain_test_main(void) {
     TW_BlockChain* loaded_blockchain = readBlockChainFromFile();
     if (!loaded_blockchain) {
         printf("Failed to read blockchain from file\n");
+        free_validation_config(validation_config);
         TW_BlockChain_destroy(blockchain);
         keystore_cleanup();
         return 1;
@@ -184,6 +250,7 @@ int blockchain_test_main(void) {
     if (loaded_blockchain->length != blockchain->length) {
         printf("Loaded blockchain length mismatch: expected %u, got %u\n", 
                blockchain->length, loaded_blockchain->length);
+        free_validation_config(validation_config);
         TW_BlockChain_destroy(blockchain);
         TW_BlockChain_destroy(loaded_blockchain);
         keystore_cleanup();
@@ -198,6 +265,7 @@ int blockchain_test_main(void) {
         printf("Loaded blockchain hash mismatch\n");
         print_hex("Original hash: ", last_hash, HASH_SIZE);
         print_hex("Loaded hash  : ", loaded_hash, HASH_SIZE);
+        free_validation_config(validation_config);
         TW_BlockChain_destroy(blockchain);
         TW_BlockChain_destroy(loaded_blockchain);
         keystore_cleanup();
@@ -206,11 +274,54 @@ int blockchain_test_main(void) {
     print_hex("Loaded blockchain hash: ", loaded_hash, HASH_SIZE);
     printf("Hash verification: Passed\n");
     
+    // Validate the loaded blockchain
+    printf("Validating loaded blockchain...\n");
+    ValidationResult loaded_validation = validate_blockchain(loaded_blockchain, validation_config);
+    if (loaded_validation == VALIDATION_SUCCESS) {
+        printf("✓ Loaded blockchain validation: PASSED\n");
+    } else {
+        printf("✗ Loaded blockchain validation: FAILED (%s)\n", validation_error_string(loaded_validation));
+    }
+    
+    // Validate loaded blockchain integrity
+    ValidationResult loaded_integrity = validate_blockchain_integrity(loaded_blockchain);
+    if (loaded_integrity == VALIDATION_SUCCESS) {
+        printf("✓ Loaded blockchain integrity: PASSED\n");
+    } else {
+        printf("✗ Loaded blockchain integrity: FAILED (%s)\n", validation_error_string(loaded_integrity));
+    }
+    
+    // Sample validation of individual blocks from loaded blockchain
+    printf("Sampling individual block validation from loaded blockchain...\n");
+    int sample_blocks[] = {0, 100, 1000, 5000, NUM_BLOCKS-1}; // Sample different blocks
+    int sample_count = sizeof(sample_blocks) / sizeof(sample_blocks[0]);
+    int sample_failures = 0;
+    
+    for (int i = 0; i < sample_count; i++) {
+        int block_index = sample_blocks[i];
+        if (block_index < loaded_blockchain->length) {
+            ValidationResult sample_validation = validate_block(loaded_blockchain->blocks[block_index], loaded_blockchain, validation_config);
+            if (sample_validation != VALIDATION_SUCCESS) {
+                printf("✗ Sample block %d validation failed: %s\n", block_index, validation_error_string(sample_validation));
+                sample_failures++;
+            } else {
+                printf("✓ Sample block %d validation: PASSED\n", block_index);
+            }
+        }
+    }
+    
+    if (sample_failures == 0) {
+        printf("✓ All sampled blocks validated successfully\n");
+    } else {
+        printf("✗ %d out of %d sampled blocks failed validation\n", sample_failures, sample_count);
+    }
+    
     // If we got here, the I/O test passed
     printf("Blockchain I/O test: Passed\n");
     
     // Clean up I/O test resources
     TW_BlockChain_destroy(loaded_blockchain);
+    free_validation_config(validation_config);
 
     // Clean up before returning
     TW_BlockChain_destroy(blockchain);

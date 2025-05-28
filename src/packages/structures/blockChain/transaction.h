@@ -90,6 +90,9 @@ typedef enum {
     TW_TXN_SHARED_ALBUM_CREATE,    // Create shared photo/video album
     TW_TXN_MEDIA_ADD_TO_ALBUM_REQUEST, // Request to add media to shared album
     TW_TXN_COLLABORATIVE_PROJECT_CREATE, // Create collaborative project
+    
+    // Count of transaction types (must be last)
+    TW_TXN_TYPE_COUNT
 } TW_TransactionType;
 
 typedef struct {

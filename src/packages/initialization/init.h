@@ -48,25 +48,20 @@ int save_keys_to_keystore(const GeneratedKeys* keys, const char* keystore_path, 
 
 // Peer configuration functions
 int generate_peer_list(PeerInfo* peers, const GeneratedKeys* keys, uint16_t base_port);
-int create_peer_transactions(const PeerInfo* peers, TW_BlockChain* blockchain);
-
-// Permission setup functions
-int setup_initial_permissions(const GeneratedKeys* keys, TW_BlockChain* blockchain);
-int create_permission_transactions(TW_BlockChain* blockchain);
-
 // Initialization block creation
 int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers, TW_BlockChain* blockchain, const InitConfig* config);
 
 // Transaction creation functions
-TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, uint32_t user_index);
-TW_Transaction* create_role_assignment_transaction(const GeneratedKeys* keys, uint32_t user_index);
-TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint32_t peer_index, const unsigned char* creator_pubkey);
-TW_Transaction* create_system_config_transaction(const unsigned char* creator_pubkey);
-TW_Transaction* create_content_filter_transaction(const unsigned char* creator_pubkey);
+TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, uint32_t user_index, const unsigned char* creator_pubkey);
+TW_Transaction* create_role_assignment_transaction(const GeneratedKeys* keys, uint32_t user_index, const unsigned char* creator_pubkey);
+TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint32_t peer_index, const unsigned char* creator_pubkey, const GeneratedKeys* keys);
+TW_Transaction* create_system_config_transaction(const unsigned char* creator_pubkey, const GeneratedKeys* keys);
+TW_Transaction* create_content_filter_transaction(const unsigned char* creator_pubkey, const GeneratedKeys* keys);
 
 // Helper functions
+unsigned char* create_all_recipients_flat(const GeneratedKeys* keys, uint32_t* total_count);
+unsigned char** create_all_recipients_list(const GeneratedKeys* keys, uint32_t* total_count);
 int create_genesis_block(TW_BlockChain* blockchain);
-int setup_network_parameters(TW_BlockChain* blockchain);
 
 // Memory management
 void free_generated_keys(GeneratedKeys* keys);
