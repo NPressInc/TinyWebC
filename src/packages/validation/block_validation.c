@@ -121,12 +121,20 @@ ValidationResult validate_block_transactions(const TW_Block* block, const Valida
     if (!block) return VALIDATION_ERROR_NULL_POINTER;
     if (!config) config = &DEFAULT_CONFIG;
 
-    // Check transaction count limits
-    if (block->txn_count < config->min_transactions_per_block) {
-        return VALIDATION_ERROR_INSUFFICIENT_TRANSACTIONS;
-    }
-    if (block->txn_count > config->max_transactions_per_block) {
-        return VALIDATION_ERROR_TOO_MANY_TRANSACTIONS;
+    // Genesis block has relaxed transaction requirements
+    if (block->index == 0) {
+        // Genesis block can have zero transactions
+        if (block->txn_count > config->max_transactions_per_block) {
+            return VALIDATION_ERROR_TOO_MANY_TRANSACTIONS;
+        }
+    } else {
+        // Regular blocks follow normal transaction count rules
+        if (block->txn_count < config->min_transactions_per_block) {
+            return VALIDATION_ERROR_INSUFFICIENT_TRANSACTIONS;
+        }
+        if (block->txn_count > config->max_transactions_per_block) {
+            return VALIDATION_ERROR_TOO_MANY_TRANSACTIONS;
+        }
     }
 
     // Validate each transaction
@@ -135,7 +143,7 @@ ValidationResult validate_block_transactions(const TW_Block* block, const Valida
             return VALIDATION_ERROR_INVALID_TRANSACTION;
         }
 
-        ValidationResult result = validate_transaction(block->txns[i], config);
+        ValidationResult result = validate_transaction_for_block(block->txns[i], config, block->index);
         if (result != VALIDATION_SUCCESS) return result;
 
         // Check for duplicate transactions
@@ -237,8 +245,8 @@ ValidationResult validate_block_hash_chain(const TW_Block* block, const TW_Block
     return VALIDATION_SUCCESS;
 }
 
-// Validate individual transaction
-ValidationResult validate_transaction(const TW_Transaction* transaction, const ValidationConfig* config) {
+// Validate transaction with block context (allows special handling for genesis block)
+ValidationResult validate_transaction_for_block(const TW_Transaction* transaction, const ValidationConfig* config, uint32_t block_index) {
     if (!transaction) return VALIDATION_ERROR_NULL_POINTER;
     if (!config) config = &DEFAULT_CONFIG;
 
@@ -256,13 +264,18 @@ ValidationResult validate_transaction(const TW_Transaction* transaction, const V
     result = validate_transaction_payload(transaction);
     if (result != VALIDATION_SUCCESS) return result;
 
-    // Validate signature if enabled
-    if (config->validate_signatures) {
+    // Validate signature if enabled, but skip for genesis block transactions
+    if (config->validate_signatures && block_index > 0) {
         result = validate_transaction_signature(transaction);
         if (result != VALIDATION_SUCCESS) return result;
     }
 
     return VALIDATION_SUCCESS;
+}
+
+// Validate individual transaction (backward compatibility - assumes non-genesis block)
+ValidationResult validate_transaction(const TW_Transaction* transaction, const ValidationConfig* config) {
+    return validate_transaction_for_block(transaction, config, 1); // Use block_index = 1 (non-genesis)
 }
 
 // Validate transaction signature

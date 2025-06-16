@@ -5,3 +5,6 @@ tinyweb
 CMakeCache.txt
 node_key.bin
 *.bin
+*.dat
+*.db
+blockchain.json

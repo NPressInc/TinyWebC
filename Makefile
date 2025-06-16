@@ -692,6 +692,7 @@ src/packages/structures/blockChain/merkleTree.o: src/packages/structures/blockCh
 src/packages/structures/blockChain/merkleTree.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTree.c.o
 .PHONY : src/packages/structures/blockChain/merkleTree.c.o
 
 src/packages/structures/blockChain/merkleTree.i: src/packages/structures/blockChain/merkleTree.c.i
@@ -701,6 +702,7 @@ src/packages/structures/blockChain/merkleTree.i: src/packages/structures/blockCh
 src/packages/structures/blockChain/merkleTree.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTree.c.i
 .PHONY : src/packages/structures/blockChain/merkleTree.c.i
 
 src/packages/structures/blockChain/merkleTree.s: src/packages/structures/blockChain/merkleTree.c.s
@@ -710,6 +712,7 @@ src/packages/structures/blockChain/merkleTree.s: src/packages/structures/blockCh
 src/packages/structures/blockChain/merkleTree.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTree.c.s
 .PHONY : src/packages/structures/blockChain/merkleTree.c.s
 
 src/packages/structures/blockChain/merkleTreeNode.o: src/packages/structures/blockChain/merkleTreeNode.c.o
@@ -719,6 +722,7 @@ src/packages/structures/blockChain/merkleTreeNode.o: src/packages/structures/blo
 src/packages/structures/blockChain/merkleTreeNode.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.o
 
 src/packages/structures/blockChain/merkleTreeNode.i: src/packages/structures/blockChain/merkleTreeNode.c.i
@@ -728,6 +732,7 @@ src/packages/structures/blockChain/merkleTreeNode.i: src/packages/structures/blo
 src/packages/structures/blockChain/merkleTreeNode.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.i
 
 src/packages/structures/blockChain/merkleTreeNode.s: src/packages/structures/blockChain/merkleTreeNode.c.s
@@ -737,6 +742,7 @@ src/packages/structures/blockChain/merkleTreeNode.s: src/packages/structures/blo
 src/packages/structures/blockChain/merkleTreeNode.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.s
 
 src/packages/structures/blockChain/transaction.o: src/packages/structures/blockChain/transaction.c.o

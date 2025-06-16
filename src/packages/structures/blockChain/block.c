@@ -63,6 +63,62 @@ TW_Block* TW_Block_create(int32_t index, TW_Transaction** block_txns, int32_t tx
     return block;
 }
 
+/** Builds the merkle tree for the block and sets the merkle_root_hash. */
+void TW_Block_buildMerkleTree(TW_Block* block) {
+    if (!block) return;
+    
+    // If no transactions, set merkle root to zero
+    if (block->txn_count == 0) {
+        memset(block->merkle_root_hash, 0, HASH_SIZE);
+        return;
+    }
+    
+    // Create transaction hashes array
+    unsigned char** tx_hashes = malloc(sizeof(unsigned char*) * block->txn_count);
+    if (!tx_hashes) return;
+    
+    size_t* hash_sizes = malloc(sizeof(size_t) * block->txn_count);
+    if (!hash_sizes) {
+        free(tx_hashes);
+        return;
+    }
+    
+    // Calculate hash for each transaction
+    for (int32_t i = 0; i < block->txn_count; i++) {
+        tx_hashes[i] = malloc(HASH_SIZE);
+        if (!tx_hashes[i]) {
+            // Cleanup on failure
+            for (int32_t j = 0; j < i; j++) {
+                free(tx_hashes[j]);
+            }
+            free(tx_hashes);
+            free(hash_sizes);
+            return;
+        }
+        TW_Transaction_hash(block->txns[i], tx_hashes[i]);
+        hash_sizes[i] = HASH_SIZE;
+    }
+    
+    // Build merkle tree and get root
+    TW_MerkleTreeNode* root = TW_MerkleTree_buildTree((const unsigned char**)tx_hashes, block->txn_count, hash_sizes);
+    
+    if (root) {
+        // Copy root hash to block
+        memcpy(block->merkle_root_hash, root->hash, HASH_SIZE);
+        // Note: We don't free the root node here as TW_MerkleTree_buildTree 
+        // may return a node that's part of a larger tree structure
+    } else {
+        // If tree building failed, set to zero
+        memset(block->merkle_root_hash, 0, HASH_SIZE);
+    }
+    
+    // Cleanup transaction hashes
+    for (int32_t i = 0; i < block->txn_count; i++) {
+        free(tx_hashes[i]);
+    }
+    free(tx_hashes);
+    free(hash_sizes);
+}
 
 int TW_Block_getHash(TW_Block* block, unsigned char* hash_out) {
     if (!block || !hash_out) {

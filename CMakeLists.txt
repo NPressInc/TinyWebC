@@ -86,6 +86,8 @@ add_executable(init_tool
     src/packages/signing/signing.c
     src/packages/structures/blockChain/blockchain.c
     src/packages/structures/blockChain/block.c
+    src/packages/structures/blockChain/merkleTree.c
+    src/packages/structures/blockChain/merkleTreeNode.c
     src/packages/fileIO/blockchainIO.c
     src/packages/encryption/encryption.c
     src/packages/structures/blockChain/transaction.c

@@ -46,6 +46,7 @@ ValidationResult validate_block_hash_chain(const TW_Block* block, const TW_Block
 
 // Transaction validation functions
 ValidationResult validate_transaction(const TW_Transaction* transaction, const ValidationConfig* config);
+ValidationResult validate_transaction_for_block(const TW_Transaction* transaction, const ValidationConfig* config, uint32_t block_index);
 ValidationResult validate_transaction_signature(const TW_Transaction* transaction);
 ValidationResult validate_transaction_payload(const TW_Transaction* transaction);
 ValidationResult validate_transaction_recipients(const TW_Transaction* transaction);
