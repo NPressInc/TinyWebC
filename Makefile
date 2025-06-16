@@ -517,6 +517,87 @@ src/packages/signing/signing.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.s
 .PHONY : src/packages/signing/signing.c.s
 
+src/packages/sql/database.o: src/packages/sql/database.c.o
+.PHONY : src/packages/sql/database.o
+
+# target to build an object file
+src/packages/sql/database.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.o
+.PHONY : src/packages/sql/database.c.o
+
+src/packages/sql/database.i: src/packages/sql/database.c.i
+.PHONY : src/packages/sql/database.i
+
+# target to preprocess a source file
+src/packages/sql/database.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.i
+.PHONY : src/packages/sql/database.c.i
+
+src/packages/sql/database.s: src/packages/sql/database.c.s
+.PHONY : src/packages/sql/database.s
+
+# target to generate assembly for a file
+src/packages/sql/database.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.s
+.PHONY : src/packages/sql/database.c.s
+
+src/packages/sql/queries.o: src/packages/sql/queries.c.o
+.PHONY : src/packages/sql/queries.o
+
+# target to build an object file
+src/packages/sql/queries.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.o
+.PHONY : src/packages/sql/queries.c.o
+
+src/packages/sql/queries.i: src/packages/sql/queries.c.i
+.PHONY : src/packages/sql/queries.i
+
+# target to preprocess a source file
+src/packages/sql/queries.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.i
+.PHONY : src/packages/sql/queries.c.i
+
+src/packages/sql/queries.s: src/packages/sql/queries.c.s
+.PHONY : src/packages/sql/queries.s
+
+# target to generate assembly for a file
+src/packages/sql/queries.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.s
+.PHONY : src/packages/sql/queries.c.s
+
+src/packages/sql/schema.o: src/packages/sql/schema.c.o
+.PHONY : src/packages/sql/schema.o
+
+# target to build an object file
+src/packages/sql/schema.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.o
+.PHONY : src/packages/sql/schema.c.o
+
+src/packages/sql/schema.i: src/packages/sql/schema.c.i
+.PHONY : src/packages/sql/schema.i
+
+# target to preprocess a source file
+src/packages/sql/schema.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.i
+.PHONY : src/packages/sql/schema.c.i
+
+src/packages/sql/schema.s: src/packages/sql/schema.c.s
+.PHONY : src/packages/sql/schema.s
+
+# target to generate assembly for a file
+src/packages/sql/schema.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.s
+.PHONY : src/packages/sql/schema.c.s
+
 src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/block.c.o
 .PHONY : src/packages/structures/blockChain/block.o
 
@@ -853,6 +934,30 @@ src/tests/blockchain_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/blockchain_test.c.s
 .PHONY : src/tests/blockchain_test.c.s
 
+src/tests/database_test.o: src/tests/database_test.c.o
+.PHONY : src/tests/database_test.o
+
+# target to build an object file
+src/tests/database_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/database_test.c.o
+.PHONY : src/tests/database_test.c.o
+
+src/tests/database_test.i: src/tests/database_test.c.i
+.PHONY : src/tests/database_test.i
+
+# target to preprocess a source file
+src/tests/database_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/database_test.c.i
+.PHONY : src/tests/database_test.c.i
+
+src/tests/database_test.s: src/tests/database_test.c.s
+.PHONY : src/tests/database_test.s
+
+# target to generate assembly for a file
+src/tests/database_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/database_test.c.s
+.PHONY : src/tests/database_test.c.s
+
 src/tests/encryption_test.o: src/tests/encryption_test.c.o
 .PHONY : src/tests/encryption_test.o
 
@@ -998,6 +1103,15 @@ help:
 	@echo "... src/packages/signing/signing.o"
 	@echo "... src/packages/signing/signing.i"
 	@echo "... src/packages/signing/signing.s"
+	@echo "... src/packages/sql/database.o"
+	@echo "... src/packages/sql/database.i"
+	@echo "... src/packages/sql/database.s"
+	@echo "... src/packages/sql/queries.o"
+	@echo "... src/packages/sql/queries.i"
+	@echo "... src/packages/sql/queries.s"
+	@echo "... src/packages/sql/schema.o"
+	@echo "... src/packages/sql/schema.i"
+	@echo "... src/packages/sql/schema.s"
 	@echo "... src/packages/structures/blockChain/block.o"
 	@echo "... src/packages/structures/blockChain/block.i"
 	@echo "... src/packages/structures/blockChain/block.s"
@@ -1034,6 +1148,9 @@ help:
 	@echo "... src/tests/blockchain_test.o"
 	@echo "... src/tests/blockchain_test.i"
 	@echo "... src/tests/blockchain_test.s"
+	@echo "... src/tests/database_test.o"
+	@echo "... src/tests/database_test.i"
+	@echo "... src/tests/database_test.s"
 	@echo "... src/tests/encryption_test.o"
 	@echo "... src/tests/encryption_test.i"
 	@echo "... src/tests/encryption_test.s"

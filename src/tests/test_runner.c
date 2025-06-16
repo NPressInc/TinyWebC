@@ -7,6 +7,7 @@
 #include "tests/signing_test.h"
 #include "tests/blockchain_test.h"
 #include "tests/init_network_test.h"
+#include "tests/database_test.h"
 
 
 int main(int argc, char* argv[]) {
@@ -20,7 +21,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 4;
+        int total_tests = 5;
 
         printf("Running all tests...\n\n");
 
@@ -72,6 +73,18 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         printf("\n");
 
+        // Run database tests
+        printf("Running database tests...\n");
+        if (database_test_main() == 0) {
+            printf("✓ Database tests passed\n");
+            tests_passed++;
+        } else {
+            printf("✗ Database tests failed\n");
+            tests_failed++;
+        }
+        keystore_cleanup();
+        printf("\n");
+
         // Print summary
         printf("Test Summary:\n");
         printf("Total tests: %d\n", total_tests);
@@ -106,9 +119,15 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         return result;
     }
+    else if (strcmp(argv[1], "database") == 0) {
+        printf("Running database test...\n");
+        int result = database_test_main();
+        keystore_cleanup();
+        return result;
+    }
     else {
         printf("Unknown test: %s\n", argv[1]);
-        printf("Available tests: encryption, signing, blockchain, init_network\n");
+        printf("Available tests: encryption, signing, blockchain, init_network, database\n");
         return 1;
     }
 

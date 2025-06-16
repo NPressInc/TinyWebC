@@ -16,6 +16,7 @@ find_package(cJSON REQUIRED)
 pkg_check_modules(SODIUM REQUIRED libsodium)
 find_package(OpenSSL REQUIRED)
 pkg_check_modules(LZ4 REQUIRED liblz4)
+find_package(SQLite3 REQUIRED)
 
 target_link_libraries(tinyweb PRIVATE 
     ${MICROHTTPD_LIBRARIES} 
@@ -23,6 +24,7 @@ target_link_libraries(tinyweb PRIVATE
     ${SODIUM_LIBRARIES} 
     OpenSSL::Crypto
     ${LZ4_LIBRARIES}
+    SQLite::SQLite3
 )
 
 target_include_directories(tinyweb PRIVATE 
@@ -51,6 +53,7 @@ target_link_libraries(tinyweb_tests PRIVATE
     ${SODIUM_LIBRARIES} 
     OpenSSL::Crypto
     ${LZ4_LIBRARIES}
+    SQLite::SQLite3
 )
 
 target_include_directories(tinyweb_tests PRIVATE 
@@ -105,4 +108,5 @@ target_link_libraries(init_tool
     OpenSSL::Crypto
     ${LZ4_LIBRARIES}
     cjson
+    SQLite::SQLite3
 )
