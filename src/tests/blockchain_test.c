@@ -1,5 +1,6 @@
 #include "string.h"
 #include <math.h>
+#include <unistd.h>  // For sleep()
 
 #include "blockchain_test.h" 
 #include "packages/structures/blockChain/blockchain.h"
@@ -16,7 +17,8 @@
 
 // Helper function to create a block of transactions
 static TW_Block* create_block_with_transactions(int block_index, const unsigned char* prev_hash, 
-                                              const unsigned char* publicKey, const unsigned char* group_id) {
+                                              const unsigned char* publicKey, const unsigned char* group_id,
+                                              const TW_BlockChain* blockchain) {
     TW_Transaction** transactions = malloc(sizeof(TW_Transaction*) * TXNS_PER_BLOCK);
     if (!transactions) return NULL;
 
@@ -73,7 +75,15 @@ static TW_Block* create_block_with_transactions(int block_index, const unsigned 
     clock_gettime(CLOCK_REALTIME, &ts);
     time_t block_timestamp = ts.tv_sec;
     
-    // For rapid block creation, add microseconds to ensure unique timestamps
+    // Ensure timestamp is always greater than the previous block's timestamp
+    if (blockchain && blockchain->length > 0) {
+        TW_Block* last_block = TW_BlockChain_get_last_block((TW_BlockChain*)blockchain);
+        if (last_block && block_timestamp <= last_block->timestamp) {
+            block_timestamp = last_block->timestamp + 1;
+        }
+    }
+    
+    // For rapid block creation, also check against static last timestamp
     static time_t last_timestamp = 0;
     if (block_timestamp <= last_timestamp) {
         block_timestamp = last_timestamp + 1;
@@ -167,7 +177,7 @@ int blockchain_test_main(void) {
         // Create a new block with index = current blockchain length
         // This ensures the block index matches what the blockchain expects
         uint32_t block_index = blockchain->length;
-        TW_Block* new_block = create_block_with_transactions(block_index, last_hash, publicKey, group_id);
+        TW_Block* new_block = create_block_with_transactions(block_index, last_hash, publicKey, group_id, blockchain);
         if (!new_block) {
             printf("Failed to create block %d\n", block_index);
             free_validation_config(validation_config);
