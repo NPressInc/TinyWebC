@@ -161,6 +161,20 @@ ValidationResult validate_block_transactions(const TW_Block* block, const Valida
 ValidationResult validate_block_merkle_root(const TW_Block* block) {
     if (!block) return VALIDATION_ERROR_NULL_POINTER;
 
+    // Genesis block has relaxed merkle tree requirements
+    if (block->index == 0) {
+        // Genesis block with no transactions should have zero merkle root
+        if (block->txn_count == 0) {
+            unsigned char zero_hash[HASH_SIZE] = {0};
+            if (memcmp(block->merkle_root_hash, zero_hash, HASH_SIZE) != 0) {
+                return VALIDATION_ERROR_INVALID_MERKLE_ROOT;
+            }
+            return VALIDATION_SUCCESS;
+        }
+        // Genesis block with transactions - validate normally but be more lenient
+        // (could add special genesis transaction validation here if needed)
+    }
+
     // If no transactions, merkle root should be zero
     if (block->txn_count == 0) {
         unsigned char zero_hash[HASH_SIZE] = {0};

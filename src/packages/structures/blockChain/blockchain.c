@@ -102,6 +102,9 @@ void TW_BlockChain_create_genesis_block(TW_BlockChain* blockchain, const unsigne
 
     // Add the block to the blockchain
     if (genesis) {
+        // Build the merkle tree for the genesis block
+        TW_Block_buildMerkleTree(genesis);
+        
         blockchain->blocks[0] = genesis;
         blockchain->length = 1;
     } else {

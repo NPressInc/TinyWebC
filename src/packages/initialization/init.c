@@ -337,6 +337,9 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
 
     printf("Block created successfully\n");
 
+    // Build the merkle tree for the initialization block
+    TW_Block_buildMerkleTree(init_block);
+
     // Add the block to the blockchain
     if (TW_BlockChain_add_block(blockchain, init_block) == 0) {
         printf("Failed to add block to blockchain\n");
