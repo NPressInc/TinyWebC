@@ -1,0 +1,112 @@
+TinyWeb PBFT Node Starting...
+Node Configuration:
+  Node ID: 0
+  API Port: 5001
+Initializing PBFT system components...
+Message queues initialized
+System components initialized successfully
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading/creating blockchain for node 0
+Loading existing blockchain from state/blockchain/blockchain.dat
+Loaded blockchain (Original size: 6218 bytes, Compressed size: 4695 bytes)
+Loaded existing blockchain for node 0 with length 2
+PBFT node initialized successfully
+PBFT node 0 starting on port 5001
+PBFT monitor thread started
+Node Status - ID: 0, Blockchain Length: 2, Peers: 0
+PBFT node threads started successfully
+PBFT main consensus loop started for node 0
+Starting PBFT API server on port 5001
+PBFT API server listening on http://0.0.0.0:5001
+Node 0: Proposing block (round 3)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 3
+Successfully parsed transaction: type=1, recipients=1
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database closed successfully
+User verification failed: Not registered
+User not verified, public key: d25e49d4bb495f3e3fa9757164337ad354184282a0bde7ca940bd53b526be522
+Node 0: Proposing block (round 6)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 6
+Successfully parsed transaction: type=1, recipients=1
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database closed successfully
+User verification failed: Not registered
+User not verified, public key: d25e49d4bb495f3e3fa9757164337ad354184282a0bde7ca940bd53b526be522
+Node 0: Proposing block (round 9)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 9
+Node 0: Blockchain length: 2, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Sending block creation signal for singular node
+Node 0: Proposing block (round 12)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 12
+Successfully parsed transaction: type=1, recipients=1
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database closed successfully
+User verification failed: Not registered
+User not verified, public key: d25e49d4bb495f3e3fa9757164337ad354184282a0bde7ca940bd53b526be522
+Node 0: Proposing block (round 15)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 15
+Node 0: Proposing block (round 18)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 18
+Node 0: Blockchain length: 2, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Sending block creation signal for singular node
+Node 0: Proposing block (round 21)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 21
+Node 0: Checking blockchain sync and peer status
+Node 0: Proposing block (round 24)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 24
+Node 0: Proposing block (round 27)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 27
+Node 0: Blockchain length: 2, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Sending block creation signal for singular node
+Node 0: Proposing block (round 30)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 30
+Node 0: Proposing block (round 33)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 33
+Node 0: Proposing block (round 36)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 36
+Node 0: Proposing block (round 39)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 39
+Node 0: Blockchain length: 2, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Sending block creation signal for singular node
+Node 0: Proposing block (round 42)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 42
+Node 0: Checking blockchain sync and peer status
+Node 0: Proposing block (round 45)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 45
+Node 0: Proposing block (round 48)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 48
+
+Received signal 15, shutting down gracefully...
+PBFT monitor thread stopping
+PBFT main consensus loop stopped for node 0
+PBFT API server shutting down
+PBFT node 0 shutdown complete
+Waiting for monitor thread to finish...
+Cleaning up system components...
+Message queues cleaned up
+System cleanup completed
+TinyWeb PBFT Node shutdown complete

@@ -1,0 +1,41 @@
+TinyWeb PBFT Node Starting...
+Node Configuration:
+  Node ID: 0
+  API Port: 5001
+Initializing PBFT system components...
+Message queues initialized
+System components initialized successfully
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading/creating blockchain for node 0
+Loading existing blockchain from state/blockchain/blockchain.dat
+Loaded blockchain (Original size: 6218 bytes, Compressed size: 4695 bytes)
+Loaded existing blockchain for node 0 with length 2
+PBFT node initialized successfully
+PBFT node 0 starting on port 5001
+PBFT monitor thread started
+Node Status - ID: 0, Blockchain Length: 2, Peers: 0
+PBFT node threads started successfully
+Starting PBFT API server on port 5001
+PBFT main consensus loop started for node 0
+PBFT API server listening on http://0.0.0.0:5001
+Node 0: Proposing block (round 3)
+Created new block with index 2 and 0 transactions
+Node 0 proposing block with round 3
+Successfully parsed transaction: type=1, recipients=1
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database closed successfully
+User verification failed: Not registered
+User not verified, public key: 5417462dce95547db7580d7c1014ec19a97ecd3425c7fff2be4f294f0c67db3f
+
+Received signal 15, shutting down gracefully...
+PBFT monitor thread stopping
+PBFT main consensus loop stopped for node 0
+PBFT API server shutting down
+PBFT node 0 shutdown complete
+Waiting for monitor thread to finish...
+Cleaning up system components...
+Message queues cleaned up
+System cleanup completed
+TinyWeb PBFT Node shutdown complete

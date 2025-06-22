@@ -8,6 +8,7 @@
 #include "tests/blockchain_test.h"
 #include "tests/init_network_test.h"
 #include "tests/database_test.h"
+#include "tests/mongoose_test.h"
 
 
 int main(int argc, char* argv[]) {
@@ -21,7 +22,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 5;
+        int total_tests = 6;
 
         printf("Running all tests...\n\n");
 
@@ -85,6 +86,17 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         printf("\n");
 
+        // Run mongoose tests
+        printf("Running mongoose tests...\n");
+        if (mongoose_test_main() == 1) {
+            printf("✓ Mongoose tests passed\n");
+            tests_passed++;
+        } else {
+            printf("✗ Mongoose tests failed\n");
+            tests_failed++;
+        }
+        printf("\n");
+
         // Print summary
         printf("Test Summary:\n");
         printf("Total tests: %d\n", total_tests);
@@ -125,9 +137,14 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         return result;
     }
+    else if (strcmp(argv[1], "mongoose") == 0) {
+        printf("Running mongoose test...\n");
+        int result = mongoose_test_main();
+        return result == 1 ? 0 : 1;  // Convert mongoose return value (1=success) to standard (0=success)
+    }
     else {
         printf("Unknown test: %s\n", argv[1]);
-        printf("Available tests: encryption, signing, blockchain, init_network, database\n");
+        printf("Available tests: encryption, signing, blockchain, init_network, database, mongoose\n");
         return 1;
     }
 

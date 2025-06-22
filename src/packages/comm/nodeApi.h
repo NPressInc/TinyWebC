@@ -15,10 +15,12 @@ typedef struct {
     RouteHandler handler;
 } Route;
 
+// External route table declaration
+extern Route routes[];
+
 // Function declarations
 void handle_json(struct mg_connection* c, struct mg_http_message* hm);
 void handle_binary(struct mg_connection* c, struct mg_http_message* hm);
-static void fn(struct mg_connection* c, int ev, void* ev_data);
 void start_node_api(const char* port);
 
 #endif // TW_NODE_API_H
