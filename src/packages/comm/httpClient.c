@@ -2,16 +2,160 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "external/mongoose/mongoose.h"
+#include "packages/structures/blockChain/internalTransaction.h"
 
-// HTTP client functions (stubs)
+// Global HTTP client manager
+static struct mg_mgr http_client_mgr;
+static int client_initialized = 0;
+
+// Request context for tracking async requests
+typedef struct {
+    HttpResponse* response;
+    int completed;
+    void (*callback)(HttpResponse*, void*);
+    void* callback_data;
+} RequestContext;
+
+// Async request structure
+struct HttpAsyncRequest {
+    RequestContext ctx;
+    struct mg_connection* conn;
+    int completed;
+};
+
+// Initialize HTTP client
+int http_client_init(void) {
+    if (client_initialized) return 1;
+    
+    mg_mgr_init(&http_client_mgr);
+    client_initialized = 1;
+    printf("Mongoose HTTP client initialized\n");
+    return 1;
+}
+
+// Cleanup HTTP client
+void http_client_cleanup(void) {
+    if (client_initialized) {
+        mg_mgr_free(&http_client_mgr);
+        client_initialized = 0;
+        printf("Mongoose HTTP client cleaned up\n");
+    }
+}
+
+// Event handler for HTTP client responses
+static void http_client_event_handler(struct mg_connection *c, int ev, void *ev_data) {
+    RequestContext *ctx = (RequestContext*)c->fn_data;
+    
+    if (ev == MG_EV_HTTP_MSG) {
+        struct mg_http_message *hm = (struct mg_http_message*)ev_data;
+        
+        if (ctx && ctx->response) {
+            // Parse status code from response (it's in the proto field for HTTP responses)
+            ctx->response->status_code = mg_http_status(hm);
+            ctx->response->size = hm->body.len;
+            
+            if (hm->body.len > 0) {
+                ctx->response->data = malloc(hm->body.len + 1);
+                if (ctx->response->data) {
+                    memcpy(ctx->response->data, hm->body.buf, hm->body.len);
+                    ctx->response->data[hm->body.len] = '\0';
+                }
+            }
+            
+            // Copy first few headers (simplified)
+            ctx->response->headers = malloc(512);
+            if (ctx->response->headers) {
+                ctx->response->headers[0] = '\0';
+                for (int i = 0; i < 5 && hm->headers[i].name.buf; i++) {
+                    if (strlen(ctx->response->headers) < 400) {
+                        strncat(ctx->response->headers, hm->headers[i].name.buf, hm->headers[i].name.len);
+                        strcat(ctx->response->headers, ": ");
+                        strncat(ctx->response->headers, hm->headers[i].value.buf, hm->headers[i].value.len);
+                        strcat(ctx->response->headers, "\r\n");
+                    }
+                }
+            }
+        }
+        
+        ctx->completed = 1;
+        c->is_closing = 1;
+        
+    } else if (ev == MG_EV_ERROR) {
+        printf("HTTP client connection error: %s\n", (char*)ev_data);
+        ctx->completed = 1;
+        c->is_closing = 1;
+    }
+}
+
+// Synchronous HTTP request
 HttpResponse* http_client_request(const char* url, HttpMethod method, 
                                  const char* data, size_t data_len,
                                  const char* headers[], 
                                  const HttpClientConfig* config) {
-    printf("HTTP request to %s (stub)\n", url);
-    return NULL;
+    if (!client_initialized) {
+        if (!http_client_init()) return NULL;
+    }
+    
+    HttpResponse* response = malloc(sizeof(HttpResponse));
+    if (!response) return NULL;
+    
+    memset(response, 0, sizeof(HttpResponse));
+    
+    RequestContext ctx = {0};
+    ctx.response = response;
+    ctx.completed = 0;
+    
+    // Create connection
+    struct mg_connection *c = mg_http_connect(&http_client_mgr, url, http_client_event_handler, &ctx);
+    if (!c) {
+        printf("Failed to create HTTP connection to %s\n", url);
+        free(response);
+        return NULL;
+    }
+    
+    // Set up request
+    if (method == HTTP_POST && data) {
+        mg_printf(c, "POST %s HTTP/1.1\r\n", mg_url_uri(url));
+        mg_printf(c, "Host: %s\r\n", mg_url_host(url));
+        mg_printf(c, "Content-Type: application/json\r\n");
+        mg_printf(c, "Content-Length: %zu\r\n", data_len);
+        
+        // Add custom headers
+        if (headers) {
+            for (int i = 0; headers[i] != NULL; i++) {
+                mg_printf(c, "%s\r\n", headers[i]);
+            }
+        }
+        
+        mg_printf(c, "\r\n");
+        mg_send(c, data, data_len);
+    } else {
+        // GET request
+        mg_printf(c, "GET %s HTTP/1.1\r\n", mg_url_uri(url));
+        mg_printf(c, "Host: %s\r\n", mg_url_host(url));
+        mg_printf(c, "\r\n");
+    }
+    
+    // Poll until request completes (with timeout)
+    int timeout_ms = config ? config->timeout_seconds * 1000 : 30000;
+    int elapsed = 0;
+    
+    while (!ctx.completed && elapsed < timeout_ms) {
+        mg_mgr_poll(&http_client_mgr, 100);
+        elapsed += 100;
+    }
+    
+    if (!ctx.completed) {
+        printf("HTTP request to %s timed out\n", url);
+        http_response_free(response);
+        return NULL;
+    }
+    
+    return response;
 }
 
+// Convenience methods
 HttpResponse* http_client_get(const char* url, const char* headers[], 
                              const HttpClientConfig* config) {
     return http_client_request(url, HTTP_GET, NULL, 0, headers, config);
@@ -74,26 +218,231 @@ int http_client_is_success_status(int status_code) {
 }
 
 char* http_client_extract_json_field(const char* json_response, const char* field_name) {
-    // TODO: Implement JSON field extraction
-    return NULL;
+    if (!json_response || !field_name) return NULL;
+    
+    // Simple JSON field extraction (for production, use a proper JSON parser)
+    char search_pattern[256];
+    snprintf(search_pattern, sizeof(search_pattern), "\"%s\":", field_name);
+    
+    char* field_start = strstr(json_response, search_pattern);
+    if (!field_start) return NULL;
+    
+    field_start += strlen(search_pattern);
+    
+    // Skip whitespace and quotes
+    while (*field_start == ' ' || *field_start == '\t' || *field_start == '"') {
+        field_start++;
+    }
+    
+    // Find end of value
+    char* field_end = field_start;
+    while (*field_end && *field_end != '"' && *field_end != ',' && *field_end != '}') {
+        field_end++;
+    }
+    
+    // Extract value
+    size_t value_len = field_end - field_start;
+    char* value = malloc(value_len + 1);
+    if (value) {
+        memcpy(value, field_start, value_len);
+        value[value_len] = '\0';
+    }
+    
+    return value;
 }
 
-// Async HTTP client (stubs)
+// Async HTTP client (simplified implementation)
 HttpAsyncRequest* http_client_async_post(const char* url, const char* json_data,
                                         void (*callback)(HttpResponse*, void*),
                                         void* callback_data) {
-    printf("Async HTTP POST to %s (stub)\n", url);
-    return NULL;
+    if (!client_initialized) {
+        if (!http_client_init()) return NULL;
+    }
+    
+    HttpAsyncRequest* async_req = malloc(sizeof(HttpAsyncRequest));
+    if (!async_req) return NULL;
+    
+    // For this simplified implementation, we'll just do a synchronous call
+    // In a full implementation, you'd use a separate thread or event loop
+    HttpResponse* response = http_client_post_json(url, json_data, NULL);
+    
+    if (callback) {
+        callback(response, callback_data);
+    }
+    
+    http_response_free(response);
+    
+    return async_req;
 }
 
 void http_async_request_wait(HttpAsyncRequest* request) {
-    // Stub
+    // In this simplified implementation, requests complete immediately
+    return;
 }
 
 void http_async_request_cancel(HttpAsyncRequest* request) {
-    // Stub
+    // Implementation would cancel ongoing request
+    return;
 }
 
 void http_async_request_free(HttpAsyncRequest* request) {
     free(request);
+}
+
+// PBFT-specific binary protocol functions
+int pbft_send_internal_transaction(const char* peer_url, const char* endpoint, 
+                                   const unsigned char* binary_data, size_t data_size) {
+    if (!peer_url || !endpoint || !binary_data || data_size == 0) {
+        return 0;
+    }
+    
+    // Construct full URL
+    char full_url[512];
+    snprintf(full_url, sizeof(full_url), "%s%s", peer_url, endpoint);
+    
+    // Send binary data via POST
+    HttpResponse* response = http_client_post(full_url, (const char*)binary_data, data_size, NULL, NULL);
+    
+    int success = 0;
+    if (response && http_client_is_success_status(response->status_code)) {
+        success = 1;
+    }
+    
+    if (response) {
+        free(response->data);
+        free(response->headers);
+        free(response);
+    }
+    
+    return success;
+}
+
+int pbft_send_block_proposal_binary(const char* peer_url, TW_InternalTransaction* proposal) {
+    if (!peer_url || !proposal) {
+        return 0;
+    }
+    
+    // Serialize the internal transaction to binary
+    unsigned char* binary_data = NULL;
+    size_t data_size = TW_InternalTransaction_serialize(proposal, &binary_data);
+    
+    if (!binary_data || data_size == 0) {
+        return 0;
+    }
+    
+    // Send to ProposeBlock endpoint
+    int result = pbft_send_internal_transaction(peer_url, "/ProposeBlock", binary_data, data_size);
+    
+    free(binary_data);
+    return result;
+}
+
+int pbft_send_vote_binary(const char* peer_url, TW_InternalTransaction* vote) {
+    if (!peer_url || !vote) {
+        return 0;
+    }
+    
+    // Serialize the internal transaction to binary
+    unsigned char* binary_data = NULL;
+    size_t data_size = TW_InternalTransaction_serialize(vote, &binary_data);
+    
+    if (!binary_data || data_size == 0) {
+        return 0;
+    }
+    
+    // Determine endpoint based on vote type
+    const char* endpoint;
+    switch (vote->type) {
+        case TW_INT_TXN_VOTE_VERIFY:
+            endpoint = "/VerificationVote";
+            break;
+        case TW_INT_TXN_VOTE_COMMIT:
+            endpoint = "/CommitVote";
+            break;
+        case TW_INT_TXN_VOTE_NEW_ROUND:
+            endpoint = "/NewRound";
+            break;
+        default:
+            free(binary_data);
+            return 0;
+    }
+    
+    int result = pbft_send_internal_transaction(peer_url, endpoint, binary_data, data_size);
+    
+    free(binary_data);
+    return result;
+}
+
+// Legacy JSON functions (for client transactions only)
+int pbft_send_block_proposal(const char* peer_url, const char* block_hash, 
+                            const char* block_data, const char* sender_pubkey, 
+                            const char* signature) {
+    char url[512];
+    snprintf(url, sizeof(url), "%s/ProposeBlock", peer_url);
+    
+    char json_payload[2048];
+    snprintf(json_payload, sizeof(json_payload),
+        "{"
+        "\"blockHash\":\"%s\","
+        "\"blockData\":\"%s\","
+        "\"sender\":\"%s\","
+        "\"signature\":\"%s\""
+        "}",
+        block_hash, block_data, sender_pubkey, signature);
+    
+    HttpResponse* response = http_client_post_json(url, json_payload, NULL);
+    
+    int success = 0;
+    if (response) {
+        success = http_client_is_success_status(response->status_code);
+        printf("Block proposal to %s: status %d\n", peer_url, response->status_code);
+        http_response_free(response);
+    }
+    
+    return success;
+}
+
+int pbft_send_verification_vote(const char* peer_url, const char* block_hash, 
+                               const char* sender_pubkey, const char* signature) {
+    char url[512];
+    snprintf(url, sizeof(url), "%s/VerificationVote", peer_url);
+    
+    char json_payload[1024];
+    snprintf(json_payload, sizeof(json_payload),
+        "{"
+        "\"blockHash\":\"%s\","
+        "\"sender\":\"%s\","
+        "\"signature\":\"%s\""
+        "}",
+        block_hash, sender_pubkey, signature);
+    
+    HttpResponse* response = http_client_post_json(url, json_payload, NULL);
+    
+    int success = 0;
+    if (response) {
+        success = http_client_is_success_status(response->status_code);
+        printf("Verification vote to %s: status %d\n", peer_url, response->status_code);
+        http_response_free(response);
+    }
+    
+    return success;
+}
+
+int pbft_get_blockchain_length(const char* peer_url) {
+    char url[512];
+    snprintf(url, sizeof(url), "%s/GetBlockChainLength", peer_url);
+    
+    HttpResponse* response = http_client_get(url, NULL, NULL);
+    
+    int chain_length = -1;
+    if (response && http_client_is_success_status(response->status_code)) {
+        char* length_str = http_client_extract_json_field(response->data, "chainLength");
+        if (length_str) {
+            chain_length = atoi(length_str);
+            free(length_str);
+        }
+        http_response_free(response);
+    }
+    
+    return chain_length;
 } 

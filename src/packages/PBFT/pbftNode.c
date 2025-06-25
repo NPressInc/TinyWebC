@@ -12,6 +12,7 @@
 #include "../validation/block_validation.h"
 #include "../validation/transaction_validation.h"
 #include "../comm/pbftApi.h"
+#include "../comm/httpClient.h"
 #include "../sql/database.h"
 #include "../fileIO/blockchainIO.h"
 #include "mongoose.h"
@@ -53,6 +54,14 @@ PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port) {
         return NULL;
     }
     
+    // Initialize HTTP client for peer communication
+    if (!http_client_init()) {
+        printf("Failed to initialize HTTP client for node %u\n", node_id);
+        pthread_mutex_destroy(&node->state_mutex);
+        free(node);
+        return NULL;
+    }
+    
     return node;
 }
 
@@ -60,6 +69,10 @@ void pbft_node_destroy(PBFTNode* node) {
     if (!node) return;
     
     node->running = 0;
+    
+    // Cleanup HTTP client
+    http_client_cleanup();
+    
     pthread_mutex_destroy(&node->state_mutex);
     free(node);
 }
@@ -509,11 +522,40 @@ int pbft_node_propose_block(PBFTNode* node, TW_Block* block) {
     
     if (!proposal) return 0;
     
-    // TODO: Broadcast proposal to peers via HTTP
-    printf("Node %u proposing block with round %u\n", node->base.id, node->counter);
+    // Sign the internal transaction
+    TW_Internal_Transaction_add_signature(proposal);
+    
+    // Broadcast proposal to all peers via binary HTTP
+    int success_count = 0;
+    printf("Node %u proposing block with round %u to %zu peers (binary protocol)\n", 
+           node->base.id, node->counter, node->base.peer_count);
+    
+    for (size_t i = 0; i < node->base.peer_count; i++) {
+        // Skip self
+        if (node->base.peers[i].id == node->base.id) {
+            continue;
+        }
+        
+        // Construct peer URL
+        char peer_url[256];
+        snprintf(peer_url, sizeof(peer_url), "http://%s", node->base.peers[i].ip);
+        
+        // Send binary block proposal to peer
+        if (pbft_send_block_proposal_binary(peer_url, proposal)) {
+            success_count++;
+            printf("Binary block proposal sent successfully to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        } else {
+            printf("Failed to send binary block proposal to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        }
+    }
+    
+    printf("Binary block proposal broadcast completed: %d/%zu peers reached\n", 
+           success_count, node->base.peer_count);
     
     tw_destroy_internal_transaction(proposal);
-    return 1;
+    return success_count > 0 ? 1 : 0;
 }
 
 int pbft_node_validate_block(PBFTNode* node, TW_Block* block) {
@@ -634,9 +676,19 @@ int pbft_node_sync_with_longest_chain(PBFTNode* node) {
             continue;
         }
         
-        // In a real implementation, would make HTTP request to get chain length
-        // For now, simulate by assuming all peers have similar chain lengths
-        uint32_t peer_chain_length = node->base.blockchain->length;
+        // Make HTTP request to get chain length from peer
+        char peer_url[256];
+        snprintf(peer_url, sizeof(peer_url), "http://%s", node->base.peers[i].ip);
+        
+        int peer_chain_length = pbft_get_blockchain_length(peer_url);
+        if (peer_chain_length < 0) {
+            printf("Failed to get blockchain length from peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+            peer_chain_length = 0;  // Default to 0 if request fails
+        } else {
+            printf("Peer %u at %s has blockchain length: %d\n", 
+                   node->base.peers[i].id, peer_url, peer_chain_length);
+        }
         
         if (peer_chain_length > longest_chain) {
             longest_chain = peer_chain_length;
@@ -656,8 +708,8 @@ int pbft_node_sync_with_longest_chain(PBFTNode* node) {
         return -1;  // No sync needed, but no new blocks proposed
     }
 }
-HttpResponse* pbft_node_http_request(const char* url, const char* method, const char* json_data) { return NULL; }
-void pbft_node_free_http_response(HttpResponse* response) { }
+struct HttpResponse* pbft_node_http_request(const char* url, const char* method, const char* json_data) { return NULL; }
+void pbft_node_free_http_response(struct HttpResponse* response) { }
 // Broadcasting functions using internal transactions
 int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block, const char* block_hash) { 
     if (!node || !block) return 0;
@@ -690,11 +742,40 @@ int pbft_node_broadcast_verification_vote(PBFTNode* node, const char* block_hash
     
     if (!vote) return 0;
     
-    // TODO: Broadcast vote to peers via HTTP
-    printf("Node %u broadcasting verification vote for block\n", node->base.id);
+    // Sign the internal transaction
+    TW_Internal_Transaction_add_signature(vote);
+    
+    // Broadcast verification vote to all peers via binary HTTP
+    int success_count = 0;
+    printf("Node %u broadcasting verification vote for block to %zu peers (binary protocol)\n", 
+           node->base.id, node->base.peer_count);
+    
+    for (size_t i = 0; i < node->base.peer_count; i++) {
+        // Skip self
+        if (node->base.peers[i].id == node->base.id) {
+            continue;
+        }
+        
+        // Construct peer URL
+        char peer_url[256];
+        snprintf(peer_url, sizeof(peer_url), "http://%s", node->base.peers[i].ip);
+        
+        // Send binary verification vote to peer
+        if (pbft_send_vote_binary(peer_url, vote)) {
+            success_count++;
+            printf("Binary verification vote sent successfully to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        } else {
+            printf("Failed to send binary verification vote to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        }
+    }
+    
+    printf("Binary verification vote broadcast completed: %d/%zu peers reached\n", 
+           success_count, node->base.peer_count);
     
     tw_destroy_internal_transaction(vote);
-    return 1;
+    return success_count > 0 ? 1 : 0;
 }
 
 int pbft_node_broadcast_commit_vote(PBFTNode* node, const char* block_hash, const char* block_data) {
@@ -716,11 +797,40 @@ int pbft_node_broadcast_commit_vote(PBFTNode* node, const char* block_hash, cons
     
     if (!vote) return 0;
     
-    // TODO: Broadcast vote to peers via HTTP
-    printf("Node %u broadcasting commit vote for block\n", node->base.id);
+    // Sign the internal transaction
+    TW_Internal_Transaction_add_signature(vote);
+    
+    // Broadcast commit vote to all peers via binary HTTP
+    int success_count = 0;
+    printf("Node %u broadcasting commit vote for block to %zu peers (binary protocol)\n", 
+           node->base.id, node->base.peer_count);
+    
+    for (size_t i = 0; i < node->base.peer_count; i++) {
+        // Skip self
+        if (node->base.peers[i].id == node->base.id) {
+            continue;
+        }
+        
+        // Construct peer URL
+        char peer_url[256];
+        snprintf(peer_url, sizeof(peer_url), "http://%s", node->base.peers[i].ip);
+        
+        // Send binary commit vote to peer
+        if (pbft_send_vote_binary(peer_url, vote)) {
+            success_count++;
+            printf("Binary commit vote sent successfully to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        } else {
+            printf("Failed to send binary commit vote to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        }
+    }
+    
+    printf("Binary commit vote broadcast completed: %d/%zu peers reached\n", 
+           success_count, node->base.peer_count);
     
     tw_destroy_internal_transaction(vote);
-    return 1;
+    return success_count > 0 ? 1 : 0;
 }
 
 int pbft_node_broadcast_new_round_vote(PBFTNode* node, const char* block_hash, const char* block_data) {
@@ -742,11 +852,40 @@ int pbft_node_broadcast_new_round_vote(PBFTNode* node, const char* block_hash, c
     
     if (!vote) return 0;
     
-    // TODO: Broadcast vote to peers via HTTP
-    printf("Node %u broadcasting new round vote for block\n", node->base.id);
+    // Sign the internal transaction
+    TW_Internal_Transaction_add_signature(vote);
+    
+    // Broadcast new round vote to all peers via binary HTTP
+    int success_count = 0;
+    printf("Node %u broadcasting new round vote for block to %zu peers (binary protocol)\n", 
+           node->base.id, node->base.peer_count);
+    
+    for (size_t i = 0; i < node->base.peer_count; i++) {
+        // Skip self
+        if (node->base.peers[i].id == node->base.id) {
+            continue;
+        }
+        
+        // Construct peer URL
+        char peer_url[256];
+        snprintf(peer_url, sizeof(peer_url), "http://%s", node->base.peers[i].ip);
+        
+        // Send binary new round vote to peer
+        if (pbft_send_vote_binary(peer_url, vote)) {
+            success_count++;
+            printf("Binary new round vote sent successfully to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        } else {
+            printf("Failed to send binary new round vote to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        }
+    }
+    
+    printf("Binary new round vote broadcast completed: %d/%zu peers reached\n", 
+           success_count, node->base.peer_count);
     
     tw_destroy_internal_transaction(vote);
-    return 1;
+    return success_count > 0 ? 1 : 0;
 }
 int pbft_node_broadcast_blockchain_to_new_node(PBFTNode* node, const char* peer_url) { return 0; }
 int pbft_node_rebroadcast_message(PBFTNode* node, const char* json_data, const char* route) { return 0; }
@@ -1534,9 +1673,52 @@ int validate_transaction_permissions_for_node(TW_Transaction* transaction, PBFTN
 int pbft_node_rebroadcast_transaction(PBFTNode* node, struct mg_str json_body) {
     if (!node) return -1;
     
-    // TODO: Implement transaction rebroadcasting to peers
-    printf("Rebroadcasting transaction to peers (stub implementation)\n");
-    return 0;
+    // Rebroadcast transaction to all peers via HTTP
+    int success_count = 0;
+    printf("Rebroadcasting transaction to %zu peers\n", node->base.peer_count);
+    
+    // Convert mg_str to null-terminated string
+    char* json_str = malloc(json_body.len + 1);
+    if (!json_str) {
+        printf("Failed to allocate memory for transaction rebroadcast\n");
+        return -1;
+    }
+    memcpy(json_str, json_body.buf, json_body.len);
+    json_str[json_body.len] = '\0';
+    
+    for (size_t i = 0; i < node->base.peer_count; i++) {
+        // Skip self
+        if (node->base.peers[i].id == node->base.id) {
+            continue;
+        }
+        
+        // Construct peer URL
+        char peer_url[256];
+        snprintf(peer_url, sizeof(peer_url), "http://%s/Transaction", node->base.peers[i].ip);
+        
+        // Send transaction to peer
+        HttpResponse* response = http_client_post_json(peer_url, json_str, NULL);
+        if (response && http_client_is_success_status(response->status_code)) {
+            success_count++;
+            printf("Transaction rebroadcast successful to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        } else {
+            printf("Failed to rebroadcast transaction to peer %u at %s\n", 
+                   node->base.peers[i].id, peer_url);
+        }
+        
+        if (response) {
+            free(response->data);
+            free(response->headers);
+            free(response);
+        }
+    }
+    
+    free(json_str);
+    printf("Transaction rebroadcast completed: %d/%zu peers reached\n", 
+           success_count, node->base.peer_count);
+    
+    return success_count;
 }
 
 int verify_blockchain_sync(PBFTNode* node, TW_Block* block) {

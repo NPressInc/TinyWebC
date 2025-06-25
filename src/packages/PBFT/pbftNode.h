@@ -27,12 +27,8 @@
 #define DELINQUENT_THRESHOLD 15
 #define CONSENSUS_THRESHOLD_RATIO 0.67  // 2/3 + 1 for Byzantine fault tolerance
 
-// HTTP client response structure
-typedef struct {
-    char* data;
-    size_t size;
-    int status_code;
-} HttpResponse;
+// Use HttpResponse from httpClient.h
+struct HttpResponse;
 
 // PBFT Node structure (extends base NodeState)
 typedef struct {
@@ -95,9 +91,9 @@ int pbft_node_is_proposer(PBFTNode* node);
 int pbft_node_calculate_min_approvals(PBFTNode* node);
 int pbft_node_sync_with_longest_chain(PBFTNode* node);
 
-// Network communication
-HttpResponse* pbft_node_http_request(const char* url, const char* method, const char* json_data);
-void pbft_node_free_http_response(HttpResponse* response);
+// Network communication (deprecated - use httpClient.h functions directly)
+struct HttpResponse* pbft_node_http_request(const char* url, const char* method, const char* json_data);
+void pbft_node_free_http_response(struct HttpResponse* response);
 
 // Peer communication functions
 int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block, const char* block_hash);
