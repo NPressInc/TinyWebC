@@ -346,4 +346,59 @@ int deserialize_system_config(const unsigned char* buffer, TW_TXN_SystemConfig* 
     memcpy(&config->config_scope, ptr, sizeof(permission_scope_t));
     
     return 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
-} 
+}
+
+// Invitation transaction serialization - BLOCKCHAIN PERMISSION INTEGRATION
+int serialize_invitation_create(const TW_TXN_InvitationCreate* invitation, unsigned char** buffer) {
+    if (!invitation || !buffer) return -1;
+    
+    size_t size = sizeof(TW_TXN_InvitationCreate);
+    *buffer = (unsigned char*)malloc(size);
+    if (!*buffer) return -1;
+    
+    memcpy(*buffer, invitation, size);
+    return size;
+}
+
+int deserialize_invitation_create(const unsigned char* buffer, TW_TXN_InvitationCreate* invitation) {
+    if (!buffer || !invitation) return -1;
+    
+    memcpy(invitation, buffer, sizeof(TW_TXN_InvitationCreate));
+    return sizeof(TW_TXN_InvitationCreate);
+}
+
+int serialize_invitation_accept(const TW_TXN_InvitationAccept* acceptance, unsigned char** buffer) {
+    if (!acceptance || !buffer) return -1;
+    
+    size_t size = sizeof(TW_TXN_InvitationAccept);
+    *buffer = (unsigned char*)malloc(size);
+    if (!*buffer) return -1;
+    
+    memcpy(*buffer, acceptance, size);
+    return size;
+}
+
+int deserialize_invitation_accept(const unsigned char* buffer, TW_TXN_InvitationAccept* acceptance) {
+    if (!buffer || !acceptance) return -1;
+    
+    memcpy(acceptance, buffer, sizeof(TW_TXN_InvitationAccept));
+    return sizeof(TW_TXN_InvitationAccept);
+}
+
+int serialize_invitation_revoke(const TW_TXN_InvitationRevoke* revocation, unsigned char** buffer) {
+    if (!revocation || !buffer) return -1;
+    
+    size_t size = sizeof(TW_TXN_InvitationRevoke);
+    *buffer = (unsigned char*)malloc(size);
+    if (!*buffer) return -1;
+    
+    memcpy(*buffer, revocation, size);
+    return size;
+}
+
+int deserialize_invitation_revoke(const unsigned char* buffer, TW_TXN_InvitationRevoke* revocation) {
+    if (!buffer || !revocation) return -1;
+    
+    memcpy(revocation, buffer, sizeof(TW_TXN_InvitationRevoke));
+    return sizeof(TW_TXN_InvitationRevoke);
+}

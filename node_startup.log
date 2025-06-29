@@ -1,35 +1,32 @@
 TinyWeb PBFT Node Starting...
 Node Configuration:
-  Node ID: 1
-  API Port: 5002
+  Node ID: 0
+  API Port: 5000
 Initializing PBFT system components...
 Message queues initialized
 System components initialized successfully
 Mongoose HTTP client initialized
-Initializing keys for node 1
-Loaded existing keys for node 1
-Loading/creating blockchain for node 1
+Invitation system initialized
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading/creating blockchain for node 0
 Loading existing blockchain from state/blockchain/blockchain.dat
 Loaded blockchain (Original size: 6218 bytes, Compressed size: 4696 bytes)
-Loaded existing blockchain for node 1 with length 2
+Loaded existing blockchain for node 0 with length 2
 PBFT node initialized successfully
-PBFT node 1 starting on port 5002
+PBFT node 0 starting on port 5000
 PBFT monitor thread started
-Node Status - ID: 1, Blockchain Length: 2, Peers: 0
-Starting PBFT API server on port 5002
+Node Status - ID: 0, Blockchain Length: 2, Peers: 0
+Starting PBFT API server on port 5000
 PBFT node threads started successfully
-PBFT main consensus loop started for node 1
-PBFT API server listening on http://0.0.0.0:5002
-Invalid sender public key format
-Node 1: Blockchain length: 2, Peers: 0, Proposer ID: 0
-Node 1: Creating block for singular node
-Node 1: Sending block creation signal for singular node
+PBFT main consensus loop started for node 0
+PBFT API server listening on http://0.0.0.0:5000
 
 Received signal 15, shutting down gracefully...
 PBFT monitor thread stopping
-PBFT main consensus loop stopped for node 1
+PBFT main consensus loop stopped for node 0
 PBFT API server shutting down
-PBFT node 1 shutdown complete
+PBFT node 0 shutdown complete
 Waiting for monitor thread to finish...
 Cleaning up system components...
 Message queues cleaned up

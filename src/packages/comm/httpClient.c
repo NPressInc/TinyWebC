@@ -83,6 +83,10 @@ static void http_client_event_handler(struct mg_connection *c, int ev, void *ev_
         
     } else if (ev == MG_EV_ERROR) {
         printf("HTTP client connection error: %s\n", (char*)ev_data);
+        // Mark as completed but indicate failure by setting status to 0
+        if (ctx && ctx->response) {
+            ctx->response->status_code = 0;
+        }
         ctx->completed = 1;
         c->is_closing = 1;
     }
@@ -102,24 +106,59 @@ HttpResponse* http_client_request(const char* url, HttpMethod method,
     
     memset(response, 0, sizeof(HttpResponse));
     
-    RequestContext ctx = {0};
-    ctx.response = response;
-    ctx.completed = 0;
-    
-    // Create connection
-    struct mg_connection *c = mg_http_connect(&http_client_mgr, url, http_client_event_handler, &ctx);
-    if (!c) {
-        printf("Failed to create HTTP connection to %s\n", url);
+    // Allocate context on heap instead of stack to avoid corruption
+    RequestContext* ctx = malloc(sizeof(RequestContext));
+    if (!ctx) {
         free(response);
         return NULL;
     }
+    memset(ctx, 0, sizeof(RequestContext));
+    ctx->response = response;
+    ctx->completed = 0;
     
-    // Set up request
+    // Create connection
+    struct mg_connection *c = mg_http_connect(&http_client_mgr, url, http_client_event_handler, ctx);
+    if (!c) {
+        printf("Failed to create HTTP connection to %s\n", url);
+        free(response);
+        free(ctx);
+        return NULL;
+    }
+    
+    // Set the context data on the connection
+    c->fn_data = ctx;
+    
+    // Send HTTP request with proper formatting
     if (method == HTTP_POST && data) {
+        // Determine content type
+        const char* content_type = "application/json";  // Default
+        int custom_content_type = 0;
+        
+        if (headers) {
+            for (int i = 0; headers[i] != NULL; i++) {
+                if (strstr(headers[i], "Content-Type:") != NULL) {
+                    custom_content_type = 1;
+                    break;
+                }
+            }
+        }
+        
+        // Simple heuristic for binary data
+        if (!custom_content_type && data_len > 0) {
+            int binary_count = 0;
+            for (size_t i = 0; i < data_len && i < 100; i++) {
+                if (data[i] < 32 && data[i] != '\n' && data[i] != '\r' && data[i] != '\t') {
+                    binary_count++;
+                }
+            }
+            if (binary_count > data_len / 10) {
+                content_type = "application/octet-stream";
+            }
+        }
+        
+        // Send POST request headers
         mg_printf(c, "POST %s HTTP/1.1\r\n", mg_url_uri(url));
         mg_printf(c, "Host: %s\r\n", mg_url_host(url));
-        mg_printf(c, "Content-Type: application/json\r\n");
-        mg_printf(c, "Content-Length: %zu\r\n", data_len);
         
         // Add custom headers
         if (headers) {
@@ -128,12 +167,22 @@ HttpResponse* http_client_request(const char* url, HttpMethod method,
             }
         }
         
+        // Add default content-type if not in custom headers
+        if (!custom_content_type) {
+            mg_printf(c, "Content-Type: %s\r\n", content_type);
+        }
+        
+        mg_printf(c, "Content-Length: %zu\r\n", data_len);
+        mg_printf(c, "Connection: close\r\n");
         mg_printf(c, "\r\n");
+        
+        // Send body
         mg_send(c, data, data_len);
     } else {
         // GET request
         mg_printf(c, "GET %s HTTP/1.1\r\n", mg_url_uri(url));
         mg_printf(c, "Host: %s\r\n", mg_url_host(url));
+        mg_printf(c, "Connection: close\r\n");
         mg_printf(c, "\r\n");
     }
     
@@ -141,17 +190,27 @@ HttpResponse* http_client_request(const char* url, HttpMethod method,
     int timeout_ms = config ? config->timeout_seconds * 1000 : 30000;
     int elapsed = 0;
     
-    while (!ctx.completed && elapsed < timeout_ms) {
+    while (!ctx->completed && elapsed < timeout_ms) {
         mg_mgr_poll(&http_client_mgr, 100);
         elapsed += 100;
     }
     
-    if (!ctx.completed) {
+    if (!ctx->completed) {
         printf("HTTP request to %s timed out\n", url);
         http_response_free(response);
+        free(ctx);
         return NULL;
     }
     
+    // Check if there was a connection error (status code 0)
+    if (response->status_code == 0) {
+        http_response_free(response);
+        free(ctx);
+        return NULL;
+    }
+    
+    // Free the context before returning
+    free(ctx);
     return response;
 }
 
@@ -300,18 +359,23 @@ int pbft_send_internal_transaction(const char* peer_url, const char* endpoint,
     char full_url[512];
     snprintf(full_url, sizeof(full_url), "%s%s", peer_url, endpoint);
     
-    // Send binary data via POST
-    HttpResponse* response = http_client_post(full_url, (const char*)binary_data, data_size, NULL, NULL);
+    // Use explicit binary headers for internal transactions
+    const char* headers[] = {"Content-Type: application/octet-stream", NULL};
+    
+    // Send binary data via POST with proper headers
+    HttpResponse* response = http_client_post(full_url, (const char*)binary_data, data_size, headers, NULL);
     
     int success = 0;
     if (response && http_client_is_success_status(response->status_code)) {
         success = 1;
+        printf("Binary HTTP request to %s successful (status: %d)\n", full_url, response->status_code);
+    } else {
+        printf("Binary HTTP request to %s failed (status: %d)\n", full_url, 
+               response ? response->status_code : 0);
     }
     
     if (response) {
-        free(response->data);
-        free(response->headers);
-        free(response);
+        http_response_free(response);
     }
     
     return success;

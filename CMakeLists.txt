@@ -129,6 +129,8 @@ add_executable(pbft_node
     src/packages/validation/block_validation.c
     src/packages/validation/transaction_validation.c
     src/structs/permission/permission.c
+    src/packages/invitation/invitation.c
+    src/packages/invitation/invitationApi.c
     src/external/mongoose/mongoose.c
 )
 
@@ -188,15 +190,7 @@ target_link_libraries(init_tool
     SQLite::SQLite3
 )
 
-# Add multi-node PBFT test
-add_executable(multi_node_pbft_test
-    multi_node_pbft_test.c
-)
-
-target_link_libraries(multi_node_pbft_test 
-    ${CURL_LIBRARIES}
-    cjson
-)
+# Multi-node PBFT test is built separately in the root directory
 
 # Add simple node test
 add_executable(simple_node_test
@@ -204,6 +198,16 @@ add_executable(simple_node_test
 )
 
 target_link_libraries(simple_node_test 
+    ${CURL_LIBRARIES}
+    cjson
+)
+
+# Add fixed multi-node PBFT architecture test
+add_executable(multi_node_pbft_test_fixed
+    multi_node_pbft_test_fixed.c
+)
+
+target_link_libraries(multi_node_pbft_test_fixed 
     ${CURL_LIBRARIES}
     cjson
 )

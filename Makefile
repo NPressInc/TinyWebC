@@ -195,19 +195,6 @@ init_tool/fast:
 .PHONY : init_tool/fast
 
 #=============================================================================
-# Target rules for targets named multi_node_pbft_test
-
-# Build rule for target.
-multi_node_pbft_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 multi_node_pbft_test
-.PHONY : multi_node_pbft_test
-
-# fast build rule for target.
-multi_node_pbft_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test.dir/build.make CMakeFiles/multi_node_pbft_test.dir/build
-.PHONY : multi_node_pbft_test/fast
-
-#=============================================================================
 # Target rules for targets named simple_node_test
 
 # Build rule for target.
@@ -220,29 +207,42 @@ simple_node_test/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_node_test.dir/build.make CMakeFiles/simple_node_test.dir/build
 .PHONY : simple_node_test/fast
 
-multi_node_pbft_test.o: multi_node_pbft_test.c.o
-.PHONY : multi_node_pbft_test.o
+#=============================================================================
+# Target rules for targets named multi_node_pbft_test_fixed
+
+# Build rule for target.
+multi_node_pbft_test_fixed: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 multi_node_pbft_test_fixed
+.PHONY : multi_node_pbft_test_fixed
+
+# fast build rule for target.
+multi_node_pbft_test_fixed/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test_fixed.dir/build.make CMakeFiles/multi_node_pbft_test_fixed.dir/build
+.PHONY : multi_node_pbft_test_fixed/fast
+
+multi_node_pbft_test_fixed.o: multi_node_pbft_test_fixed.c.o
+.PHONY : multi_node_pbft_test_fixed.o
 
 # target to build an object file
-multi_node_pbft_test.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test.dir/build.make CMakeFiles/multi_node_pbft_test.dir/multi_node_pbft_test.c.o
-.PHONY : multi_node_pbft_test.c.o
+multi_node_pbft_test_fixed.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test_fixed.dir/build.make CMakeFiles/multi_node_pbft_test_fixed.dir/multi_node_pbft_test_fixed.c.o
+.PHONY : multi_node_pbft_test_fixed.c.o
 
-multi_node_pbft_test.i: multi_node_pbft_test.c.i
-.PHONY : multi_node_pbft_test.i
+multi_node_pbft_test_fixed.i: multi_node_pbft_test_fixed.c.i
+.PHONY : multi_node_pbft_test_fixed.i
 
 # target to preprocess a source file
-multi_node_pbft_test.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test.dir/build.make CMakeFiles/multi_node_pbft_test.dir/multi_node_pbft_test.c.i
-.PHONY : multi_node_pbft_test.c.i
+multi_node_pbft_test_fixed.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test_fixed.dir/build.make CMakeFiles/multi_node_pbft_test_fixed.dir/multi_node_pbft_test_fixed.c.i
+.PHONY : multi_node_pbft_test_fixed.c.i
 
-multi_node_pbft_test.s: multi_node_pbft_test.c.s
-.PHONY : multi_node_pbft_test.s
+multi_node_pbft_test_fixed.s: multi_node_pbft_test_fixed.c.s
+.PHONY : multi_node_pbft_test_fixed.s
 
 # target to generate assembly for a file
-multi_node_pbft_test.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test.dir/build.make CMakeFiles/multi_node_pbft_test.dir/multi_node_pbft_test.c.s
-.PHONY : multi_node_pbft_test.c.s
+multi_node_pbft_test_fixed.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test_fixed.dir/build.make CMakeFiles/multi_node_pbft_test_fixed.dir/multi_node_pbft_test_fixed.c.s
+.PHONY : multi_node_pbft_test_fixed.c.s
 
 simple_node_test.o: simple_node_test.c.o
 .PHONY : simple_node_test.o
@@ -672,6 +672,66 @@ src/packages/initialization/init_tool.s: src/packages/initialization/init_tool.c
 src/packages/initialization/init_tool.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init_tool.c.s
 .PHONY : src/packages/initialization/init_tool.c.s
+
+src/packages/invitation/invitation.o: src/packages/invitation/invitation.c.o
+.PHONY : src/packages/invitation/invitation.o
+
+# target to build an object file
+src/packages/invitation/invitation.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitation.c.o
+.PHONY : src/packages/invitation/invitation.c.o
+
+src/packages/invitation/invitation.i: src/packages/invitation/invitation.c.i
+.PHONY : src/packages/invitation/invitation.i
+
+# target to preprocess a source file
+src/packages/invitation/invitation.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitation.c.i
+.PHONY : src/packages/invitation/invitation.c.i
+
+src/packages/invitation/invitation.s: src/packages/invitation/invitation.c.s
+.PHONY : src/packages/invitation/invitation.s
+
+# target to generate assembly for a file
+src/packages/invitation/invitation.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitation.c.s
+.PHONY : src/packages/invitation/invitation.c.s
+
+src/packages/invitation/invitationApi.o: src/packages/invitation/invitationApi.c.o
+.PHONY : src/packages/invitation/invitationApi.o
+
+# target to build an object file
+src/packages/invitation/invitationApi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitationApi.c.o
+.PHONY : src/packages/invitation/invitationApi.c.o
+
+src/packages/invitation/invitationApi.i: src/packages/invitation/invitationApi.c.i
+.PHONY : src/packages/invitation/invitationApi.i
+
+# target to preprocess a source file
+src/packages/invitation/invitationApi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitationApi.c.i
+.PHONY : src/packages/invitation/invitationApi.c.i
+
+src/packages/invitation/invitationApi.s: src/packages/invitation/invitationApi.c.s
+.PHONY : src/packages/invitation/invitationApi.s
+
+# target to generate assembly for a file
+src/packages/invitation/invitationApi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitationApi.c.s
+.PHONY : src/packages/invitation/invitationApi.c.s
 
 src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.o
@@ -1309,6 +1369,30 @@ src/tests/encryption_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/encryption_test.c.s
 .PHONY : src/tests/encryption_test.c.s
 
+src/tests/http_client_test.o: src/tests/http_client_test.c.o
+.PHONY : src/tests/http_client_test.o
+
+# target to build an object file
+src/tests/http_client_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/http_client_test.c.o
+.PHONY : src/tests/http_client_test.c.o
+
+src/tests/http_client_test.i: src/tests/http_client_test.c.i
+.PHONY : src/tests/http_client_test.i
+
+# target to preprocess a source file
+src/tests/http_client_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/http_client_test.c.i
+.PHONY : src/tests/http_client_test.c.i
+
+src/tests/http_client_test.s: src/tests/http_client_test.c.s
+.PHONY : src/tests/http_client_test.s
+
+# target to generate assembly for a file
+src/tests/http_client_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/http_client_test.c.s
+.PHONY : src/tests/http_client_test.c.s
+
 src/tests/init_network_test.o: src/tests/init_network_test.c.o
 .PHONY : src/tests/init_network_test.o
 
@@ -1332,6 +1416,30 @@ src/tests/init_network_test.s: src/tests/init_network_test.c.s
 src/tests/init_network_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/init_network_test.c.s
 .PHONY : src/tests/init_network_test.c.s
+
+src/tests/invitation_test.o: src/tests/invitation_test.c.o
+.PHONY : src/tests/invitation_test.o
+
+# target to build an object file
+src/tests/invitation_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/invitation_test.c.o
+.PHONY : src/tests/invitation_test.c.o
+
+src/tests/invitation_test.i: src/tests/invitation_test.c.i
+.PHONY : src/tests/invitation_test.i
+
+# target to preprocess a source file
+src/tests/invitation_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/invitation_test.c.i
+.PHONY : src/tests/invitation_test.c.i
+
+src/tests/invitation_test.s: src/tests/invitation_test.c.s
+.PHONY : src/tests/invitation_test.s
+
+# target to generate assembly for a file
+src/tests/invitation_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/invitation_test.c.s
+.PHONY : src/tests/invitation_test.c.s
 
 src/tests/mongoose_test.o: src/tests/mongoose_test.c.o
 .PHONY : src/tests/mongoose_test.o
@@ -1416,14 +1524,14 @@ help:
 	@echo "... test"
 	@echo "... check"
 	@echo "... init_tool"
-	@echo "... multi_node_pbft_test"
+	@echo "... multi_node_pbft_test_fixed"
 	@echo "... pbft_node"
 	@echo "... simple_node_test"
 	@echo "... tinyweb"
 	@echo "... tinyweb_tests"
-	@echo "... multi_node_pbft_test.o"
-	@echo "... multi_node_pbft_test.i"
-	@echo "... multi_node_pbft_test.s"
+	@echo "... multi_node_pbft_test_fixed.o"
+	@echo "... multi_node_pbft_test_fixed.i"
+	@echo "... multi_node_pbft_test_fixed.s"
 	@echo "... simple_node_test.o"
 	@echo "... simple_node_test.i"
 	@echo "... simple_node_test.s"
@@ -1469,6 +1577,12 @@ help:
 	@echo "... src/packages/initialization/init_tool.o"
 	@echo "... src/packages/initialization/init_tool.i"
 	@echo "... src/packages/initialization/init_tool.s"
+	@echo "... src/packages/invitation/invitation.o"
+	@echo "... src/packages/invitation/invitation.i"
+	@echo "... src/packages/invitation/invitation.s"
+	@echo "... src/packages/invitation/invitationApi.o"
+	@echo "... src/packages/invitation/invitationApi.i"
+	@echo "... src/packages/invitation/invitationApi.s"
 	@echo "... src/packages/keystore/keystore.o"
 	@echo "... src/packages/keystore/keystore.i"
 	@echo "... src/packages/keystore/keystore.s"
@@ -1532,9 +1646,15 @@ help:
 	@echo "... src/tests/encryption_test.o"
 	@echo "... src/tests/encryption_test.i"
 	@echo "... src/tests/encryption_test.s"
+	@echo "... src/tests/http_client_test.o"
+	@echo "... src/tests/http_client_test.i"
+	@echo "... src/tests/http_client_test.s"
 	@echo "... src/tests/init_network_test.o"
 	@echo "... src/tests/init_network_test.i"
 	@echo "... src/tests/init_network_test.s"
+	@echo "... src/tests/invitation_test.o"
+	@echo "... src/tests/invitation_test.i"
+	@echo "... src/tests/invitation_test.s"
 	@echo "... src/tests/mongoose_test.o"
 	@echo "... src/tests/mongoose_test.i"
 	@echo "... src/tests/mongoose_test.s"

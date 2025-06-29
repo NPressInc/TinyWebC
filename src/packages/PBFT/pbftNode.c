@@ -15,6 +15,8 @@
 #include "../comm/httpClient.h"
 #include "../sql/database.h"
 #include "../fileIO/blockchainIO.h"
+#include "../invitation/invitation.h"
+#include "../invitation/invitationApi.h"
 #include "mongoose.h"
 
 // Forward declarations for endpoint handlers
@@ -62,6 +64,15 @@ PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port) {
         return NULL;
     }
     
+    // Initialize invitation system
+    if (!invitation_system_init()) {
+        printf("Failed to initialize invitation system for node %u\n", node_id);
+        http_client_cleanup();
+        pthread_mutex_destroy(&node->state_mutex);
+        free(node);
+        return NULL;
+    }
+    
     return node;
 }
 
@@ -72,6 +83,9 @@ void pbft_node_destroy(PBFTNode* node) {
     
     // Cleanup HTTP client
     http_client_cleanup();
+    
+    // Cleanup invitation system
+    invitation_system_cleanup();
     
     pthread_mutex_destroy(&node->state_mutex);
     free(node);
@@ -351,6 +365,30 @@ static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_dat
             handle_request_entire_blockchain_endpoint(c, hm, node);
         } else if (mg_strcmp(hm->uri, mg_str("/AddNewBlockForSingularNode")) == 0) {
             handle_add_new_block_singular_endpoint(c, hm, node);
+        } else if (mg_strcmp(hm->uri, mg_str("/invitation/create")) == 0) {
+            handle_invitation_create(c, hm);
+        } else if (mg_strcmp(hm->uri, mg_str("/invitation/pending")) == 0) {
+            handle_invitation_get_pending(c, hm);
+        } else if (mg_strcmp(hm->uri, mg_str("/invitation/stats")) == 0) {
+            handle_invitation_get_stats(c, hm);
+        } else if (strstr(hm->uri.buf, "/invitation/accept/") != NULL) {
+            // Extract invitation code from URI path
+            char invitation_code[32];
+            const char* code_start = strstr(hm->uri.buf, "/invitation/accept/") + 19;
+            size_t code_len = hm->uri.len - (code_start - hm->uri.buf);
+            if (code_len >= 32) code_len = 31;
+            strncpy(invitation_code, code_start, code_len);
+            invitation_code[code_len] = '\0';
+            handle_invitation_accept(c, hm, invitation_code);
+        } else if (strstr(hm->uri.buf, "/invitation/revoke/") != NULL) {
+            // Extract invitation code from URI path
+            char invitation_code[32];
+            const char* code_start = strstr(hm->uri.buf, "/invitation/revoke/") + 19;
+            size_t code_len = hm->uri.len - (code_start - hm->uri.buf);
+            if (code_len >= 32) code_len = 31;
+            strncpy(invitation_code, code_start, code_len);
+            invitation_code[code_len] = '\0';
+            handle_invitation_revoke(c, hm, invitation_code);
         } else {
             // 404 Not Found
             mg_http_reply(c, 404, "Content-Type: application/json\r\n", 
