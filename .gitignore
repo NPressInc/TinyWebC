@@ -8,3 +8,4 @@ node_key.bin
 *.dat
 *.db
 blockchain.json
+test_state/blockchain/test_blockchain.db
