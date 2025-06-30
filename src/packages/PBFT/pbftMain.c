@@ -7,6 +7,7 @@
 #include "pbftNode.h"
 #include "packages/comm/pbftApi.h"
 #include "packages/utils/jsonUtils.h"
+#include "packages/sql/database.h"
 
 // Global variables
 static PBFTNode* g_pbft_node = NULL;
@@ -85,7 +86,17 @@ void cleanup_system(void) {
     // Cleanup message queues
     cleanup_message_queues();
     
+    // Close database
+    if (db_is_initialized()) {
+        db_close();
+        printf("Database closed\n");
+    }
+    
     if (g_pbft_node) {
+        // Clear the global pbft_node pointer
+        extern PBFTNode* pbft_node;
+        pbft_node = NULL;
+        
         pbft_node_destroy(g_pbft_node);
         g_pbft_node = NULL;
     }
@@ -155,6 +166,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    // Set the global pbft_node pointer for API access
+    extern PBFTNode* pbft_node;
+    pbft_node = g_pbft_node;
+    
     // Initialize node keys
     if (pbft_node_initialize_keys(g_pbft_node) != 0) {
         fprintf(stderr, "Failed to initialize node keys\n");
@@ -167,6 +182,24 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Failed to load/create blockchain\n");
         cleanup_system();
         return 1;
+    }
+    
+    // Initialize database and sync blockchain
+    printf("Initializing database...\n");
+    if (db_init("state/blockchain/blockchain.db") != 0) {
+        printf("Warning: Failed to initialize database\n");
+    } else {
+        printf("Database initialized successfully\n");
+        
+        // Sync blockchain to database
+        if (g_pbft_node->base.blockchain && g_pbft_node->base.blockchain->length > 0) {
+            printf("Syncing blockchain to database...\n");
+            if (db_sync_blockchain(g_pbft_node->base.blockchain) == 0) {
+                printf("✓ Blockchain synced to database successfully\n");
+            } else {
+                printf("Warning: Failed to sync blockchain to database\n");
+            }
+        }
     }
     
     // Load peers from blockchain

@@ -48,7 +48,7 @@ static char* build_transaction_query(const TransactionFilter* filter, bool count
             has_where = true;
         }
 
-        if (filter->type >= 0) {
+        if (filter->type < TW_TXN_TYPE_COUNT) {
             strcat(query, has_where ? " AND" : " WHERE");
             strcat(query, " t.type = ?");
             has_where = true;
@@ -119,7 +119,7 @@ static int bind_transaction_filter_params(sqlite3_stmt* stmt, const TransactionF
         sqlite3_bind_text(stmt, param_index++, filter->recipient_pubkey, -1, SQLITE_STATIC);
     }
 
-    if (filter->type >= 0) {
+    if (filter->type < TW_TXN_TYPE_COUNT) {
         sqlite3_bind_int(stmt, param_index++, filter->type);
     }
 
@@ -212,6 +212,8 @@ int query_transactions(const TransactionFilter* filter, TransactionRecord** resu
     // First, get the count
     char* count_query = build_transaction_query(filter, true);
     if (!count_query) return -1;
+    
+    // Query logging removed
 
     sqlite3_stmt* count_stmt;
     sqlite3* db = get_db_handle();
@@ -229,6 +231,7 @@ int query_transactions(const TransactionFilter* filter, TransactionRecord** resu
     rc = sqlite3_step(count_stmt);
     if (rc == SQLITE_ROW) {
         *count = sqlite3_column_int64(count_stmt, 0);
+        // Count logged
     }
     sqlite3_finalize(count_stmt);
 
@@ -239,6 +242,8 @@ int query_transactions(const TransactionFilter* filter, TransactionRecord** resu
     // Now get the actual results
     char* data_query = build_transaction_query(filter, false);
     if (!data_query) return -1;
+    
+    // Query logging removed
 
     sqlite3_stmt* data_stmt;
     rc = sqlite3_prepare_v2(db, data_query, -1, &data_stmt, NULL);
@@ -354,7 +359,7 @@ int query_transaction_stats(uint64_t* total_count, uint64_t* message_count, uint
 TransactionFilter* create_transaction_filter(void) {
     TransactionFilter* filter = calloc(1, sizeof(TransactionFilter));
     if (filter) {
-        filter->type = -1; // Invalid type means no filter
+        filter->type = TW_TXN_TYPE_COUNT; // Use TYPE_COUNT as "no filter" sentinel
     }
     return filter;
 }

@@ -1,0 +1,70 @@
+=================================================================
+🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!
+=================================================================
+Node Configuration:
+  Node ID: 0
+  API Port: 8016
+  Protocol: HTTP + PBFT Consensus
+  Features: Blockchain, Invitations, Encrypted Transactions
+-----------------------------------------------------------------
+Initializing TinyWeb system components...
+Message queues initialized
+System components initialized successfully
+Creating PBFT node...
+Mongoose HTTP client initialized
+Invitation system initialized
+Initializing node keys...
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading blockchain...
+Loading/creating blockchain for node 0
+Loading existing blockchain from state/blockchain/blockchain.dat
+Loaded blockchain (Original size: 6218 bytes, Compressed size: 4696 bytes)
+Loaded existing blockchain for node 0 with length 2
+Initializing database...
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database initialized successfully
+Syncing blockchain to database...
+Syncing blockchain to database (2 blocks)...
+Failed to sync block 0
+Warning: Failed to sync blockchain to database
+✅ TinyWeb PBFT node initialized successfully
+-----------------------------------------------------------------
+🌐 HTTP API Server: http://localhost:8016
+📊 Available Endpoints:
+  • GET  /                          - Node status
+  • GET  /GetBlockChainLength       - Blockchain info
+  • POST /Transaction               - Submit transaction
+  • POST /invitation/create         - Create invitation
+  • POST /invitation/accept/<code>  - Accept invitation
+  • GET  /invitation/pending        - List pending invitations
+🔧 Press Ctrl+C to shutdown gracefully
+=================================================================
+PBFT node 0 starting on port 8016
+TinyWeb monitor thread started
+PBFT node threads started successfully
+Starting PBFT API server on port 8016
+PBFT main consensus loop started for node 0
+PBFT API server listening on http://0.0.0.0:8016
+Node 0: Proposing block (round 3)
+DEBUG: Creating block 2 with previous hash: 11fd1ed44a140981eee6fbbca6a76444a3c60db12ebc9ed86a81f3c5f294a214
+Created new block with index 2 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 2 validation - Expected prev hash: 11fd1ed44a140981eee6fbbca6a76444a3c60db12ebc9ed86a81f3c5f294a214, Actual prev hash: 11fd1ed44a140981eee6fbbca6a76444a3c60db12ebc9ed86a81f3c5f294a214
+Block validation passed for block 2
+DEBUG: Block 2 validation - Expected prev hash: 11fd1ed44a140981eee6fbbca6a76444a3c60db12ebc9ed86a81f3c5f294a214, Actual prev hash: 11fd1ed44a140981eee6fbbca6a76444a3c60db12ebc9ed86a81f3c5f294a214
+Block validation passed for block 2
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 11fd1ed44a140981eee6fbbca6a76444a3c60db12ebc9ed86a81f3c5f294a214, Block prev hash: 11fd1ed44a140981eee6fbbca6a76444a3c60db12ebc9ed86a81f3c5f294a214
+DEBUG: TW_BlockChain_add_block - Successfully added block 2, new length: 3
+Successfully committed block 2 to blockchain
+Block 2 synced to database
+Node 0: Proposing block (round 6)
+DEBUG: Creating block 3 with previous hash: 3b17588c6721f16e964de18ab4c732b251f10c2c830fa72dc5d35cee5cd1c38c
+Created new block with index 3 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 3 validation - Expected prev hash: 3b17588c6721f16e964de18ab4c732b251f10c2c830fa72dc5d35cee5cd1c38c, Actual prev hash: 3b17588c6721f16e964de18ab4c732b251f10c2c830fa72dc5d35cee5cd1c38c
+Block validation passed for block 3
+DEBUG: Block 3 validation - Expected prev hash: 3b17588c6721f16e964de18ab4c732b251f10c2c830fa72dc5d35cee5cd1c38c, Actual prev hash: 3b17588c6721f16e964de18ab4c732b251f10c2c830fa72dc5d35cee5cd1c38c
+Block validation passed for block 3
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 3b17588c6721f16e964de18ab4c732b251f10c2c830fa72dc5d35cee5cd1c38c, Block prev hash: 3b17588c6721f16e964de18ab4c732b251f10c2c830fa72dc5d35ce

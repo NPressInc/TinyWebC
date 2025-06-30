@@ -9,3 +9,5 @@ node_key.bin
 *.db
 blockchain.json
 test_state/blockchain/test_blockchain.db
+state/blockchain/blockchain.db-shm
+state/blockchain/blockchain.db-wal

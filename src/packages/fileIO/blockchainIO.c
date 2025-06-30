@@ -384,3 +384,302 @@ bool writeBlockChainToJson(TW_BlockChain* blockChain) {
     printf("Blockchain saved as JSON to %s\n", BLOCKCHAIN_JSON_FILENAME);
     return true;
 }
+
+// ===== BLOCKCHAIN DATA MANAGER IMPLEMENTATION =====
+
+// Global configuration
+static TW_DataRetentionConfig g_retention_config = {
+    .critical_days = 0,      // Keep forever
+    .important_days = 120,   // 4 months
+    .operational_days = 30   // 1 month
+};
+
+static TW_ReloadStats g_last_stats = {0};
+
+int TW_BlockchainDataManager_init(const TW_DataRetentionConfig* config) {
+    if (config) {
+        g_retention_config = *config;
+    }
+    printf("🔧 Blockchain Data Manager initialized\n");
+    printf("   Critical data: %u days (0=forever)\n", g_retention_config.critical_days);  
+    printf("   Important data: %u days\n", g_retention_config.important_days);
+    printf("   Operational data: %u days\n", g_retention_config.operational_days);
+    return 0;
+}
+
+bool TW_is_critical_transaction_type(TW_TransactionType type) {
+    switch (type) {
+        // Network Foundation - Always Critical
+        case TW_TXN_USER_REGISTRATION:
+        case TW_TXN_ROLE_ASSIGNMENT:
+        case TW_TXN_SYSTEM_CONFIG:
+        
+        // Group Management - Critical for Network Structure
+        case TW_TXN_GROUP_CREATE:
+        case TW_TXN_GROUP_UPDATE:
+        case TW_TXN_GROUP_MEMBER_ADD:
+        case TW_TXN_GROUP_MEMBER_REMOVE:
+        
+        // Permission System - Critical for Security
+        case TW_TXN_PERMISSION_EDIT:
+        case TW_TXN_PARENTAL_CONTROL:
+        
+        // Invitation System - Critical for Network Growth
+        case TW_TXN_INVITATION_CREATE:
+        case TW_TXN_INVITATION_ACCEPT:
+        case TW_TXN_INVITATION_REVOKE:
+        case TW_TXN_PROXIMITY_INVITATION:
+        case TW_TXN_PROXIMITY_VALIDATION:
+            return true;
+            
+        default:
+            return false;
+    }
+}
+
+bool TW_is_important_transaction_type(TW_TransactionType type) {
+    switch (type) {
+        // Communication - Important for Recent History
+        case TW_TXN_MESSAGE:
+        case TW_TXN_GROUP_MESSAGE:
+        
+        // Safety & Monitoring - Important for Recent Activity
+        case TW_TXN_LOCATION_UPDATE:
+        case TW_TXN_EMERGENCY_ALERT:
+        case TW_TXN_CONTENT_FILTER:
+        
+        // Educational Content - Important for Progress Tracking
+        case TW_TXN_EDUCATIONAL_RESOURCE_ADD:
+        case TW_TXN_CHALLENGE_COMPLETE:
+        case TW_TXN_BOOK_ADD_TO_LIBRARY:
+        
+        // Family Management - Important for Recent Activity
+        case TW_TXN_CHORE_ASSIGN:
+        case TW_TXN_CHORE_COMPLETE:
+        case TW_TXN_REWARD_DISTRIBUTE:
+        
+        // Community Activity - Important for Recent Engagement
+        case TW_TXN_EVENT_CREATE:
+        case TW_TXN_EVENT_INVITE:
+        case TW_TXN_EVENT_RSVP:
+        case TW_TXN_COMMUNITY_POST_CREATE:
+            return true;
+            
+        default:
+            return false;
+    }
+}
+
+TW_DataImportance TW_BlockchainDataManager_classify_transaction(const TW_Transaction* tx) {
+    if (!tx) return DATA_EPHEMERAL;
+    
+    if (TW_is_critical_transaction_type(tx->type)) {
+        return DATA_CRITICAL;
+    }
+    
+    if (TW_is_important_transaction_type(tx->type)) {
+        return DATA_IMPORTANT;
+    }
+    
+    // Operational transactions (keep for shorter time)
+    switch (tx->type) {
+        case TW_TXN_MEDIA_DOWNLOAD:
+        case TW_TXN_CONTENT_ACCESS_UPDATE:
+        case TW_TXN_CREATION_UPLOAD:
+        case TW_TXN_USAGE_POLICY_UPDATE:
+        case TW_TXN_GEOFENCE_CREATE:
+        case TW_TXN_GEOFENCE_CONFIG_UPDATE:
+            return DATA_OPERATIONAL;
+        
+        // Ephemeral transactions (don't persist)
+        case TW_TXN_VOICE_CALL_REQ:
+        case TW_TXN_VIDEO_CALL_REQ:
+        case TW_TXN_GAME_SESSION_START:
+        case TW_TXN_GAME_PERMISSION_UPDATE:
+        default:
+            return DATA_EPHEMERAL;
+    }
+}
+
+bool TW_BlockchainDataManager_should_load_transaction(const TW_Transaction* tx, 
+                                                     TW_DataImportance importance,
+                                                     time_t cutoff_time) {
+    if (!tx) return false;
+    
+    switch (importance) {
+        case DATA_CRITICAL:
+            // Critical transactions: keep forever or until configured limit
+            if (g_retention_config.critical_days == 0) return true;
+            return (time_t)tx->timestamp >= cutoff_time - (g_retention_config.critical_days * 24 * 3600);
+            
+        case DATA_IMPORTANT:
+            return (time_t)tx->timestamp >= cutoff_time - (g_retention_config.important_days * 24 * 3600);
+            
+        case DATA_OPERATIONAL:
+            return (time_t)tx->timestamp >= cutoff_time - (g_retention_config.operational_days * 24 * 3600);
+            
+        case DATA_EPHEMERAL:
+        default:
+            return false; // Never load ephemeral data
+    }
+}
+
+size_t TW_calculate_database_size(void) {
+    struct stat st;
+    if (stat("state/blockchain/blockchain.db", &st) == 0) {
+        return st.st_size;
+    }
+    return 0;
+}
+
+int TW_BlockchainDataManager_reload_from_blockchain(TW_BlockChain* blockchain,
+                                                   TW_ProgressCallback progress_cb,
+                                                   TW_ReloadStats* stats_out) {
+    if (!blockchain) return -1;
+    
+    // Initialize statistics 
+    TW_ReloadStats stats = {0};
+    stats.database_size_before = TW_calculate_database_size();
+    
+    time_t start_time = time(NULL);
+    time_t cutoff_time = time(NULL);
+    
+    printf("🔄 Starting blockchain data reload...\n");
+    printf("📊 Blockchain length: %u blocks\n", blockchain->length);
+    printf("🗄️  Database size before: %zu bytes (%.2f MB)\n", 
+           stats.database_size_before, stats.database_size_before / 1024.0 / 1024.0);
+    
+    // Clear existing database (except schema)
+    if (progress_cb) progress_cb(0, blockchain->length, "Clearing database...");
+    
+    // Clear tables but keep schema
+    if (db_is_initialized()) {
+        sqlite3* db = db_get_handle();
+        if (db && sqlite3_exec(db, 
+                        "DELETE FROM transactions; DELETE FROM blocks; DELETE FROM transaction_recipients;", 
+                        NULL, NULL, NULL) != SQLITE_OK) {
+            printf("❌ Failed to clear database tables\n");
+            return -1;
+        }
+        printf("✅ Database tables cleared\n");
+    }
+    
+    // Process blockchain from newest to oldest for efficiency
+    for (uint32_t i = 0; i < blockchain->length; i++) {
+        TW_Block* block = blockchain->blocks[i];
+        if (!block) continue;
+        
+        stats.blocks_processed++;
+        
+        if (progress_cb && (i % 10 == 0 || i == blockchain->length - 1)) {
+            char status[64];
+            snprintf(status, sizeof(status), "Processing block %u/%u", i + 1, blockchain->length);
+            progress_cb(i + 1, blockchain->length, status);
+        }
+        
+        // Always sync the block itself to database
+        if (db_add_block(block, i) != 0) {
+            printf("⚠️ Warning: Failed to sync block %u to database\n", i);
+            continue;
+        }
+        
+        // Process transactions in the block
+        for (int32_t tx_idx = 0; tx_idx < block->txn_count; tx_idx++) {
+            TW_Transaction* tx = block->txns[tx_idx];
+            if (!tx) continue;
+            
+            TW_DataImportance importance = TW_BlockchainDataManager_classify_transaction(tx);
+            
+            if (TW_BlockchainDataManager_should_load_transaction(tx, importance, cutoff_time)) {
+                // Transaction should be loaded
+                stats.transactions_loaded++;
+                
+                switch (importance) {
+                    case DATA_CRITICAL:     stats.critical_transactions++; break;
+                    case DATA_IMPORTANT:    stats.important_transactions++; break;
+                    case DATA_OPERATIONAL:  stats.operational_transactions++; break;
+                    case DATA_EPHEMERAL:    break; // Won't reach here
+                }
+                
+                // Transaction already synced by db_add_block
+            } else {
+                stats.transactions_skipped++;
+            }
+        }
+    }
+    
+    stats.database_size_after = TW_calculate_database_size();
+    stats.processing_time_seconds = difftime(time(NULL), start_time);
+    
+    // Store statistics
+    g_last_stats = stats;
+    if (stats_out) *stats_out = stats;
+    
+    // Print summary
+    printf("\n📈 Blockchain Reload Complete!\n");
+    printf("⏱️  Processing time: %.2f seconds\n", stats.processing_time_seconds);
+    printf("🗃️  Blocks processed: %u\n", stats.blocks_processed);
+    printf("📝 Transactions loaded: %u\n", stats.transactions_loaded);
+    printf("   └─ Critical: %u\n", stats.critical_transactions);
+    printf("   └─ Important: %u\n", stats.important_transactions);  
+    printf("   └─ Operational: %u\n", stats.operational_transactions);
+    printf("🚫 Transactions skipped: %u\n", stats.transactions_skipped);
+    printf("💾 Database size: %zu → %zu bytes (%.2f MB)\n", 
+           stats.database_size_before, stats.database_size_after,
+           stats.database_size_after / 1024.0 / 1024.0);
+    
+    if (stats.database_size_after < stats.database_size_before) {
+        size_t saved = stats.database_size_before - stats.database_size_after;
+        printf("💡 Space saved: %zu bytes (%.2f MB, %.1f%% reduction)\n", 
+               saved, saved / 1024.0 / 1024.0,
+               (saved * 100.0) / stats.database_size_before);
+    }
+    
+    return 0;
+}
+
+bool TW_BlockchainDataManager_needs_reload(TW_BlockChain* blockchain) {
+    if (!blockchain || !db_is_initialized()) return true;
+    
+    // Quick consistency check
+    uint32_t db_block_count = 0;
+    if (db_get_block_count(&db_block_count) != 0) return true;
+    
+    // If blockchain has more blocks than database, we need reload
+    if (blockchain->length > db_block_count) {
+        printf("🔍 Reload needed: Blockchain has %u blocks, database has %u\n", 
+               blockchain->length, db_block_count);
+        return true;
+    }
+    
+    return false;
+}
+
+const TW_DataRetentionConfig* TW_BlockchainDataManager_get_config(void) {
+    return &g_retention_config;
+}
+
+int TW_BlockchainDataManager_set_config(const TW_DataRetentionConfig* config) {
+    if (!config) return -1;
+    g_retention_config = *config;
+    printf("🔧 Data retention configuration updated\n");
+    return 0;
+}
+
+const TW_ReloadStats* TW_BlockchainDataManager_get_last_stats(void) {
+    return &g_last_stats;
+}
+
+const char* TW_data_importance_to_string(TW_DataImportance importance) {
+    switch (importance) {
+        case DATA_CRITICAL:     return "Critical";
+        case DATA_IMPORTANT:    return "Important";
+        case DATA_OPERATIONAL:  return "Operational";
+        case DATA_EPHEMERAL:    return "Ephemeral";
+        default:                return "Unknown";
+    }
+}
+
+void TW_BlockchainDataManager_cleanup(void) {
+    printf("🧹 Blockchain Data Manager cleanup complete\n");
+}

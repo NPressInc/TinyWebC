@@ -1,0 +1,75 @@
+=================================================================
+🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!
+=================================================================
+Node Configuration:
+  Node ID: 0
+  API Port: 8010
+  Protocol: HTTP + PBFT Consensus
+  Features: Blockchain, Invitations, Encrypted Transactions
+-----------------------------------------------------------------
+Initializing TinyWeb system components...
+Message queues initialized
+System components initialized successfully
+Creating PBFT node...
+Mongoose HTTP client initialized
+Invitation system initialized
+Initializing node keys...
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading blockchain...
+Loading/creating blockchain for node 0
+Loading existing blockchain from state/blockchain/blockchain.dat
+Loaded blockchain (Original size: 6218 bytes, Compressed size: 4698 bytes)
+Loaded existing blockchain for node 0 with length 2
+Initializing database...
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database initialized successfully
+Syncing blockchain to database...
+Syncing blockchain to database (2 blocks)...
+Failed to sync block 0
+Warning: Failed to sync blockchain to database
+✅ TinyWeb PBFT node initialized successfully
+-----------------------------------------------------------------
+🌐 HTTP API Server: http://localhost:8010
+📊 Available Endpoints:
+  • GET  /                          - Node status
+  • GET  /GetBlockChainLength       - Blockchain info
+  • POST /Transaction               - Submit transaction
+  • POST /invitation/create         - Create invitation
+  • POST /invitation/accept/<code>  - Accept invitation
+  • GET  /invitation/pending        - List pending invitations
+🔧 Press Ctrl+C to shutdown gracefully
+=================================================================
+PBFT node 0 starting on port 8010
+TinyWeb monitor thread started
+PBFT node threads started successfully
+Starting PBFT API server on port 8010
+PBFT main consensus loop started for node 0
+PBFT API server listening on http://0.0.0.0:8010
+Node 0: Proposing block (round 3)
+DEBUG: Creating block 2 with previous hash: b90bb45bccd71094fc3df011a346e2a0541b65c88421433ccc9aa4a10b2d5573
+Created new block with index 2 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 2 validation - Expected prev hash: b90bb45bccd71094fc3df011a346e2a0541b65c88421433ccc9aa4a10b2d5573, Actual prev hash: b90bb45bccd71094fc3df011a346e2a0541b65c88421433ccc9aa4a10b2d5573
+Block validation passed for block 2
+DEBUG: Block 2 validation - Expected prev hash: b90bb45bccd71094fc3df011a346e2a0541b65c88421433ccc9aa4a10b2d5573, Actual prev hash: b90bb45bccd71094fc3df011a346e2a0541b65c88421433ccc9aa4a10b2d5573
+Block validation passed for block 2
+DEBUG: TW_BlockChain_add_block - Expected prev hash: b90bb45bccd71094fc3df011a346e2a0541b65c88421433ccc9aa4a10b2d5573, Block prev hash: b90bb45bccd71094fc3df011a346e2a0541b65c88421433ccc9aa4a10b2d5573
+DEBUG: TW_BlockChain_add_block - Successfully added block 2, new length: 3
+Successfully committed block 2 to blockchain
+Block 2 synced to database
+DEBUG: Querying transactions with filter - limit: 20, offset: 0, type: -1
+DEBUG: Checking type filter: type=-1, condition=true
+DEBUG: Adding type filter to query
+DEBUG SQL COUNT QUERY: SELECT COUNT(*) FROM transactions t WHERE t.type = ?
+DEBUG: Count query returned 0 transactions
+DEBUG: query_transactions returned 0, tx_count: 0, tx_results: (nil)
+DEBUG: No transactions returned - query_result: 0, tx_count: 0
+Node 0: Proposing block (round 6)
+DEBUG: Creating block 3 with previous hash: 808cc5ba517f1f611e2300c40b2417bfb29b003708e330711a1acafd75d9b6eb
+Created new block with index 3 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 3 validation - Expected prev hash: 808cc5ba517f1f611e2300c40b2417bfb29b003708e330711a1acafd75d9b6eb, Actual prev hash: 808cc5ba517f1f611e2300c40b2417bfb29b003708e330711a1acafd75d9b6eb
+Block validation passed for block 3
+DEBUG: Bloc

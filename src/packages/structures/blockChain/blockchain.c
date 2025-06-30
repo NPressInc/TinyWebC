@@ -132,13 +132,30 @@ int TW_BlockChain_add_block(TW_BlockChain* blockchain, TW_Block* block) {
     unsigned char last_hash[HASH_SIZE];
     if (last) {
         TW_Block_getHash(last, last_hash);
-        if (memcmp(block->previous_hash, last_hash, HASH_SIZE) != 0) return 0;
+        
+        // Debug: Print hash comparison in blockchain add
+        char expected_hex[HASH_SIZE * 2 + 1];
+        char actual_hex[HASH_SIZE * 2 + 1];
+        // Simple hex conversion for debugging
+        for (int i = 0; i < HASH_SIZE; i++) {
+            sprintf(expected_hex + i * 2, "%02x", last_hash[i]);
+            sprintf(actual_hex + i * 2, "%02x", block->previous_hash[i]);
+        }
+        printf("DEBUG: TW_BlockChain_add_block - Expected prev hash: %s, Block prev hash: %s\n", 
+               expected_hex, actual_hex);
+        
+        if (memcmp(block->previous_hash, last_hash, HASH_SIZE) != 0) {
+            printf("DEBUG: TW_BlockChain_add_block - Hash mismatch, rejecting block\n");
+            return 0;
+        }
     } else if (block->index != 0) {
         return 0; // First block must be index 0
     }
 
     blockchain->blocks[blockchain->length] = block;
     blockchain->length++;
+    printf("DEBUG: TW_BlockChain_add_block - Successfully added block %d, new length: %u\n", 
+           block->index, blockchain->length);
     return 1;
 }
 
