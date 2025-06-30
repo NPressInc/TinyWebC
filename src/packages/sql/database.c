@@ -459,6 +459,28 @@ int db_get_block_count(uint32_t* count) {
     return 0;
 }
 
+int db_get_block_count_with_transactions(uint32_t* count) {
+    if (!g_db_ctx.is_initialized || !count) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_BLOCK_COUNT_WITH_TRANSACTIONS, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        *count = sqlite3_column_int(stmt, 0);
+    } else {
+        *count = 0;
+    }
+
+    sqlite3_finalize(stmt);
+    return 0;
+}
+
 // Memory management functions
 void db_free_transaction_record(TransactionRecord* record) {
     if (!record) return;

@@ -1,0 +1,87 @@
+=================================================================
+🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!
+=================================================================
+Node Configuration:
+  Node ID: 0
+  API Port: 4000
+  Protocol: HTTP + PBFT Consensus
+  Features: Blockchain, Invitations, Encrypted Transactions
+-----------------------------------------------------------------
+Initializing TinyWeb system components...
+Message queues initialized
+System components initialized successfully
+Creating PBFT node...
+Mongoose HTTP client initialized
+Invitation system initialized
+Initializing node keys...
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading blockchain...
+Loading/creating blockchain for node 0
+Loading existing blockchain from state/blockchain/blockchain.dat
+Loaded blockchain (Original size: 6218 bytes, Compressed size: 4696 bytes)
+Loaded existing blockchain for node 0 with length 2
+🔧 Blockchain Data Manager initialized
+   Critical data: 0 days (0=forever)
+   Important data: 120 days
+   Operational data: 30 days
+🔄 Database inconsistent with blockchain, reloading...
+🔄 Starting blockchain data reload...
+📊 Blockchain length: 2 blocks
+🗄️  Database size before: 245760 bytes (0.23 MB)
+⚠️ Warning: Failed to sync block 0 to database
+⚠️ Warning: Failed to sync block 1 to database
+
+📈 Blockchain Reload Complete!
+⏱️  Processing time: 0.00 seconds
+🗃️  Blocks processed: 2
+📝 Transactions loaded: 0
+   └─ Critical: 0
+   └─ Important: 0
+   └─ Operational: 0
+🚫 Transactions skipped: 0
+💾 Database size: 245760 → 245760 bytes (0.23 MB)
+✅ Database successfully reloaded from blockchain
+📊 Reload Statistics:
+   Critical transactions: 0
+   Important transactions: 0
+   Operational transactions: 0
+   Transactions skipped: 0
+Initializing database...
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database initialized successfully
+Syncing blockchain to database...
+Syncing blockchain to database (2 blocks)...
+Failed to sync block 0
+Warning: Failed to sync blockchain to database
+✅ TinyWeb PBFT node initialized successfully
+-----------------------------------------------------------------
+🌐 HTTP API Server: http://localhost:4000
+📊 Available Endpoints:
+  • GET  /                          - Node status
+  • GET  /GetBlockChainLength       - Blockchain info
+  • POST /Transaction               - Submit transaction
+  • POST /invitation/create         - Create invitation
+  • POST /invitation/accept/<code>  - Accept invitation
+  • GET  /invitation/pending        - List pending invitations
+🔧 Press Ctrl+C to shutdown gracefully
+=================================================================
+PBFT node 0 starting on port 4000
+TinyWeb monitor thread started
+Starting PBFT API server on port 4000
+PBFT node threads started successfully
+PBFT main consensus loop started for node 0
+37319e4 1 mongoose.c:8849:mg_open_liste bind: 98
+37319e4 1 mongoose.c:4066:mg_listen     Failed: http://0.0.0.0:4000, errno 98
+Failed to create HTTP listener on port 4000
+Node 0: Proposing block (round 3)
+DEBUG: Creating block 2 with previous hash: d3f7a6ac3ca9afa2c87b903d8374b980e852ddd35c853691523b5009ba7a7aaa
+Created new block with index 2 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 2 validation - Expected prev hash: d3f7a6ac3ca9afa2c87b903d8374b980e852ddd35c853691523b5009ba7a7aaa, Actual prev hash: d3f7a6ac3ca9afa2c87b903d8374b980e852ddd35c853691523b5009ba7a7aaa
+Block validation passed for block 2
+DEBUG: Block 2 validation - Expected prev hash: d3f7a6ac3ca9afa2c87b903d8374b980e852ddd35c853691523b5009ba7a7aaa, Actual prev hash: d3f7a6ac3ca9afa2c87b903d8374b980e852ddd35c853691523b5009ba7a7aaa
+Block validation passed for block 2
+DEBUG: TW_BlockChain_add_block - Expected prev hash: d3f7a6ac3ca9afa2c87b903d8374b980e852ddd35c853691523b5009ba7a7aaa, Block prev hash: d3f7a6ac3ca9afa2c87b903d8374b980e852ddd35c853691523b5009ba7a7aaa
+DEBUG: TW_BlockChain_add_block

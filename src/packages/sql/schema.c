@@ -103,6 +103,9 @@ const char* SQL_SELECT_TRANSACTION_COUNT =
 const char* SQL_SELECT_BLOCK_COUNT = 
     "SELECT COUNT(*) FROM blocks;";
 
+const char* SQL_SELECT_BLOCK_COUNT_WITH_TRANSACTIONS = 
+    "SELECT COUNT(*) FROM blocks WHERE transaction_count > 0;";
+
 const char* SQL_SELECT_TRANSACTIONS_BY_SENDER = 
     "SELECT id, block_index, transaction_index, type, sender, timestamp, recipient_count, "
     "group_id, signature, payload_size, encrypted_payload, decrypted_content, is_decrypted "

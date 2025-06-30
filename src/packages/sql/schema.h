@@ -27,6 +27,7 @@ extern const char* SQL_INSERT_RECIPIENT;
 
 extern const char* SQL_SELECT_TRANSACTION_COUNT;
 extern const char* SQL_SELECT_BLOCK_COUNT;
+extern const char* SQL_SELECT_BLOCK_COUNT_WITH_TRANSACTIONS;
 extern const char* SQL_SELECT_TRANSACTIONS_BY_SENDER;
 extern const char* SQL_SELECT_TRANSACTIONS_BY_RECIPIENT;
 extern const char* SQL_SELECT_TRANSACTIONS_BY_TYPE;

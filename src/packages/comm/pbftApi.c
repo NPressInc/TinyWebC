@@ -441,10 +441,12 @@ void handle_get_network_stats(struct mg_connection* c, struct mg_http_message* h
     
     // Get actual network statistics from database and node
     uint32_t total_blocks = 0;
+    uint32_t blocks_with_transactions = 0;
     uint64_t total_transactions = 0;
     
     if (db_is_initialized()) {
         db_get_block_count(&total_blocks);
+        db_get_block_count_with_transactions(&blocks_with_transactions);
         db_get_transaction_count(&total_transactions);
     }
     
@@ -497,6 +499,7 @@ void handle_get_network_stats(struct mg_connection* c, struct mg_http_message* h
     cJSON_AddNumberToObject(resp, "totalNodes", total_nodes);
     cJSON_AddNumberToObject(resp, "onlineNodes", online_nodes);
     cJSON_AddNumberToObject(resp, "totalBlocks", total_blocks);
+    cJSON_AddNumberToObject(resp, "blocksWithTransactions", blocks_with_transactions);
     cJSON_AddNumberToObject(resp, "averageBlockTime", average_block_time);
     cJSON_AddNumberToObject(resp, "networkHealth", network_health);
     cJSON_AddNumberToObject(resp, "lastBlockTime", last_block_time);

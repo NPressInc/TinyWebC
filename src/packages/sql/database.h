@@ -64,6 +64,7 @@ int db_update_blockchain_info(TW_BlockChain* blockchain);
 // Query functions
 int db_get_transaction_count(uint64_t* count);
 int db_get_block_count(uint32_t* count);
+int db_get_block_count_with_transactions(uint32_t* count);
 int db_get_transactions_by_sender(const char* sender_pubkey, TransactionRecord** results, size_t* count);
 int db_get_transactions_by_recipient(const char* recipient_pubkey, TransactionRecord** results, size_t* count);
 int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** results, size_t* count);
