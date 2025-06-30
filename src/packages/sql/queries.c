@@ -382,5 +382,298 @@ void free_block_filter(BlockFilter* filter) {
 }
 
 void free_block_records(BlockRecord* records, size_t count) {
-    if (records) free(records);
+    if (!records) return;
+    
+    for (size_t i = 0; i < count; i++) {
+        // Free any dynamically allocated fields if they exist
+        // Currently BlockRecord fields are all static, so no need to free individual fields
+    }
+    
+    free(records);
+}
+
+// Node status management functions
+int db_register_node(const char* node_id, const char* node_name, const char* ip_address, uint16_t port, bool is_validator) {
+    if (!node_id || !node_name || !ip_address) return -1;
+    
+    sqlite3* db = get_db_handle();
+    if (!db) return -1;
+    
+    sqlite3_stmt* stmt = NULL;
+    int rc = sqlite3_prepare_v2(db, SQL_INSERT_NODE_STATUS, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Failed to prepare node registration statement: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    // Bind parameters (node_id appears twice in the query for heartbeat counting)
+    sqlite3_bind_text(stmt, 1, node_id, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, node_name, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, ip_address, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 4, port);
+    sqlite3_bind_int(stmt, 5, is_validator ? 1 : 0);
+    sqlite3_bind_text(stmt, 6, node_id, -1, SQLITE_STATIC); // For heartbeat count lookup
+    
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        printf("Failed to register node: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    printf("Node %s registered successfully\n", node_id);
+    return 0;
+}
+
+int db_update_node_heartbeat(const char* node_id) {
+    if (!node_id) return -1;
+    
+    sqlite3* db = get_db_handle();
+    if (!db) return -1;
+    
+    sqlite3_stmt* stmt = NULL;
+    int rc = sqlite3_prepare_v2(db, SQL_UPDATE_NODE_HEARTBEAT, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Failed to prepare heartbeat update statement: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    sqlite3_bind_text(stmt, 1, node_id, -1, SQLITE_STATIC);
+    
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        printf("Failed to update node heartbeat: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    return 0;
+}
+
+int db_set_node_offline(const char* node_id) {
+    if (!node_id) return -1;
+    
+    sqlite3* db = get_db_handle();
+    if (!db) return -1;
+    
+    sqlite3_stmt* stmt = NULL;
+    int rc = sqlite3_prepare_v2(db, SQL_SET_NODE_OFFLINE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Failed to prepare set offline statement: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    sqlite3_bind_text(stmt, 1, node_id, -1, SQLITE_STATIC);
+    
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        printf("Failed to set node offline: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    return 0;
+}
+
+int db_cleanup_stale_nodes(void) {
+    sqlite3* db = get_db_handle();
+    if (!db) return -1;
+    
+    sqlite3_stmt* stmt = NULL;
+    int rc = sqlite3_prepare_v2(db, SQL_SET_STALE_NODES_OFFLINE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Failed to prepare stale nodes cleanup statement: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    rc = sqlite3_step(stmt);
+    int changes = sqlite3_changes(db);
+    sqlite3_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        printf("Failed to cleanup stale nodes: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    if (changes > 0) {
+        printf("Marked %d stale nodes as offline\n", changes);
+    }
+    
+    return 0;
+}
+
+static void populate_node_record(sqlite3_stmt* stmt, NodeStatusRecord* record) {
+    const char* node_id = (const char*)sqlite3_column_text(stmt, 0);
+    if (node_id) strncpy(record->node_id, node_id, sizeof(record->node_id) - 1);
+    
+    const char* node_name = (const char*)sqlite3_column_text(stmt, 1);
+    if (node_name) strncpy(record->node_name, node_name, sizeof(record->node_name) - 1);
+    
+    const char* ip_address = (const char*)sqlite3_column_text(stmt, 2);
+    if (ip_address) strncpy(record->ip_address, ip_address, sizeof(record->ip_address) - 1);
+    
+    record->port = (uint16_t)sqlite3_column_int(stmt, 3);
+    record->is_validator = sqlite3_column_int(stmt, 4) != 0;
+    
+    const char* status = (const char*)sqlite3_column_text(stmt, 5);
+    if (status) strncpy(record->status, status, sizeof(record->status) - 1);
+    
+    record->last_seen = sqlite3_column_int64(stmt, 6);
+    record->heartbeat_count = sqlite3_column_int(stmt, 7);
+}
+
+int db_get_all_nodes(NodeStatusRecord** results, size_t* count) {
+    if (!results || !count) return -1;
+    
+    sqlite3* db = get_db_handle();
+    if (!db) return -1;
+    
+    sqlite3_stmt* stmt = NULL;
+    int rc = sqlite3_prepare_v2(db, SQL_SELECT_ALL_NODES, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Failed to prepare get all nodes statement: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    // First count the results
+    size_t result_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        result_count++;
+    }
+    
+    sqlite3_reset(stmt);
+    
+    if (result_count == 0) {
+        *results = NULL;
+        *count = 0;
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+    
+    // Allocate memory for results
+    NodeStatusRecord* records = malloc(sizeof(NodeStatusRecord) * result_count);
+    if (!records) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+    
+    // Populate results
+    size_t i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < result_count) {
+        memset(&records[i], 0, sizeof(NodeStatusRecord));
+        populate_node_record(stmt, &records[i]);
+        i++;
+    }
+    
+    sqlite3_finalize(stmt);
+    
+    *results = records;
+    *count = result_count;
+    return 0;
+}
+
+int db_get_online_nodes(NodeStatusRecord** results, size_t* count) {
+    if (!results || !count) return -1;
+    
+    sqlite3* db = get_db_handle();
+    if (!db) return -1;
+    
+    sqlite3_stmt* stmt = NULL;
+    int rc = sqlite3_prepare_v2(db, SQL_SELECT_ONLINE_NODES, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Failed to prepare get online nodes statement: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    // First count the results
+    size_t result_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        result_count++;
+    }
+    
+    sqlite3_reset(stmt);
+    
+    if (result_count == 0) {
+        *results = NULL;
+        *count = 0;
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+    
+    // Allocate memory for results
+    NodeStatusRecord* records = malloc(sizeof(NodeStatusRecord) * result_count);
+    if (!records) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+    
+    // Populate results
+    size_t i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < result_count) {
+        memset(&records[i], 0, sizeof(NodeStatusRecord));
+        populate_node_record(stmt, &records[i]);
+        i++;
+    }
+    
+    sqlite3_finalize(stmt);
+    
+    *results = records;
+    *count = result_count;
+    return 0;
+}
+
+int db_count_total_nodes(uint32_t* count) {
+    if (!count) return -1;
+    
+    sqlite3* db = get_db_handle();
+    if (!db) return -1;
+    
+    sqlite3_stmt* stmt = NULL;
+    int rc = sqlite3_prepare_v2(db, SQL_COUNT_TOTAL_NODES, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Failed to prepare count total nodes statement: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        *count = (uint32_t)sqlite3_column_int(stmt, 0);
+    } else {
+        *count = 0;
+    }
+    
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_ROW) ? 0 : -1;
+}
+
+int db_count_online_nodes(uint32_t* count) {
+    if (!count) return -1;
+    
+    sqlite3* db = get_db_handle();
+    if (!db) return -1;
+    
+    sqlite3_stmt* stmt = NULL;
+    int rc = sqlite3_prepare_v2(db, SQL_COUNT_ONLINE_NODES, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Failed to prepare count online nodes statement: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        *count = (uint32_t)sqlite3_column_int(stmt, 0);
+    } else {
+        *count = 0;
+    }
+    
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_ROW) ? 0 : -1;
+}
+
+void db_free_node_records(NodeStatusRecord* records, size_t count) {
+    if (!records) return;
+    free(records);
 } 

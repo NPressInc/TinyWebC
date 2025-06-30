@@ -55,6 +55,20 @@ const char* SQL_CREATE_TRANSACTION_RECIPIENTS =
     "    FOREIGN KEY (transaction_id) REFERENCES transactions(id)"
     ");";
 
+// Node status tracking table
+const char* SQL_CREATE_NODE_STATUS = 
+    "CREATE TABLE IF NOT EXISTS node_status ("
+    "    node_id TEXT PRIMARY KEY,"
+    "    node_name TEXT NOT NULL,"
+    "    ip_address TEXT NOT NULL,"
+    "    port INTEGER NOT NULL,"
+    "    is_validator BOOLEAN NOT NULL DEFAULT TRUE,"
+    "    status TEXT NOT NULL DEFAULT 'offline',"  // 'online', 'offline', 'unknown'
+    "    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+    "    first_registered TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+    "    heartbeat_count INTEGER DEFAULT 0"
+    ");";
+
 // SQL statements for creating indexes
 const char* SQL_CREATE_INDEX_TRANSACTIONS_SENDER = 
     "CREATE INDEX IF NOT EXISTS idx_transactions_sender ON transactions(sender);";
@@ -73,6 +87,9 @@ const char* SQL_CREATE_INDEX_RECIPIENTS_PUBKEY =
 
 const char* SQL_CREATE_INDEX_TRANSACTIONS_GROUP_ID = 
     "CREATE INDEX IF NOT EXISTS idx_transactions_group_id ON transactions(group_id);";
+
+const char* SQL_CREATE_INDEX_BLOCKS_HASH = 
+    "CREATE INDEX IF NOT EXISTS idx_blocks_hash ON blocks(block_hash);";
 
 // SQL statements for common operations
 const char* SQL_INSERT_BLOCKCHAIN_INFO = 
@@ -137,11 +154,46 @@ const char* SQL_SELECT_BLOCK_INFO =
     "SELECT block_index, timestamp, previous_hash, merkle_root_hash, proposer_id, transaction_count, block_hash "
     "FROM blocks WHERE block_index = ?;";
 
+const char* SQL_SELECT_BLOCK_BY_HASH = 
+    "SELECT block_index, timestamp, previous_hash, merkle_root_hash, proposer_id, transaction_count, block_hash "
+    "FROM blocks WHERE block_hash = ?;";
+
 const char* SQL_UPDATE_CACHED_CONTENT = 
     "UPDATE transactions SET decrypted_content = ?, content_hash = ?, is_decrypted = TRUE WHERE id = ?;";
 
 const char* SQL_SELECT_CACHED_CONTENT = 
     "SELECT decrypted_content FROM transactions WHERE id = ? AND is_decrypted = TRUE;";
+
+// Node status management queries
+const char* SQL_INSERT_NODE_STATUS = 
+    "INSERT OR REPLACE INTO node_status "
+    "(node_id, node_name, ip_address, port, is_validator, status, last_seen, heartbeat_count) "
+    "VALUES (?, ?, ?, ?, ?, 'online', CURRENT_TIMESTAMP, COALESCE((SELECT heartbeat_count FROM node_status WHERE node_id = ?), 0) + 1);";
+
+const char* SQL_UPDATE_NODE_HEARTBEAT = 
+    "UPDATE node_status SET status = 'online', last_seen = CURRENT_TIMESTAMP, heartbeat_count = heartbeat_count + 1 "
+    "WHERE node_id = ?;";
+
+const char* SQL_SET_NODE_OFFLINE = 
+    "UPDATE node_status SET status = 'offline' WHERE node_id = ?;";
+
+const char* SQL_SET_STALE_NODES_OFFLINE = 
+    "UPDATE node_status SET status = 'offline' "
+    "WHERE status = 'online' AND last_seen < datetime('now', '-30 seconds');";
+
+const char* SQL_SELECT_ALL_NODES = 
+    "SELECT node_id, node_name, ip_address, port, is_validator, status, last_seen, heartbeat_count "
+    "FROM node_status ORDER BY node_id;";
+
+const char* SQL_SELECT_ONLINE_NODES = 
+    "SELECT node_id, node_name, ip_address, port, is_validator, status, last_seen, heartbeat_count "
+    "FROM node_status WHERE status = 'online' ORDER BY node_id;";
+
+const char* SQL_COUNT_TOTAL_NODES = 
+    "SELECT COUNT(*) FROM node_status;";
+
+const char* SQL_COUNT_ONLINE_NODES = 
+    "SELECT COUNT(*) FROM node_status WHERE status = 'online';";
 
 // Schema management functions
 int schema_create_all_tables(sqlite3* db) {
@@ -154,6 +206,7 @@ int schema_create_all_tables(sqlite3* db) {
         SQL_CREATE_BLOCKS,
         SQL_CREATE_TRANSACTIONS,
         SQL_CREATE_TRANSACTION_RECIPIENTS,
+        SQL_CREATE_NODE_STATUS,
         NULL
     };
 
@@ -181,6 +234,7 @@ int schema_create_all_indexes(sqlite3* db) {
         SQL_CREATE_INDEX_TRANSACTIONS_BLOCK,
         SQL_CREATE_INDEX_RECIPIENTS_PUBKEY,
         SQL_CREATE_INDEX_TRANSACTIONS_GROUP_ID,
+        SQL_CREATE_INDEX_BLOCKS_HASH,
         NULL
     };
 

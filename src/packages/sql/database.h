@@ -47,6 +47,16 @@ typedef struct {
     char block_hash[65];  // Hex string
 } BlockRecord;
 
+// Extended block record with transactions for API responses
+typedef struct {
+    char hash[65];           // Block hash (mapped from block_hash)
+    uint32_t height;         // Block height (mapped from block_index)
+    char previous_hash[65];  // Previous block hash
+    uint64_t timestamp;      // Block timestamp
+    uint32_t transaction_count;  // Number of transactions
+    TransactionRecord* transactions;  // Array of transactions
+} ApiBlockRecord;
+
 // Core database functions
 int db_init(const char* db_path);
 int db_close(void);
@@ -71,10 +81,13 @@ int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** res
 int db_get_transactions_by_block(uint32_t block_index, TransactionRecord** results, size_t* count);
 int db_get_recent_transactions(uint32_t limit, TransactionRecord** results, size_t* count);
 int db_get_block_info(uint32_t block_index, BlockRecord* block_info);
+int db_get_block_by_hash(const char* block_hash, ApiBlockRecord** block_record);
 
 // Utility functions
 void db_free_transaction_records(TransactionRecord* records, size_t count);
 void db_free_transaction_record(TransactionRecord* record);
+void db_free_block_record(ApiBlockRecord* record);
+const char* get_transaction_type_name(TW_TransactionType type);
 int db_hex_encode(const unsigned char* input, size_t input_len, char* output, size_t output_len);
 int db_hex_decode(const char* input, unsigned char* output, size_t output_len);
 

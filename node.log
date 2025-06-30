@@ -1,0 +1,791 @@
+=================================================================
+🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!
+=================================================================
+Node Configuration:
+  Node ID: 0
+  API Port: 8000
+  Protocol: HTTP + PBFT Consensus
+  Features: Blockchain, Invitations, Encrypted Transactions
+-----------------------------------------------------------------
+Initializing TinyWeb system components...
+Message queues initialized
+System components initialized successfully
+Creating PBFT node...
+Mongoose HTTP client initialized
+Invitation system initialized
+Initializing node keys...
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading blockchain...
+Loading/creating blockchain for node 0
+Loading existing blockchain from state/blockchain/blockchain.dat
+Loaded blockchain (Original size: 67370 bytes, Compressed size: 40909 bytes)
+Loaded existing blockchain for node 0 with length 590
+🔧 Blockchain Data Manager initialized
+   Critical data: 0 days (0=forever)
+   Important data: 120 days
+   Operational data: 30 days
+🔄 Database inconsistent with blockchain, reloading...
+🔄 Starting blockchain data reload...
+📊 Blockchain length: 590 blocks
+🗄️  Database size before: 131072 bytes (0.12 MB)
+⚠️ Warning: Failed to sync block 0 to database
+⚠️ Warning: Failed to sync block 1 to database
+⚠️ Warning: Failed to sync block 2 to database
+⚠️ Warning: Failed to sync block 3 to database
+⚠️ Warning: Failed to sync block 4 to database
+⚠️ Warning: Failed to sync block 5 to database
+⚠️ Warning: Failed to sync block 6 to database
+⚠️ Warning: Failed to sync block 7 to database
+⚠️ Warning: Failed to sync block 8 to database
+⚠️ Warning: Failed to sync block 9 to database
+⚠️ Warning: Failed to sync block 10 to database
+⚠️ Warning: Failed to sync block 11 to database
+⚠️ Warning: Failed to sync block 12 to database
+⚠️ Warning: Failed to sync block 13 to database
+⚠️ Warning: Failed to sync block 14 to database
+⚠️ Warning: Failed to sync block 15 to database
+⚠️ Warning: Failed to sync block 16 to database
+⚠️ Warning: Failed to sync block 17 to database
+⚠️ Warning: Failed to sync block 18 to database
+⚠️ Warning: Failed to sync block 19 to database
+⚠️ Warning: Failed to sync block 20 to database
+⚠️ Warning: Failed to sync block 21 to database
+⚠️ Warning: Failed to sync block 22 to database
+⚠️ Warning: Failed to sync block 23 to database
+⚠️ Warning: Failed to sync block 24 to database
+⚠️ Warning: Failed to sync block 25 to database
+⚠️ Warning: Failed to sync block 26 to database
+⚠️ Warning: Failed to sync block 27 to database
+⚠️ Warning: Failed to sync block 28 to database
+⚠️ Warning: Failed to sync block 29 to database
+⚠️ Warning: Failed to sync block 30 to database
+⚠️ Warning: Failed to sync block 31 to database
+⚠️ Warning: Failed to sync block 32 to database
+⚠️ Warning: Failed to sync block 33 to database
+⚠️ Warning: Failed to sync block 34 to database
+⚠️ Warning: Failed to sync block 35 to database
+⚠️ Warning: Failed to sync block 36 to database
+⚠️ Warning: Failed to sync block 37 to database
+⚠️ Warning: Failed to sync block 38 to database
+⚠️ Warning: Failed to sync block 39 to database
+⚠️ Warning: Failed to sync block 40 to database
+⚠️ Warning: Failed to sync block 41 to database
+⚠️ Warning: Failed to sync block 42 to database
+⚠️ Warning: Failed to sync block 43 to database
+⚠️ Warning: Failed to sync block 44 to database
+⚠️ Warning: Failed to sync block 45 to database
+⚠️ Warning: Failed to sync block 46 to database
+⚠️ Warning: Failed to sync block 47 to database
+⚠️ Warning: Failed to sync block 48 to database
+⚠️ Warning: Failed to sync block 49 to database
+⚠️ Warning: Failed to sync block 50 to database
+⚠️ Warning: Failed to sync block 51 to database
+⚠️ Warning: Failed to sync block 52 to database
+⚠️ Warning: Failed to sync block 53 to database
+⚠️ Warning: Failed to sync block 54 to database
+⚠️ Warning: Failed to sync block 55 to database
+⚠️ Warning: Failed to sync block 56 to database
+⚠️ Warning: Failed to sync block 57 to database
+⚠️ Warning: Failed to sync block 58 to database
+⚠️ Warning: Failed to sync block 59 to database
+⚠️ Warning: Failed to sync block 60 to database
+⚠️ Warning: Failed to sync block 61 to database
+⚠️ Warning: Failed to sync block 62 to database
+⚠️ Warning: Failed to sync block 63 to database
+⚠️ Warning: Failed to sync block 64 to database
+⚠️ Warning: Failed to sync block 65 to database
+⚠️ Warning: Failed to sync block 66 to database
+⚠️ Warning: Failed to sync block 67 to database
+⚠️ Warning: Failed to sync block 68 to database
+⚠️ Warning: Failed to sync block 69 to database
+⚠️ Warning: Failed to sync block 70 to database
+⚠️ Warning: Failed to sync block 71 to database
+⚠️ Warning: Failed to sync block 72 to database
+⚠️ Warning: Failed to sync block 73 to database
+⚠️ Warning: Failed to sync block 74 to database
+⚠️ Warning: Failed to sync block 75 to database
+⚠️ Warning: Failed to sync block 76 to database
+⚠️ Warning: Failed to sync block 77 to database
+⚠️ Warning: Failed to sync block 78 to database
+⚠️ Warning: Failed to sync block 79 to database
+⚠️ Warning: Failed to sync block 80 to database
+⚠️ Warning: Failed to sync block 81 to database
+⚠️ Warning: Failed to sync block 82 to database
+⚠️ Warning: Failed to sync block 83 to database
+⚠️ Warning: Failed to sync block 84 to database
+⚠️ Warning: Failed to sync block 85 to database
+⚠️ Warning: Failed to sync block 86 to database
+⚠️ Warning: Failed to sync block 87 to database
+⚠️ Warning: Failed to sync block 88 to database
+⚠️ Warning: Failed to sync block 89 to database
+⚠️ Warning: Failed to sync block 90 to database
+⚠️ Warning: Failed to sync block 91 to database
+⚠️ Warning: Failed to sync block 92 to database
+⚠️ Warning: Failed to sync block 93 to database
+⚠️ Warning: Failed to sync block 94 to database
+⚠️ Warning: Failed to sync block 95 to database
+⚠️ Warning: Failed to sync block 96 to database
+⚠️ Warning: Failed to sync block 97 to database
+⚠️ Warning: Failed to sync block 98 to database
+⚠️ Warning: Failed to sync block 99 to database
+⚠️ Warning: Failed to sync block 100 to database
+⚠️ Warning: Failed to sync block 101 to database
+⚠️ Warning: Failed to sync block 102 to database
+⚠️ Warning: Failed to sync block 103 to database
+⚠️ Warning: Failed to sync block 104 to database
+⚠️ Warning: Failed to sync block 105 to database
+⚠️ Warning: Failed to sync block 106 to database
+⚠️ Warning: Failed to sync block 107 to database
+⚠️ Warning: Failed to sync block 108 to database
+⚠️ Warning: Failed to sync block 109 to database
+⚠️ Warning: Failed to sync block 110 to database
+⚠️ Warning: Failed to sync block 111 to database
+⚠️ Warning: Failed to sync block 112 to database
+⚠️ Warning: Failed to sync block 113 to database
+⚠️ Warning: Failed to sync block 114 to database
+⚠️ Warning: Failed to sync block 115 to database
+⚠️ Warning: Failed to sync block 116 to database
+⚠️ Warning: Failed to sync block 117 to database
+⚠️ Warning: Failed to sync block 118 to database
+⚠️ Warning: Failed to sync block 119 to database
+⚠️ Warning: Failed to sync block 120 to database
+⚠️ Warning: Failed to sync block 121 to database
+⚠️ Warning: Failed to sync block 122 to database
+⚠️ Warning: Failed to sync block 123 to database
+⚠️ Warning: Failed to sync block 124 to database
+⚠️ Warning: Failed to sync block 125 to database
+⚠️ Warning: Failed to sync block 126 to database
+⚠️ Warning: Failed to sync block 127 to database
+⚠️ Warning: Failed to sync block 128 to database
+⚠️ Warning: Failed to sync block 129 to database
+⚠️ Warning: Failed to sync block 130 to database
+⚠️ Warning: Failed to sync block 131 to database
+⚠️ Warning: Failed to sync block 132 to database
+⚠️ Warning: Failed to sync block 133 to database
+⚠️ Warning: Failed to sync block 134 to database
+⚠️ Warning: Failed to sync block 135 to database
+⚠️ Warning: Failed to sync block 136 to database
+⚠️ Warning: Failed to sync block 137 to database
+⚠️ Warning: Failed to sync block 138 to database
+⚠️ Warning: Failed to sync block 139 to database
+⚠️ Warning: Failed to sync block 140 to database
+⚠️ Warning: Failed to sync block 141 to database
+⚠️ Warning: Failed to sync block 142 to database
+⚠️ Warning: Failed to sync block 143 to database
+⚠️ Warning: Failed to sync block 144 to database
+⚠️ Warning: Failed to sync block 145 to database
+⚠️ Warning: Failed to sync block 146 to database
+⚠️ Warning: Failed to sync block 147 to database
+⚠️ Warning: Failed to sync block 148 to database
+⚠️ Warning: Failed to sync block 149 to database
+⚠️ Warning: Failed to sync block 150 to database
+⚠️ Warning: Failed to sync block 151 to database
+⚠️ Warning: Failed to sync block 152 to database
+⚠️ Warning: Failed to sync block 153 to database
+⚠️ Warning: Failed to sync block 154 to database
+⚠️ Warning: Failed to sync block 155 to database
+⚠️ Warning: Failed to sync block 156 to database
+⚠️ Warning: Failed to sync block 157 to database
+⚠️ Warning: Failed to sync block 158 to database
+⚠️ Warning: Failed to sync block 159 to database
+⚠️ Warning: Failed to sync block 160 to database
+⚠️ Warning: Failed to sync block 161 to database
+⚠️ Warning: Failed to sync block 162 to database
+⚠️ Warning: Failed to sync block 163 to database
+⚠️ Warning: Failed to sync block 164 to database
+⚠️ Warning: Failed to sync block 165 to database
+⚠️ Warning: Failed to sync block 166 to database
+⚠️ Warning: Failed to sync block 167 to database
+⚠️ Warning: Failed to sync block 168 to database
+⚠️ Warning: Failed to sync block 169 to database
+⚠️ Warning: Failed to sync block 170 to database
+⚠️ Warning: Failed to sync block 171 to database
+⚠️ Warning: Failed to sync block 172 to database
+⚠️ Warning: Failed to sync block 173 to database
+⚠️ Warning: Failed to sync block 174 to database
+⚠️ Warning: Failed to sync block 175 to database
+⚠️ Warning: Failed to sync block 176 to database
+⚠️ Warning: Failed to sync block 177 to database
+⚠️ Warning: Failed to sync block 178 to database
+⚠️ Warning: Failed to sync block 179 to database
+⚠️ Warning: Failed to sync block 180 to database
+⚠️ Warning: Failed to sync block 181 to database
+⚠️ Warning: Failed to sync block 182 to database
+⚠️ Warning: Failed to sync block 183 to database
+⚠️ Warning: Failed to sync block 184 to database
+⚠️ Warning: Failed to sync block 185 to database
+⚠️ Warning: Failed to sync block 186 to database
+⚠️ Warning: Failed to sync block 187 to database
+⚠️ Warning: Failed to sync block 188 to database
+⚠️ Warning: Failed to sync block 189 to database
+⚠️ Warning: Failed to sync block 190 to database
+⚠️ Warning: Failed to sync block 191 to database
+⚠️ Warning: Failed to sync block 192 to database
+⚠️ Warning: Failed to sync block 193 to database
+⚠️ Warning: Failed to sync block 194 to database
+⚠️ Warning: Failed to sync block 195 to database
+⚠️ Warning: Failed to sync block 196 to database
+⚠️ Warning: Failed to sync block 197 to database
+⚠️ Warning: Failed to sync block 198 to database
+⚠️ Warning: Failed to sync block 199 to database
+⚠️ Warning: Failed to sync block 200 to database
+⚠️ Warning: Failed to sync block 201 to database
+⚠️ Warning: Failed to sync block 202 to database
+⚠️ Warning: Failed to sync block 203 to database
+⚠️ Warning: Failed to sync block 204 to database
+⚠️ Warning: Failed to sync block 205 to database
+⚠️ Warning: Failed to sync block 206 to database
+⚠️ Warning: Failed to sync block 207 to database
+⚠️ Warning: Failed to sync block 208 to database
+⚠️ Warning: Failed to sync block 209 to database
+⚠️ Warning: Failed to sync block 210 to database
+⚠️ Warning: Failed to sync block 211 to database
+⚠️ Warning: Failed to sync block 212 to database
+⚠️ Warning: Failed to sync block 213 to database
+⚠️ Warning: Failed to sync block 214 to database
+⚠️ Warning: Failed to sync block 215 to database
+⚠️ Warning: Failed to sync block 216 to database
+⚠️ Warning: Failed to sync block 217 to database
+⚠️ Warning: Failed to sync block 218 to database
+⚠️ Warning: Failed to sync block 219 to database
+⚠️ Warning: Failed to sync block 220 to database
+⚠️ Warning: Failed to sync block 221 to database
+⚠️ Warning: Failed to sync block 222 to database
+⚠️ Warning: Failed to sync block 223 to database
+⚠️ Warning: Failed to sync block 224 to database
+⚠️ Warning: Failed to sync block 225 to database
+⚠️ Warning: Failed to sync block 226 to database
+⚠️ Warning: Failed to sync block 227 to database
+⚠️ Warning: Failed to sync block 228 to database
+⚠️ Warning: Failed to sync block 229 to database
+⚠️ Warning: Failed to sync block 230 to database
+⚠️ Warning: Failed to sync block 231 to database
+⚠️ Warning: Failed to sync block 232 to database
+⚠️ Warning: Failed to sync block 233 to database
+⚠️ Warning: Failed to sync block 234 to database
+⚠️ Warning: Failed to sync block 235 to database
+⚠️ Warning: Failed to sync block 236 to database
+⚠️ Warning: Failed to sync block 237 to database
+⚠️ Warning: Failed to sync block 238 to database
+⚠️ Warning: Failed to sync block 239 to database
+⚠️ Warning: Failed to sync block 240 to database
+⚠️ Warning: Failed to sync block 241 to database
+⚠️ Warning: Failed to sync block 242 to database
+⚠️ Warning: Failed to sync block 243 to database
+⚠️ Warning: Failed to sync block 244 to database
+⚠️ Warning: Failed to sync block 245 to database
+⚠️ Warning: Failed to sync block 246 to database
+⚠️ Warning: Failed to sync block 247 to database
+⚠️ Warning: Failed to sync block 248 to database
+⚠️ Warning: Failed to sync block 249 to database
+⚠️ Warning: Failed to sync block 250 to database
+⚠️ Warning: Failed to sync block 251 to database
+⚠️ Warning: Failed to sync block 252 to database
+⚠️ Warning: Failed to sync block 253 to database
+⚠️ Warning: Failed to sync block 254 to database
+⚠️ Warning: Failed to sync block 255 to database
+⚠️ Warning: Failed to sync block 256 to database
+⚠️ Warning: Failed to sync block 257 to database
+⚠️ Warning: Failed to sync block 258 to database
+⚠️ Warning: Failed to sync block 259 to database
+⚠️ Warning: Failed to sync block 260 to database
+⚠️ Warning: Failed to sync block 261 to database
+⚠️ Warning: Failed to sync block 262 to database
+⚠️ Warning: Failed to sync block 263 to database
+⚠️ Warning: Failed to sync block 264 to database
+⚠️ Warning: Failed to sync block 265 to database
+⚠️ Warning: Failed to sync block 266 to database
+⚠️ Warning: Failed to sync block 267 to database
+⚠️ Warning: Failed to sync block 268 to database
+⚠️ Warning: Failed to sync block 269 to database
+⚠️ Warning: Failed to sync block 270 to database
+⚠️ Warning: Failed to sync block 271 to database
+⚠️ Warning: Failed to sync block 272 to database
+⚠️ Warning: Failed to sync block 273 to database
+⚠️ Warning: Failed to sync block 274 to database
+⚠️ Warning: Failed to sync block 275 to database
+⚠️ Warning: Failed to sync block 276 to database
+⚠️ Warning: Failed to sync block 277 to database
+⚠️ Warning: Failed to sync block 278 to database
+⚠️ Warning: Failed to sync block 279 to database
+⚠️ Warning: Failed to sync block 280 to database
+⚠️ Warning: Failed to sync block 281 to database
+⚠️ Warning: Failed to sync block 282 to database
+⚠️ Warning: Failed to sync block 283 to database
+⚠️ Warning: Failed to sync block 284 to database
+⚠️ Warning: Failed to sync block 285 to database
+⚠️ Warning: Failed to sync block 286 to database
+⚠️ Warning: Failed to sync block 287 to database
+⚠️ Warning: Failed to sync block 288 to database
+⚠️ Warning: Failed to sync block 289 to database
+⚠️ Warning: Failed to sync block 290 to database
+⚠️ Warning: Failed to sync block 291 to database
+⚠️ Warning: Failed to sync block 292 to database
+⚠️ Warning: Failed to sync block 293 to database
+⚠️ Warning: Failed to sync block 294 to database
+⚠️ Warning: Failed to sync block 295 to database
+⚠️ Warning: Failed to sync block 296 to database
+⚠️ Warning: Failed to sync block 297 to database
+⚠️ Warning: Failed to sync block 298 to database
+⚠️ Warning: Failed to sync block 299 to database
+⚠️ Warning: Failed to sync block 300 to database
+⚠️ Warning: Failed to sync block 301 to database
+⚠️ Warning: Failed to sync block 302 to database
+⚠️ Warning: Failed to sync block 303 to database
+⚠️ Warning: Failed to sync block 304 to database
+⚠️ Warning: Failed to sync block 305 to database
+⚠️ Warning: Failed to sync block 306 to database
+⚠️ Warning: Failed to sync block 307 to database
+⚠️ Warning: Failed to sync block 308 to database
+⚠️ Warning: Failed to sync block 309 to database
+⚠️ Warning: Failed to sync block 310 to database
+⚠️ Warning: Failed to sync block 311 to database
+⚠️ Warning: Failed to sync block 312 to database
+⚠️ Warning: Failed to sync block 313 to database
+⚠️ Warning: Failed to sync block 314 to database
+⚠️ Warning: Failed to sync block 315 to database
+⚠️ Warning: Failed to sync block 316 to database
+⚠️ Warning: Failed to sync block 317 to database
+⚠️ Warning: Failed to sync block 318 to database
+⚠️ Warning: Failed to sync block 319 to database
+⚠️ Warning: Failed to sync block 320 to database
+⚠️ Warning: Failed to sync block 321 to database
+⚠️ Warning: Failed to sync block 322 to database
+⚠️ Warning: Failed to sync block 323 to database
+⚠️ Warning: Failed to sync block 324 to database
+⚠️ Warning: Failed to sync block 325 to database
+⚠️ Warning: Failed to sync block 326 to database
+⚠️ Warning: Failed to sync block 327 to database
+⚠️ Warning: Failed to sync block 328 to database
+⚠️ Warning: Failed to sync block 329 to database
+⚠️ Warning: Failed to sync block 330 to database
+⚠️ Warning: Failed to sync block 331 to database
+⚠️ Warning: Failed to sync block 332 to database
+⚠️ Warning: Failed to sync block 333 to database
+⚠️ Warning: Failed to sync block 334 to database
+⚠️ Warning: Failed to sync block 335 to database
+⚠️ Warning: Failed to sync block 336 to database
+⚠️ Warning: Failed to sync block 337 to database
+⚠️ Warning: Failed to sync block 338 to database
+⚠️ Warning: Failed to sync block 339 to database
+⚠️ Warning: Failed to sync block 340 to database
+⚠️ Warning: Failed to sync block 341 to database
+⚠️ Warning: Failed to sync block 342 to database
+⚠️ Warning: Failed to sync block 343 to database
+⚠️ Warning: Failed to sync block 344 to database
+⚠️ Warning: Failed to sync block 345 to database
+⚠️ Warning: Failed to sync block 346 to database
+⚠️ Warning: Failed to sync block 347 to database
+⚠️ Warning: Failed to sync block 348 to database
+⚠️ Warning: Failed to sync block 349 to database
+⚠️ Warning: Failed to sync block 350 to database
+⚠️ Warning: Failed to sync block 351 to database
+⚠️ Warning: Failed to sync block 352 to database
+⚠️ Warning: Failed to sync block 353 to database
+⚠️ Warning: Failed to sync block 354 to database
+⚠️ Warning: Failed to sync block 355 to database
+⚠️ Warning: Failed to sync block 356 to database
+⚠️ Warning: Failed to sync block 357 to database
+⚠️ Warning: Failed to sync block 358 to database
+⚠️ Warning: Failed to sync block 359 to database
+⚠️ Warning: Failed to sync block 360 to database
+⚠️ Warning: Failed to sync block 361 to database
+⚠️ Warning: Failed to sync block 362 to database
+⚠️ Warning: Failed to sync block 363 to database
+⚠️ Warning: Failed to sync block 364 to database
+⚠️ Warning: Failed to sync block 365 to database
+⚠️ Warning: Failed to sync block 366 to database
+⚠️ Warning: Failed to sync block 367 to database
+⚠️ Warning: Failed to sync block 368 to database
+⚠️ Warning: Failed to sync block 369 to database
+⚠️ Warning: Failed to sync block 370 to database
+⚠️ Warning: Failed to sync block 371 to database
+⚠️ Warning: Failed to sync block 372 to database
+⚠️ Warning: Failed to sync block 373 to database
+⚠️ Warning: Failed to sync block 374 to database
+⚠️ Warning: Failed to sync block 375 to database
+⚠️ Warning: Failed to sync block 376 to database
+⚠️ Warning: Failed to sync block 377 to database
+⚠️ Warning: Failed to sync block 378 to database
+⚠️ Warning: Failed to sync block 379 to database
+⚠️ Warning: Failed to sync block 380 to database
+⚠️ Warning: Failed to sync block 381 to database
+⚠️ Warning: Failed to sync block 382 to database
+⚠️ Warning: Failed to sync block 383 to database
+⚠️ Warning: Failed to sync block 384 to database
+⚠️ Warning: Failed to sync block 385 to database
+⚠️ Warning: Failed to sync block 386 to database
+⚠️ Warning: Failed to sync block 387 to database
+⚠️ Warning: Failed to sync block 388 to database
+⚠️ Warning: Failed to sync block 389 to database
+⚠️ Warning: Failed to sync block 390 to database
+⚠️ Warning: Failed to sync block 391 to database
+⚠️ Warning: Failed to sync block 392 to database
+⚠️ Warning: Failed to sync block 393 to database
+⚠️ Warning: Failed to sync block 394 to database
+⚠️ Warning: Failed to sync block 395 to database
+⚠️ Warning: Failed to sync block 396 to database
+⚠️ Warning: Failed to sync block 397 to database
+⚠️ Warning: Failed to sync block 398 to database
+⚠️ Warning: Failed to sync block 399 to database
+⚠️ Warning: Failed to sync block 400 to database
+⚠️ Warning: Failed to sync block 401 to database
+⚠️ Warning: Failed to sync block 402 to database
+⚠️ Warning: Failed to sync block 403 to database
+⚠️ Warning: Failed to sync block 404 to database
+⚠️ Warning: Failed to sync block 405 to database
+⚠️ Warning: Failed to sync block 406 to database
+⚠️ Warning: Failed to sync block 407 to database
+⚠️ Warning: Failed to sync block 408 to database
+⚠️ Warning: Failed to sync block 409 to database
+⚠️ Warning: Failed to sync block 410 to database
+⚠️ Warning: Failed to sync block 411 to database
+⚠️ Warning: Failed to sync block 412 to database
+⚠️ Warning: Failed to sync block 413 to database
+⚠️ Warning: Failed to sync block 414 to database
+⚠️ Warning: Failed to sync block 415 to database
+⚠️ Warning: Failed to sync block 416 to database
+⚠️ Warning: Failed to sync block 417 to database
+⚠️ Warning: Failed to sync block 418 to database
+⚠️ Warning: Failed to sync block 419 to database
+⚠️ Warning: Failed to sync block 420 to database
+⚠️ Warning: Failed to sync block 421 to database
+⚠️ Warning: Failed to sync block 422 to database
+⚠️ Warning: Failed to sync block 423 to database
+⚠️ Warning: Failed to sync block 424 to database
+⚠️ Warning: Failed to sync block 425 to database
+⚠️ Warning: Failed to sync block 426 to database
+⚠️ Warning: Failed to sync block 427 to database
+⚠️ Warning: Failed to sync block 428 to database
+⚠️ Warning: Failed to sync block 429 to database
+⚠️ Warning: Failed to sync block 430 to database
+⚠️ Warning: Failed to sync block 431 to database
+⚠️ Warning: Failed to sync block 432 to database
+⚠️ Warning: Failed to sync block 433 to database
+⚠️ Warning: Failed to sync block 434 to database
+⚠️ Warning: Failed to sync block 435 to database
+⚠️ Warning: Failed to sync block 436 to database
+⚠️ Warning: Failed to sync block 437 to database
+⚠️ Warning: Failed to sync block 438 to database
+⚠️ Warning: Failed to sync block 439 to database
+⚠️ Warning: Failed to sync block 440 to database
+⚠️ Warning: Failed to sync block 441 to database
+⚠️ Warning: Failed to sync block 442 to database
+⚠️ Warning: Failed to sync block 443 to database
+⚠️ Warning: Failed to sync block 444 to database
+⚠️ Warning: Failed to sync block 445 to database
+⚠️ Warning: Failed to sync block 446 to database
+⚠️ Warning: Failed to sync block 447 to database
+⚠️ Warning: Failed to sync block 448 to database
+⚠️ Warning: Failed to sync block 449 to database
+⚠️ Warning: Failed to sync block 450 to database
+⚠️ Warning: Failed to sync block 451 to database
+⚠️ Warning: Failed to sync block 452 to database
+⚠️ Warning: Failed to sync block 453 to database
+⚠️ Warning: Failed to sync block 454 to database
+⚠️ Warning: Failed to sync block 455 to database
+⚠️ Warning: Failed to sync block 456 to database
+⚠️ Warning: Failed to sync block 457 to database
+⚠️ Warning: Failed to sync block 458 to database
+⚠️ Warning: Failed to sync block 459 to database
+⚠️ Warning: Failed to sync block 460 to database
+⚠️ Warning: Failed to sync block 461 to database
+⚠️ Warning: Failed to sync block 462 to database
+⚠️ Warning: Failed to sync block 463 to database
+⚠️ Warning: Failed to sync block 464 to database
+⚠️ Warning: Failed to sync block 465 to database
+⚠️ Warning: Failed to sync block 466 to database
+⚠️ Warning: Failed to sync block 467 to database
+⚠️ Warning: Failed to sync block 468 to database
+⚠️ Warning: Failed to sync block 469 to database
+⚠️ Warning: Failed to sync block 470 to database
+⚠️ Warning: Failed to sync block 471 to database
+⚠️ Warning: Failed to sync block 472 to database
+⚠️ Warning: Failed to sync block 473 to database
+⚠️ Warning: Failed to sync block 474 to database
+⚠️ Warning: Failed to sync block 475 to database
+⚠️ Warning: Failed to sync block 476 to database
+⚠️ Warning: Failed to sync block 477 to database
+⚠️ Warning: Failed to sync block 478 to database
+⚠️ Warning: Failed to sync block 479 to database
+⚠️ Warning: Failed to sync block 480 to database
+⚠️ Warning: Failed to sync block 481 to database
+⚠️ Warning: Failed to sync block 482 to database
+⚠️ Warning: Failed to sync block 483 to database
+⚠️ Warning: Failed to sync block 484 to database
+⚠️ Warning: Failed to sync block 485 to database
+⚠️ Warning: Failed to sync block 486 to database
+⚠️ Warning: Failed to sync block 487 to database
+⚠️ Warning: Failed to sync block 488 to database
+⚠️ Warning: Failed to sync block 489 to database
+⚠️ Warning: Failed to sync block 490 to database
+⚠️ Warning: Failed to sync block 491 to database
+⚠️ Warning: Failed to sync block 492 to database
+⚠️ Warning: Failed to sync block 493 to database
+⚠️ Warning: Failed to sync block 494 to database
+⚠️ Warning: Failed to sync block 495 to database
+⚠️ Warning: Failed to sync block 496 to database
+⚠️ Warning: Failed to sync block 497 to database
+⚠️ Warning: Failed to sync block 498 to database
+⚠️ Warning: Failed to sync block 499 to database
+⚠️ Warning: Failed to sync block 500 to database
+⚠️ Warning: Failed to sync block 501 to database
+⚠️ Warning: Failed to sync block 502 to database
+⚠️ Warning: Failed to sync block 503 to database
+⚠️ Warning: Failed to sync block 504 to database
+⚠️ Warning: Failed to sync block 505 to database
+⚠️ Warning: Failed to sync block 506 to database
+⚠️ Warning: Failed to sync block 507 to database
+⚠️ Warning: Failed to sync block 508 to database
+⚠️ Warning: Failed to sync block 509 to database
+⚠️ Warning: Failed to sync block 510 to database
+⚠️ Warning: Failed to sync block 511 to database
+⚠️ Warning: Failed to sync block 512 to database
+⚠️ Warning: Failed to sync block 513 to database
+⚠️ Warning: Failed to sync block 514 to database
+⚠️ Warning: Failed to sync block 515 to database
+⚠️ Warning: Failed to sync block 516 to database
+⚠️ Warning: Failed to sync block 517 to database
+⚠️ Warning: Failed to sync block 518 to database
+⚠️ Warning: Failed to sync block 519 to database
+⚠️ Warning: Failed to sync block 520 to database
+⚠️ Warning: Failed to sync block 521 to database
+⚠️ Warning: Failed to sync block 522 to database
+⚠️ Warning: Failed to sync block 523 to database
+⚠️ Warning: Failed to sync block 524 to database
+⚠️ Warning: Failed to sync block 525 to database
+⚠️ Warning: Failed to sync block 526 to database
+⚠️ Warning: Failed to sync block 527 to database
+⚠️ Warning: Failed to sync block 528 to database
+⚠️ Warning: Failed to sync block 529 to database
+⚠️ Warning: Failed to sync block 530 to database
+⚠️ Warning: Failed to sync block 531 to database
+⚠️ Warning: Failed to sync block 532 to database
+⚠️ Warning: Failed to sync block 533 to database
+⚠️ Warning: Failed to sync block 534 to database
+⚠️ Warning: Failed to sync block 535 to database
+⚠️ Warning: Failed to sync block 536 to database
+⚠️ Warning: Failed to sync block 537 to database
+⚠️ Warning: Failed to sync block 538 to database
+⚠️ Warning: Failed to sync block 539 to database
+⚠️ Warning: Failed to sync block 540 to database
+⚠️ Warning: Failed to sync block 541 to database
+⚠️ Warning: Failed to sync block 542 to database
+⚠️ Warning: Failed to sync block 543 to database
+⚠️ Warning: Failed to sync block 544 to database
+⚠️ Warning: Failed to sync block 545 to database
+⚠️ Warning: Failed to sync block 546 to database
+⚠️ Warning: Failed to sync block 547 to database
+⚠️ Warning: Failed to sync block 548 to database
+⚠️ Warning: Failed to sync block 549 to database
+⚠️ Warning: Failed to sync block 550 to database
+⚠️ Warning: Failed to sync block 551 to database
+⚠️ Warning: Failed to sync block 552 to database
+⚠️ Warning: Failed to sync block 553 to database
+⚠️ Warning: Failed to sync block 554 to database
+⚠️ Warning: Failed to sync block 555 to database
+⚠️ Warning: Failed to sync block 556 to database
+⚠️ Warning: Failed to sync block 557 to database
+⚠️ Warning: Failed to sync block 558 to database
+⚠️ Warning: Failed to sync block 559 to database
+⚠️ Warning: Failed to sync block 560 to database
+⚠️ Warning: Failed to sync block 561 to database
+⚠️ Warning: Failed to sync block 562 to database
+⚠️ Warning: Failed to sync block 563 to database
+⚠️ Warning: Failed to sync block 564 to database
+⚠️ Warning: Failed to sync block 565 to database
+⚠️ Warning: Failed to sync block 566 to database
+⚠️ Warning: Failed to sync block 567 to database
+⚠️ Warning: Failed to sync block 568 to database
+⚠️ Warning: Failed to sync block 569 to database
+⚠️ Warning: Failed to sync block 570 to database
+⚠️ Warning: Failed to sync block 571 to database
+⚠️ Warning: Failed to sync block 572 to database
+⚠️ Warning: Failed to sync block 573 to database
+⚠️ Warning: Failed to sync block 574 to database
+⚠️ Warning: Failed to sync block 575 to database
+⚠️ Warning: Failed to sync block 576 to database
+⚠️ Warning: Failed to sync block 577 to database
+⚠️ Warning: Failed to sync block 578 to database
+⚠️ Warning: Failed to sync block 579 to database
+⚠️ Warning: Failed to sync block 580 to database
+⚠️ Warning: Failed to sync block 581 to database
+⚠️ Warning: Failed to sync block 582 to database
+⚠️ Warning: Failed to sync block 583 to database
+⚠️ Warning: Failed to sync block 584 to database
+⚠️ Warning: Failed to sync block 585 to database
+⚠️ Warning: Failed to sync block 586 to database
+⚠️ Warning: Failed to sync block 587 to database
+⚠️ Warning: Failed to sync block 588 to database
+⚠️ Warning: Failed to sync block 589 to database
+
+📈 Blockchain Reload Complete!
+⏱️  Processing time: 0.00 seconds
+🗃️  Blocks processed: 590
+📝 Transactions loaded: 0
+   └─ Critical: 0
+   └─ Important: 0
+   └─ Operational: 0
+🚫 Transactions skipped: 0
+💾 Database size: 131072 → 131072 bytes (0.12 MB)
+✅ Database successfully reloaded from blockchain
+📊 Reload Statistics:
+   Critical transactions: 0
+   Important transactions: 0
+   Operational transactions: 0
+   Transactions skipped: 0
+Initializing database...
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database initialized successfully
+Syncing blockchain to database...
+Syncing blockchain to database (590 blocks)...
+Failed to sync block 0
+Warning: Failed to sync blockchain to database
+✅ TinyWeb PBFT node initialized successfully
+-----------------------------------------------------------------
+🌐 HTTP API Server: http://localhost:8000
+📊 Available Endpoints:
+  • GET  /                          - Node status
+  • GET  /GetBlockChainLength       - Blockchain info
+  • POST /Transaction               - Submit transaction
+  • POST /invitation/create         - Create invitation
+  • POST /invitation/accept/<code>  - Accept invitation
+  • GET  /invitation/pending        - List pending invitations
+🔧 Press Ctrl+C to shutdown gracefully
+=================================================================
+PBFT node 0 starting on port 8000
+TinyWeb monitor thread started
+Starting PBFT API server on port 8000
+PBFT node threads started successfully
+PBFT main consensus loop started for node 0
+4f5301 1 mongoose.c:8849:mg_open_listen bind: 98
+4f5301 1 mongoose.c:4066:mg_listen      Failed: http://0.0.0.0:8000, errno 98
+Failed to create HTTP listener on port 8000
+Node 0: Blockchain length: 590, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Creating block for singular node mode
+DEBUG: Creating block 590 with previous hash: 6c04e617f432459807401c6b7b7359158e7ee28efcc350a2ff2ca8a2d65ba913
+Created new block with index 590 and 0 transactions
+DEBUG: Block 590 validation - Expected prev hash: 6c04e617f432459807401c6b7b7359158e7ee28efcc350a2ff2ca8a2d65ba913, Actual prev hash: 6c04e617f432459807401c6b7b7359158e7ee28efcc350a2ff2ca8a2d65ba913
+Block validation passed for block 590
+DEBUG: Block 590 validation - Expected prev hash: 6c04e617f432459807401c6b7b7359158e7ee28efcc350a2ff2ca8a2d65ba913, Actual prev hash: 6c04e617f432459807401c6b7b7359158e7ee28efcc350a2ff2ca8a2d65ba913
+Block validation passed for block 590
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 6c04e617f432459807401c6b7b7359158e7ee28efcc350a2ff2ca8a2d65ba913, Block prev hash: 6c04e617f432459807401c6b7b7359158e7ee28efcc350a2ff2ca8a2d65ba913
+DEBUG: TW_BlockChain_add_block - Successfully added block 590, new length: 591
+Successfully committed block 590 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 591)
+Saved BlockChain To File! (Original size: 67474 bytes, Compressed size: 40970 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 590 synced to database successfully
+Node 0: Successfully created and committed block 590 in singular mode
+Node 0: Proposing block (round 10)
+DEBUG: Creating block 591 with previous hash: cfda0a4b517eb494dd4cb3c674899be62d4bbb44d043a67bb658ed62c34cfbaf
+Created new block with index 591 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 591 validation - Expected prev hash: cfda0a4b517eb494dd4cb3c674899be62d4bbb44d043a67bb658ed62c34cfbaf, Actual prev hash: cfda0a4b517eb494dd4cb3c674899be62d4bbb44d043a67bb658ed62c34cfbaf
+Block validation passed for block 591
+DEBUG: Block 591 validation - Expected prev hash: cfda0a4b517eb494dd4cb3c674899be62d4bbb44d043a67bb658ed62c34cfbaf, Actual prev hash: cfda0a4b517eb494dd4cb3c674899be62d4bbb44d043a67bb658ed62c34cfbaf
+Block validation passed for block 591
+DEBUG: TW_BlockChain_add_block - Expected prev hash: cfda0a4b517eb494dd4cb3c674899be62d4bbb44d043a67bb658ed62c34cfbaf, Block prev hash: cfda0a4b517eb494dd4cb3c674899be62d4bbb44d043a67bb658ed62c34cfbaf
+DEBUG: TW_BlockChain_add_block - Successfully added block 591, new length: 592
+Successfully committed block 591 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 592)
+Saved BlockChain To File! (Original size: 67578 bytes, Compressed size: 41023 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 591 synced to database
+Node 0: Blockchain length: 592, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Creating block for singular node mode
+DEBUG: Creating block 592 with previous hash: 77d43eb5dc06d48278fa25bf106e5d3cff1e01a20c51cf79ecb0befe0249afaf
+Created new block with index 592 and 0 transactions
+DEBUG: Block 592 validation - Expected prev hash: 77d43eb5dc06d48278fa25bf106e5d3cff1e01a20c51cf79ecb0befe0249afaf, Actual prev hash: 77d43eb5dc06d48278fa25bf106e5d3cff1e01a20c51cf79ecb0befe0249afaf
+Block validation passed for block 592
+DEBUG: Block 592 validation - Expected prev hash: 77d43eb5dc06d48278fa25bf106e5d3cff1e01a20c51cf79ecb0befe0249afaf, Actual prev hash: 77d43eb5dc06d48278fa25bf106e5d3cff1e01a20c51cf79ecb0befe0249afaf
+Block validation passed for block 592
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 77d43eb5dc06d48278fa25bf106e5d3cff1e01a20c51cf79ecb0befe0249afaf, Block prev hash: 77d43eb5dc06d48278fa25bf106e5d3cff1e01a20c51cf79ecb0befe0249afaf
+DEBUG: TW_BlockChain_add_block - Successfully added block 592, new length: 593
+Successfully committed block 592 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 593)
+Saved BlockChain To File! (Original size: 67682 bytes, Compressed size: 41090 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 592 synced to database successfully
+Node 0: Successfully created and committed block 592 in singular mode
+Node 0: Proposing block (round 20)
+DEBUG: Creating block 593 with previous hash: d66f8b90cd087be3664f93eabe6de5462ed684d11e47282a05e42c393db85f57
+Created new block with index 593 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 593 validation - Expected prev hash: d66f8b90cd087be3664f93eabe6de5462ed684d11e47282a05e42c393db85f57, Actual prev hash: d66f8b90cd087be3664f93eabe6de5462ed684d11e47282a05e42c393db85f57
+Block validation passed for block 593
+DEBUG: Block 593 validation - Expected prev hash: d66f8b90cd087be3664f93eabe6de5462ed684d11e47282a05e42c393db85f57, Actual prev hash: d66f8b90cd087be3664f93eabe6de5462ed684d11e47282a05e42c393db85f57
+Block validation passed for block 593
+DEBUG: TW_BlockChain_add_block - Expected prev hash: d66f8b90cd087be3664f93eabe6de5462ed684d11e47282a05e42c393db85f57, Block prev hash: d66f8b90cd087be3664f93eabe6de5462ed684d11e47282a05e42c393db85f57
+DEBUG: TW_BlockChain_add_block - Successfully added block 593, new length: 594
+Successfully committed block 593 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 594)
+Saved BlockChain To File! (Original size: 67786 bytes, Compressed size: 41146 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 593 synced to database
+Node 0: Checking blockchain sync and peer status
+Node 0: Blockchain length: 594, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Creating block for singular node mode
+DEBUG: Creating block 594 with previous hash: e638f56ba0d88829d338eceb4e4cb032b066e23871e7a3b719f45bf469993b68
+Created new block with index 594 and 0 transactions
+DEBUG: Block 594 validation - Expected prev hash: e638f56ba0d88829d338eceb4e4cb032b066e23871e7a3b719f45bf469993b68, Actual prev hash: e638f56ba0d88829d338eceb4e4cb032b066e23871e7a3b719f45bf469993b68
+Block validation passed for block 594
+DEBUG: Block 594 validation - Expected prev hash: e638f56ba0d88829d338eceb4e4cb032b066e23871e7a3b719f45bf469993b68, Actual prev hash: e638f56ba0d88829d338eceb4e4cb032b066e23871e7a3b719f45bf469993b68
+Block validation passed for block 594
+DEBUG: TW_BlockChain_add_block - Expected prev hash: e638f56ba0d88829d338eceb4e4cb032b066e23871e7a3b719f45bf469993b68, Block prev hash: e638f56ba0d88829d338eceb4e4cb032b066e23871e7a3b719f45bf469993b68
+DEBUG: TW_BlockChain_add_block - Successfully added block 594, new length: 595
+Successfully committed block 594 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 595)
+Saved BlockChain To File! (Original size: 67890 bytes, Compressed size: 41213 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 594 synced to database successfully
+Node 0: Successfully created and committed block 594 in singular mode
+Node 0: Proposing block (round 30)
+DEBUG: Creating block 595 with previous hash: cc52b99fd6c14f3dc8e535c452ee618dcdee643db83a4c096f856e0f5497f0f4
+Created new block with index 595 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 595 validation - Expected prev hash: cc52b99fd6c14f3dc8e535c452ee618dcdee643db83a4c096f856e0f5497f0f4, Actual prev hash: cc52b99fd6c14f3dc8e535c452ee618dcdee643db83a4c096f856e0f5497f0f4
+Block validation passed for block 595
+DEBUG: Block 595 validation - Expected prev hash: cc52b99fd6c14f3dc8e535c452ee618dcdee643db83a4c096f856e0f5497f0f4, Actual prev hash: cc52b99fd6c14f3dc8e535c452ee618dcdee643db83a4c096f856e0f5497f0f4
+Block validation passed for block 595
+DEBUG: TW_BlockChain_add_block - Expected prev hash: cc52b99fd6c14f3dc8e535c452ee618dcdee643db83a4c096f856e0f5497f0f4, Block prev hash: cc52b99fd6c14f3dc8e535c452ee618dcdee643db83a4c096f856e0f5497f0f4
+DEBUG: TW_BlockChain_add_block - Successfully added block 595, new length: 596
+Successfully committed block 595 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 596)
+Saved BlockChain To File! (Original size: 67994 bytes, Compressed size: 41269 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 595 synced to database
+
+Received signal 15, shutting down gracefully...
+TinyWeb monitor thread stopping
+PBFT main consensus loop stopped for node 0
+PBFT node 0 shutdown complete
+Waiting for monitor thread to finish...
+Cleaning up system components...
+Message queues cleaned up
+Database closed successfully
+Database closed
+🧹 Blockchain Data Manager cleanup complete
+Mongoose HTTP client cleaned up
+System cleanup completed
+
+=================================================================
+🛑 TinyWeb PBFT Node shutdown complete - Goodbye!
+=================================================================

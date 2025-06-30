@@ -18,6 +18,7 @@
 #include "../fileIO/blockchainIO.h"
 #include "../invitation/invitation.h"
 #include "../invitation/invitationApi.h"
+#include "../comm/blockChainQueryApi.h"
 #include "mongoose.h"
 
 // Forward declarations for endpoint handlers
@@ -267,8 +268,8 @@ void* pbft_node_main_loop(void* arg) {
             }
         }
         
-        // Every 3 iterations, check if we should propose a block
-        if (node->counter % 3 == 0) {
+        // Every 10 iterations, check if we should propose a block (every 10 seconds)
+        if (node->counter % 10 == 0) {
             if (!node->blockchain_has_progressed && pbft_node_is_proposer(node)) {
                 printf("Node %u: Proposing block (round %u)\n", node->base.id, node->counter);
                 
@@ -430,6 +431,16 @@ static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_dat
             handle_get_blocks(c, hm);
         } else if (mg_strcmp(hm->uri, mg_str("/api/transactions")) == 0) {
             handle_get_transactions(c, hm);
+        } else if (mg_strcmp(hm->uri, mg_str("/api/health")) == 0) {
+            handle_health_check(c, hm);
+        } else if (mg_strcmp(hm->uri, mg_str("/api/blockchain")) == 0) {
+            handle_get_blockchain_info(c, hm);
+        } else if (strstr(hm->uri.buf, "/api/blocks/") != NULL && 
+                   mg_strcmp(hm->uri, mg_str("/api/blocks")) != 0) {
+            handle_get_block_by_hash(c, hm);
+        } else if (strstr(hm->uri.buf, "/api/transactions/") != NULL && 
+                   mg_strcmp(hm->uri, mg_str("/api/transactions")) != 0) {
+            handle_get_transaction_by_hash(c, hm);
         } else if (mg_strcmp(hm->uri, mg_str("/invitation/create")) == 0) {
             handle_invitation_create(c, hm);
         } else if (mg_strcmp(hm->uri, mg_str("/invitation/pending")) == 0) {
@@ -722,6 +733,14 @@ int pbft_node_commit_block(PBFTNode* node, TW_Block* block) {
     }
     
     printf("Successfully committed block %d to blockchain\n", block->index);
+    
+    // Save blockchain to file after successful commit
+    printf("Saving blockchain after block commit...\n");
+    if (!pbft_node_save_blockchain_periodically(node)) {
+        printf("Warning: Failed to save blockchain after committing block %d\n", block->index);
+        // Don't fail the commit just because save failed
+    }
+    
     return 1;
 }
 
@@ -1155,15 +1174,22 @@ int pbft_node_configure_blockchain_for_first_use(PBFTNode* node) { return 0; }
 int pbft_node_save_blockchain_periodically(PBFTNode* node) {
     if (!node || !node->base.blockchain) return 0;
     
+    printf("Node %u: Saving blockchain (length: %u)\n", 
+           node->base.id, node->base.blockchain->length);
+    
     // Save blockchain to file using the blockchain I/O functions
-    char filename[256];
-    snprintf(filename, sizeof(filename), "state/blockchain/blockchain_node_%u.dat", node->base.id);
+    if (!saveBlockChainToFile(node->base.blockchain)) {
+        printf("Error: Failed to save blockchain to file\n");
+        return 0;
+    }
     
-    printf("Node %u: Saving blockchain to %s (length: %u)\n", 
-           node->base.id, filename, node->base.blockchain->length);
+    // Also save as JSON for debugging
+    if (!writeBlockChainToJson(node->base.blockchain)) {
+        printf("Warning: Failed to save blockchain as JSON\n");
+        // Don't return error since binary save succeeded
+    }
     
-    // In full implementation, would use TW_BlockChain_save() or similar
-    // For now, just log the action
+    printf("Node %u: Successfully saved blockchain to file\n", node->base.id);
     return 1;
 }
 

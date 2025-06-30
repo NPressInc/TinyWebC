@@ -108,6 +108,7 @@ add_executable(pbft_node
     src/packages/PBFT/pbftNode.c
     src/packages/PBFT/node.c
     src/packages/comm/pbftApi.c
+    src/packages/comm/blockChainQueryApi.c
     src/packages/comm/httpClient.c
     src/packages/utils/jsonUtils.c
     src/packages/keystore/keystore.c
@@ -171,6 +172,9 @@ add_executable(init_tool
     src/packages/structures/blockChain/transaction_types.c
     src/packages/utils/byteorder.c
     src/packages/fileIO/compression.c
+    src/packages/sql/database.c
+    src/packages/sql/schema.c
+    src/packages/sql/queries.c
     # Add any other required source files here
 )
 

@@ -559,4 +559,234 @@ int db_vacuum(void) {
 
     printf("Database vacuum completed successfully\n");
     return 0;
+}
+
+// Get block by hash with transactions
+int db_get_block_by_hash(const char* block_hash, ApiBlockRecord** block_record) {
+    if (!g_db_ctx.is_initialized || !block_hash || !block_record) {
+        return -1;
+    }
+
+    *block_record = NULL;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_BLOCK_BY_HASH, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, block_hash, -1, SQLITE_STATIC);
+    
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        return -1; // Block not found
+    }
+
+    // Allocate the ApiBlockRecord
+    ApiBlockRecord* record = malloc(sizeof(ApiBlockRecord));
+    if (!record) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    // Populate basic block info
+    record->height = sqlite3_column_int(stmt, 0);
+    record->timestamp = sqlite3_column_int64(stmt, 1);
+    
+    const char* prev_hash = (const char*)sqlite3_column_text(stmt, 2);
+    if (prev_hash) {
+        strncpy(record->previous_hash, prev_hash, sizeof(record->previous_hash) - 1);
+        record->previous_hash[sizeof(record->previous_hash) - 1] = '\0';
+    }
+    
+    record->transaction_count = sqlite3_column_int(stmt, 5);
+    
+    const char* hash = (const char*)sqlite3_column_text(stmt, 6);
+    if (hash) {
+        strncpy(record->hash, hash, sizeof(record->hash) - 1);
+        record->hash[sizeof(record->hash) - 1] = '\0';
+    }
+
+    sqlite3_finalize(stmt);
+
+    // Now get the transactions for this block
+    record->transactions = NULL;
+    if (record->transaction_count > 0) {
+        TransactionRecord* transactions = NULL;
+        size_t tx_count = 0;
+        
+        if (db_get_transactions_by_block(record->height, &transactions, &tx_count) == 0) {
+            record->transactions = transactions;
+            record->transaction_count = tx_count; // Update with actual count
+        }
+    }
+
+    *block_record = record;
+    return 0;
+}
+
+// Get transactions by block index
+int db_get_transactions_by_block(uint32_t block_index, TransactionRecord** results, size_t* count) {
+    if (!g_db_ctx.is_initialized || !results || !count) {
+        return -1;
+    }
+
+    *results = NULL;
+    *count = 0;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_TRANSACTIONS_BY_BLOCK, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, block_index);
+
+    // Count results first
+    size_t result_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        result_count++;
+    }
+
+    if (result_count == 0) {
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+
+    // Reset and allocate memory
+    sqlite3_reset(stmt);
+    TransactionRecord* records = malloc(result_count * sizeof(TransactionRecord));
+    if (!records) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    // Populate results
+    size_t index = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && index < result_count) {
+        TransactionRecord* record = &records[index];
+        memset(record, 0, sizeof(TransactionRecord));
+        
+        record->transaction_id = sqlite3_column_int64(stmt, 0);
+        record->block_index = sqlite3_column_int(stmt, 1);
+        record->transaction_index = sqlite3_column_int(stmt, 2);
+        record->type = sqlite3_column_int(stmt, 3);
+        
+        const char* sender = (const char*)sqlite3_column_text(stmt, 4);
+        if (sender) {
+            strncpy(record->sender, sender, sizeof(record->sender) - 1);
+            record->sender[sizeof(record->sender) - 1] = '\0';
+        }
+        
+        record->timestamp = sqlite3_column_int64(stmt, 5);
+        record->recipient_count = sqlite3_column_int(stmt, 6);
+        
+        const char* group_id = (const char*)sqlite3_column_text(stmt, 7);
+        if (group_id) {
+            strncpy(record->group_id, group_id, sizeof(record->group_id) - 1);
+            record->group_id[sizeof(record->group_id) - 1] = '\0';
+        }
+        
+        const char* signature = (const char*)sqlite3_column_text(stmt, 8);
+        if (signature) {
+            strncpy(record->signature, signature, sizeof(record->signature) - 1);
+            record->signature[sizeof(record->signature) - 1] = '\0';
+        }
+        
+        record->payload_size = sqlite3_column_int(stmt, 9);
+        
+        // Handle encrypted payload blob
+        const void* payload_blob = sqlite3_column_blob(stmt, 10);
+        int payload_blob_size = sqlite3_column_bytes(stmt, 10);
+        if (payload_blob && payload_blob_size > 0) {
+            record->encrypted_payload = malloc(payload_blob_size);
+            if (record->encrypted_payload) {
+                memcpy(record->encrypted_payload, payload_blob, payload_blob_size);
+            }
+        } else {
+            record->encrypted_payload = NULL;
+        }
+        
+        // Handle decrypted content
+        const char* decrypted = (const char*)sqlite3_column_text(stmt, 11);
+        if (decrypted) {
+            record->decrypted_content = malloc(strlen(decrypted) + 1);
+            if (record->decrypted_content) {
+                strcpy(record->decrypted_content, decrypted);
+            }
+        } else {
+            record->decrypted_content = NULL;
+        }
+        
+        record->is_decrypted = sqlite3_column_int(stmt, 12) != 0;
+        
+        index++;
+    }
+
+    sqlite3_finalize(stmt);
+
+    *results = records;
+    *count = index;
+    return 0;
+}
+
+// Free ApiBlockRecord
+void db_free_block_record(ApiBlockRecord* record) {
+    if (!record) return;
+    
+    if (record->transactions) {
+        db_free_transaction_records(record->transactions, record->transaction_count);
+    }
+    free(record);
+}
+
+// Get transaction type name
+const char* get_transaction_type_name(TW_TransactionType type) {
+    switch (type) {
+        case TW_TXN_USER_REGISTRATION:      return "USER_REGISTRATION";
+        case TW_TXN_ROLE_ASSIGNMENT:        return "ROLE_ASSIGNMENT";
+        case TW_TXN_MESSAGE:                return "MESSAGE";
+        case TW_TXN_GROUP_MESSAGE:          return "GROUP_MESSAGE";
+        case TW_TXN_GROUP_CREATE:           return "GROUP_CREATE";
+        case TW_TXN_GROUP_UPDATE:           return "GROUP_UPDATE";
+        case TW_TXN_GROUP_MEMBER_ADD:       return "GROUP_MEMBER_ADD";
+        case TW_TXN_GROUP_MEMBER_REMOVE:    return "GROUP_MEMBER_REMOVE";
+        case TW_TXN_GROUP_MEMBER_LEAVE:     return "GROUP_MEMBER_LEAVE";
+        case TW_TXN_PERMISSION_EDIT:        return "PERMISSION_EDIT";
+        case TW_TXN_PARENTAL_CONTROL:       return "PARENTAL_CONTROL";
+        case TW_TXN_CONTENT_FILTER:         return "CONTENT_FILTER";
+        case TW_TXN_LOCATION_UPDATE:        return "LOCATION_UPDATE";
+        case TW_TXN_EMERGENCY_ALERT:        return "EMERGENCY_ALERT";
+        case TW_TXN_SYSTEM_CONFIG:          return "SYSTEM_CONFIG";
+        case TW_TXN_INVITATION_CREATE:      return "INVITATION_CREATE";
+        case TW_TXN_INVITATION_ACCEPT:      return "INVITATION_ACCEPT";
+        case TW_TXN_INVITATION_REVOKE:      return "INVITATION_REVOKE";
+        case TW_TXN_PROXIMITY_INVITATION:   return "PROXIMITY_INVITATION";
+        case TW_TXN_PROXIMITY_VALIDATION:   return "PROXIMITY_VALIDATION";
+        case TW_TXN_VOICE_CALL_REQ:         return "VOICE_CALL_REQ";
+        case TW_TXN_VIDEO_CALL_REQ:         return "VIDEO_CALL_REQ";
+        case TW_TXN_MEDIA_DOWNLOAD:         return "MEDIA_DOWNLOAD";
+        case TW_TXN_CONTENT_ACCESS_UPDATE:  return "CONTENT_ACCESS_UPDATE";
+        case TW_TXN_CREATION_UPLOAD:        return "CREATION_UPLOAD";
+        case TW_TXN_CREATION_SHARE_REQUEST: return "CREATION_SHARE_REQUEST";
+        case TW_TXN_EDUCATIONAL_RESOURCE_ADD: return "EDUCATIONAL_RESOURCE_ADD";
+        case TW_TXN_CHALLENGE_COMPLETE:     return "CHALLENGE_COMPLETE";
+        case TW_TXN_BOOK_ADD_TO_LIBRARY:    return "BOOK_ADD_TO_LIBRARY";
+        case TW_TXN_CHORE_ASSIGN:           return "CHORE_ASSIGN";
+        case TW_TXN_CHORE_COMPLETE:         return "CHORE_COMPLETE";
+        case TW_TXN_REWARD_DISTRIBUTE:      return "REWARD_DISTRIBUTE";
+        case TW_TXN_GEOFENCE_CREATE:        return "GEOFENCE_CREATE";
+        case TW_TXN_GEOFENCE_CONFIG_UPDATE: return "GEOFENCE_CONFIG_UPDATE";
+        case TW_TXN_USAGE_POLICY_UPDATE:    return "USAGE_POLICY_UPDATE";
+        case TW_TXN_GAME_SESSION_START:     return "GAME_SESSION_START";
+        case TW_TXN_GAME_PERMISSION_UPDATE: return "GAME_PERMISSION_UPDATE";
+        case TW_TXN_EVENT_CREATE:           return "EVENT_CREATE";
+        case TW_TXN_EVENT_INVITE:           return "EVENT_INVITE";
+        case TW_TXN_EVENT_RSVP:             return "EVENT_RSVP";
+        case TW_TXN_COMMUNITY_POST_CREATE:  return "COMMUNITY_POST_CREATE";
+        case TW_TXN_SHARED_ALBUM_CREATE:    return "SHARED_ALBUM_CREATE";
+        case TW_TXN_MEDIA_ADD_TO_ALBUM_REQUEST: return "MEDIA_ADD_TO_ALBUM_REQUEST";
+        default:                            return "UNKNOWN";
+    }
 } 

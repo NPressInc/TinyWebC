@@ -413,6 +413,7 @@ src/packages/comm/blockChainQueryApi.o: src/packages/comm/blockChainQueryApi.c.o
 src/packages/comm/blockChainQueryApi.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/blockChainQueryApi.c.o
 .PHONY : src/packages/comm/blockChainQueryApi.c.o
 
 src/packages/comm/blockChainQueryApi.i: src/packages/comm/blockChainQueryApi.c.i
@@ -422,6 +423,7 @@ src/packages/comm/blockChainQueryApi.i: src/packages/comm/blockChainQueryApi.c.i
 src/packages/comm/blockChainQueryApi.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/blockChainQueryApi.c.i
 .PHONY : src/packages/comm/blockChainQueryApi.c.i
 
 src/packages/comm/blockChainQueryApi.s: src/packages/comm/blockChainQueryApi.c.s
@@ -431,6 +433,7 @@ src/packages/comm/blockChainQueryApi.s: src/packages/comm/blockChainQueryApi.c.s
 src/packages/comm/blockChainQueryApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/blockChainQueryApi.c.s
 .PHONY : src/packages/comm/blockChainQueryApi.c.s
 
 src/packages/comm/httpClient.o: src/packages/comm/httpClient.c.o
@@ -807,6 +810,7 @@ src/packages/sql/database.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/database.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database.c.o
 .PHONY : src/packages/sql/database.c.o
 
 src/packages/sql/database.i: src/packages/sql/database.c.i
@@ -817,6 +821,7 @@ src/packages/sql/database.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/database.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database.c.i
 .PHONY : src/packages/sql/database.c.i
 
 src/packages/sql/database.s: src/packages/sql/database.c.s
@@ -827,6 +832,7 @@ src/packages/sql/database.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/database.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database.c.s
 .PHONY : src/packages/sql/database.c.s
 
 src/packages/sql/queries.o: src/packages/sql/queries.c.o
@@ -837,6 +843,7 @@ src/packages/sql/queries.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/queries.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/queries.c.o
 .PHONY : src/packages/sql/queries.c.o
 
 src/packages/sql/queries.i: src/packages/sql/queries.c.i
@@ -847,6 +854,7 @@ src/packages/sql/queries.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/queries.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/queries.c.i
 .PHONY : src/packages/sql/queries.c.i
 
 src/packages/sql/queries.s: src/packages/sql/queries.c.s
@@ -857,6 +865,7 @@ src/packages/sql/queries.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/queries.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/queries.c.s
 .PHONY : src/packages/sql/queries.c.s
 
 src/packages/sql/schema.o: src/packages/sql/schema.c.o
@@ -867,6 +876,7 @@ src/packages/sql/schema.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/schema.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.o
 .PHONY : src/packages/sql/schema.c.o
 
 src/packages/sql/schema.i: src/packages/sql/schema.c.i
@@ -877,6 +887,7 @@ src/packages/sql/schema.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/schema.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.i
 .PHONY : src/packages/sql/schema.c.i
 
 src/packages/sql/schema.s: src/packages/sql/schema.c.s
@@ -887,6 +898,7 @@ src/packages/sql/schema.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/schema.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.s
 .PHONY : src/packages/sql/schema.c.s
 
 src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/block.c.o

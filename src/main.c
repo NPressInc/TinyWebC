@@ -9,6 +9,9 @@
 #include "packages/comm/pbftApi.h"
 #include "packages/utils/jsonUtils.h"
 #include "packages/sql/database.h"
+#include "packages/structures/blockChain/blockchain.h"
+#include "packages/signing/signing.h"
+#include "packages/sql/queries.h"
 
 // Global variables
 static PBFTNode* g_pbft_node = NULL;
@@ -117,9 +120,21 @@ void* monitor_thread(void* arg) {
     
     printf("TinyWeb monitor thread started\n");
     
+    char node_id_str[32];
+    snprintf(node_id_str, sizeof(node_id_str), "node_%03u", node->base.id);
+    
     while (g_running && node->running) {
         // Monitor node health and performance
         pthread_mutex_lock(&node->state_mutex);
+        
+        // Send heartbeat to database every 10 seconds
+        if (node->counter % 10 == 0) {
+            if (db_is_initialized()) {
+                if (db_update_node_heartbeat(node_id_str) != 0) {
+                    printf("Warning: Failed to update node heartbeat\n");
+                }
+            }
+        }
         
         // Print periodic status every 100 iterations (~100 seconds)
         if (node->counter % 100 == 0 && node->counter > 0) {
@@ -134,6 +149,12 @@ void* monitor_thread(void* arg) {
         
         // Sleep for 1 second
         sleep(1);
+    }
+    
+    // Mark node as offline when shutting down
+    if (db_is_initialized()) {
+        printf("Marking node %s as offline...\n", node_id_str);
+        db_set_node_offline(node_id_str);
     }
     
     printf("TinyWeb monitor thread stopping\n");
@@ -206,6 +227,20 @@ int main(int argc, char* argv[]) {
         printf("Warning: Failed to initialize database\n");
     } else {
         printf("Database initialized successfully\n");
+        
+        // Register this node in the database node status tracking
+        char node_id_str[32];
+        snprintf(node_id_str, sizeof(node_id_str), "node_%03u", node_id);
+        
+        char node_name[128];
+        snprintf(node_name, sizeof(node_name), "TinyWeb Node %u", node_id);
+        
+        printf("Registering node %s in database...\n", node_id_str);
+        if (db_register_node(node_id_str, node_name, "127.0.0.1", port, true) == 0) {
+            printf("✓ Node registered successfully\n");
+        } else {
+            printf("Warning: Failed to register node in database\n");
+        }
         
         // Sync blockchain to database
         if (g_pbft_node->base.blockchain && g_pbft_node->base.blockchain->length > 0) {
