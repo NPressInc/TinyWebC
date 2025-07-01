@@ -158,6 +158,10 @@ const char* SQL_SELECT_BLOCK_BY_HASH =
     "SELECT block_index, timestamp, previous_hash, merkle_root_hash, proposer_id, transaction_count, block_hash "
     "FROM blocks WHERE block_hash = ?;";
 
+const char* SQL_SELECT_RECIPIENTS_BY_TRANSACTION = 
+    "SELECT recipient_pubkey, recipient_order FROM transaction_recipients "
+    "WHERE transaction_id = ? ORDER BY recipient_order;";
+
 const char* SQL_UPDATE_CACHED_CONTENT = 
     "UPDATE transactions SET decrypted_content = ?, content_hash = ?, is_decrypted = TRUE WHERE id = ?;";
 

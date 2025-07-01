@@ -12,6 +12,9 @@
 #include "packages/structures/blockChain/blockchain.h"
 #include "packages/utils/jsonUtils.h"
 
+// Forward declarations
+cJSON* create_transaction_json_with_payload(TransactionRecord* tx_record);
+
 // JSON response helper functions
 void send_json_response(struct mg_connection* c, int status, const char* json_response) {
     mg_http_reply(c, status,
@@ -837,28 +840,7 @@ void handle_get_transactions(struct mg_connection* c, struct mg_http_message* hm
     
     if (query_result == 0 && tx_count > 0) {
         for (size_t i = 0; i < tx_count; i++) {
-            cJSON* tx_obj = cJSON_CreateObject();
-            
-            // Create transaction hash (simplified)
-            char tx_hash[65];
-            snprintf(tx_hash, sizeof(tx_hash), "0x%08lx%08x%08x%08x", 
-                   tx_results[i].transaction_id,
-                   tx_results[i].block_index,
-                   tx_results[i].transaction_index,
-                   tx_results[i].type);
-            cJSON_AddStringToObject(tx_obj, "hash", tx_hash);
-            
-            cJSON_AddNumberToObject(tx_obj, "timestamp", tx_results[i].timestamp);
-            cJSON_AddStringToObject(tx_obj, "fromPubkey", tx_results[i].sender);
-            
-            // STUB: Recipient lookup not implemented yet
-            // This requires querying the transaction_recipients table
-            cJSON_AddStringToObject(tx_obj, "toPubkey", "[Recipient lookup not implemented]");
-            
-            cJSON_AddStringToObject(tx_obj, "data", "encrypted");
-            cJSON_AddStringToObject(tx_obj, "signature", tx_results[i].signature);
-            cJSON_AddNumberToObject(tx_obj, "type", tx_results[i].type);
-            
+            cJSON* tx_obj = create_transaction_json_with_payload(&tx_results[i]);
             cJSON_AddItemToArray(items, tx_obj);
         }
         
@@ -995,4 +977,126 @@ void handle_get_transaction_by_hash(struct mg_connection* c, struct mg_http_mess
     send_json_response(c, 501, json_str); // 501 Not Implemented
     free(json_str);
     cJSON_Delete(resp);
+}
+
+// Add this function to create detailed transaction JSON with encrypted payload
+cJSON* create_transaction_json_with_payload(TransactionRecord* tx_record) {
+    cJSON* tx_obj = cJSON_CreateObject();
+    
+    // Basic transaction info
+    char tx_hash[65];
+    snprintf(tx_hash, sizeof(tx_hash), "0x%08lx%08x%08x%08x", 
+           tx_record->transaction_id, tx_record->block_index, 
+           tx_record->transaction_index, tx_record->type);
+    cJSON_AddStringToObject(tx_obj, "hash", tx_hash);
+    
+    cJSON_AddNumberToObject(tx_obj, "timestamp", tx_record->timestamp);
+    cJSON_AddStringToObject(tx_obj, "fromPubkey", tx_record->sender);
+    cJSON_AddStringToObject(tx_obj, "signature", tx_record->signature);
+    cJSON_AddNumberToObject(tx_obj, "type", tx_record->type);
+    cJSON_AddNumberToObject(tx_obj, "recipientCount", tx_record->recipient_count);
+    
+    // Query and add actual recipient list
+    char** recipients = NULL;
+    size_t recipient_count = 0;
+    if (db_get_recipients_for_transaction(tx_record->transaction_id, &recipients, &recipient_count) == 0 && recipients) {
+        cJSON* recipients_array = cJSON_CreateArray();
+        for (size_t i = 0; i < recipient_count; i++) {
+            cJSON_AddItemToArray(recipients_array, cJSON_CreateString(recipients[i]));
+        }
+        cJSON_AddItemToObject(tx_obj, "recipients", recipients_array);
+        
+        // Also set toPubkey for backward compatibility (first recipient or "[Multiple recipients]")
+        if (recipient_count == 1) {
+            cJSON_AddStringToObject(tx_obj, "toPubkey", recipients[0]);
+        } else if (recipient_count > 1) {
+            cJSON_AddStringToObject(tx_obj, "toPubkey", "[Multiple recipients]");
+        } else {
+            cJSON_AddStringToObject(tx_obj, "toPubkey", "[No recipients]");
+        }
+        
+        db_free_recipients(recipients, recipient_count);
+    } else {
+        // Fallback if recipient lookup fails
+        cJSON_AddItemToObject(tx_obj, "recipients", cJSON_CreateArray());
+        cJSON_AddStringToObject(tx_obj, "toPubkey", "[Recipient lookup failed]");
+    }
+    
+    // Add encrypted payload details if present
+    if (tx_record->encrypted_payload && tx_record->payload_size > 0) {
+        // Deserialize the encrypted payload from the stored blob
+        const char* payload_ptr = (const char*)tx_record->encrypted_payload;
+        EncryptedPayload* payload = encrypted_payload_deserialize(&payload_ptr);
+        
+        if (payload) {
+            cJSON* payload_obj = cJSON_CreateObject();
+            
+            // Add payload metadata
+            cJSON_AddNumberToObject(payload_obj, "size", tx_record->payload_size);
+            cJSON_AddNumberToObject(payload_obj, "numRecipients", payload->num_recipients);
+            cJSON_AddNumberToObject(payload_obj, "ciphertextLength", payload->ciphertext_len);
+            
+            // Add ephemeral public key (hex encoded)
+            char ephemeral_hex[PUBKEY_SIZE * 2 + 1];
+            for (int k = 0; k < PUBKEY_SIZE; k++) {
+                sprintf(ephemeral_hex + (k * 2), "%02x", payload->ephemeral_pubkey[k]);
+            }
+            cJSON_AddStringToObject(payload_obj, "ephemeralPubkey", ephemeral_hex);
+            
+            // Add nonce (hex encoded)
+            char nonce_hex[NONCE_SIZE * 2 + 1];
+            for (int k = 0; k < NONCE_SIZE; k++) {
+                sprintf(nonce_hex + (k * 2), "%02x", payload->nonce[k]);
+            }
+            cJSON_AddStringToObject(payload_obj, "nonce", nonce_hex);
+            
+            // Add encrypted ciphertext (hex encoded)
+            if (payload->ciphertext && payload->ciphertext_len > 0) {
+                char* ciphertext_hex = malloc(payload->ciphertext_len * 2 + 1);
+                if (ciphertext_hex) {
+                    for (size_t k = 0; k < payload->ciphertext_len; k++) {
+                        sprintf(ciphertext_hex + (k * 2), "%02x", payload->ciphertext[k]);
+                    }
+                    cJSON_AddStringToObject(payload_obj, "ciphertext", ciphertext_hex);
+                    free(ciphertext_hex);
+                }
+            }
+            
+            // Add encrypted keys for each recipient
+            if (payload->encrypted_keys && payload->key_nonces && payload->num_recipients > 0) {
+                cJSON* keys_array = cJSON_CreateArray();
+                for (size_t k = 0; k < payload->num_recipients; k++) {
+                    cJSON* key_obj = cJSON_CreateObject();
+                    
+                    // Add encrypted key (hex encoded)
+                    char key_hex[ENCRYPTED_KEY_SIZE * 2 + 1];
+                    for (int l = 0; l < ENCRYPTED_KEY_SIZE; l++) {
+                        sprintf(key_hex + (l * 2), "%02x", payload->encrypted_keys[k * ENCRYPTED_KEY_SIZE + l]);
+                    }
+                    cJSON_AddStringToObject(key_obj, "encryptedKey", key_hex);
+                    
+                    // Add key nonce (hex encoded)
+                    char key_nonce_hex[NONCE_SIZE * 2 + 1];
+                    for (int l = 0; l < NONCE_SIZE; l++) {
+                        sprintf(key_nonce_hex + (l * 2), "%02x", payload->key_nonces[k * NONCE_SIZE + l]);
+                    }
+                    cJSON_AddStringToObject(key_obj, "keyNonce", key_nonce_hex);
+                    
+                    cJSON_AddItemToArray(keys_array, key_obj);
+                }
+                cJSON_AddItemToObject(payload_obj, "encryptedKeys", keys_array);
+            }
+            
+            cJSON_AddItemToObject(tx_obj, "encryptedPayload", payload_obj);
+            free_encrypted_payload(payload);
+        } else {
+            // Payload exists but couldn't be deserialized
+            cJSON_AddStringToObject(tx_obj, "data", "encrypted (parse error)");
+        }
+    } else {
+        // No payload or empty payload
+        cJSON_AddStringToObject(tx_obj, "data", "no payload");
+    }
+    
+    return tx_obj;
 }

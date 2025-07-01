@@ -437,6 +437,74 @@ int db_get_transaction_count(uint64_t* count) {
     return 0;
 }
 
+// Get recipients for a specific transaction
+int db_get_recipients_for_transaction(uint64_t transaction_id, char*** recipients, size_t* count) {
+    if (!g_db_ctx.is_initialized || !recipients || !count) {
+        return -1;
+    }
+
+    *recipients = NULL;
+    *count = 0;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_RECIPIENTS_BY_TRANSACTION, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int64(stmt, 1, transaction_id);
+
+    // First pass: count the recipients
+    size_t recipient_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        recipient_count++;
+    }
+
+    if (recipient_count == 0) {
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+
+    // Allocate memory for recipient array
+    char** recipient_array = malloc(recipient_count * sizeof(char*));
+    if (!recipient_array) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    // Reset and second pass: collect the recipients
+    sqlite3_reset(stmt);
+    size_t index = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && index < recipient_count) {
+        const char* recipient_pubkey = (const char*)sqlite3_column_text(stmt, 0);
+        if (recipient_pubkey) {
+            recipient_array[index] = malloc(strlen(recipient_pubkey) + 1);
+            if (recipient_array[index]) {
+                strcpy(recipient_array[index], recipient_pubkey);
+                index++;
+            }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+
+    *recipients = recipient_array;
+    *count = index;
+    return 0;
+}
+
+// Free the recipients array
+void db_free_recipients(char** recipients, size_t count) {
+    if (!recipients) return;
+    
+    for (size_t i = 0; i < count; i++) {
+        if (recipients[i]) {
+            free(recipients[i]);
+        }
+    }
+    free(recipients);
+}
+
 int db_get_block_count(uint32_t* count) {
     if (!g_db_ctx.is_initialized || !count) {
         return -1;

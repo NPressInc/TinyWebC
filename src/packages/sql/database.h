@@ -63,6 +63,8 @@ int db_close(void);
 int db_create_schema(void);
 int db_configure_wal_mode(void);
 bool db_is_initialized(void);
+int db_get_recipients_for_transaction(uint64_t transaction_id, char*** recipients, size_t* count);
+void db_free_recipients(char** recipients, size_t count);
 sqlite3* db_get_handle(void);
 
 // Blockchain synchronization functions

@@ -37,6 +37,7 @@ extern const char* SQL_SELECT_TRANSACTIONS_BY_BLOCK;
 extern const char* SQL_SELECT_RECENT_TRANSACTIONS;
 extern const char* SQL_SELECT_BLOCK_INFO;
 extern const char* SQL_SELECT_BLOCK_BY_HASH;
+extern const char* SQL_SELECT_RECIPIENTS_BY_TRANSACTION;
 
 extern const char* SQL_UPDATE_CACHED_CONTENT;
 extern const char* SQL_SELECT_CACHED_CONTENT;
