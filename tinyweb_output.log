@@ -1,0 +1,207 @@
+=================================================================
+🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!
+=================================================================
+Node Configuration:
+  Node ID: 0
+  API Port: 8000
+  Protocol: HTTP + PBFT Consensus
+  Features: Blockchain, Invitations, Encrypted Transactions
+-----------------------------------------------------------------
+Initializing TinyWeb system components...
+Message queues initialized
+System components initialized successfully
+Creating PBFT node...
+Mongoose HTTP client initialized
+Invitation system initialized
+Initializing node keys...
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading blockchain...
+Loading/creating blockchain for node 0
+Loading existing blockchain from state/blockchain/blockchain.dat
+Loaded blockchain (Original size: 11320 bytes, Compressed size: 8296 bytes)
+Loaded existing blockchain for node 0 with length 3
+🔧 Blockchain Data Manager initialized
+   Critical data: 0 days (0=forever)
+   Important data: 120 days
+   Operational data: 30 days
+🔄 Database inconsistent with blockchain, reloading...
+🔄 Starting blockchain data reload...
+📊 Blockchain length: 3 blocks
+🗄️  Database size before: 98304 bytes (0.09 MB)
+⚠️ Warning: Failed to sync block 0 to database
+⚠️ Warning: Failed to sync block 1 to database
+⚠️ Warning: Failed to sync block 2 to database
+
+📈 Blockchain Reload Complete!
+⏱️  Processing time: 0.00 seconds
+🗃️  Blocks processed: 3
+📝 Transactions loaded: 0
+   └─ Critical: 0
+   └─ Important: 0
+   └─ Operational: 0
+🚫 Transactions skipped: 0
+💾 Database size: 98304 → 98304 bytes (0.09 MB)
+✅ Database successfully reloaded from blockchain
+📊 Reload Statistics:
+   Critical transactions: 0
+   Important transactions: 0
+   Operational transactions: 0
+   Transactions skipped: 0
+Initializing database...
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database initialized successfully
+Registering node node_000 in database...
+Node node_000 registered successfully
+✓ Node registered successfully
+Syncing blockchain to database...
+Syncing blockchain to database (3 blocks)...
+Failed to sync block 0
+Warning: Failed to sync blockchain to database
+✅ TinyWeb PBFT node initialized successfully
+-----------------------------------------------------------------
+🌐 HTTP API Server: http://localhost:8000
+📊 Available Endpoints:
+  • GET  /                          - Node status
+  • GET  /GetBlockChainLength       - Blockchain info
+  • POST /Transaction               - Submit transaction
+  • POST /invitation/create         - Create invitation
+  • POST /invitation/accept/<code>  - Accept invitation
+  • GET  /invitation/pending        - List pending invitations
+🔧 Press Ctrl+C to shutdown gracefully
+=================================================================
+PBFT node 0 starting on port 8000
+TinyWeb monitor thread started
+Starting PBFT API server on port 8000
+PBFT node threads started successfully
+PBFT main consensus loop started for node 0
+PBFT API server listening on http://0.0.0.0:8000
+Node 0: Blockchain length: 3, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Creating block for singular node mode
+DEBUG: Creating block 3 with previous hash: 23db14678ba1c5e2921aa71723af68e4be54a25411d973f14b18fb80b3b638f0
+Created new block with index 3 and 0 transactions
+DEBUG: Block 3 validation - Expected prev hash: 23db14678ba1c5e2921aa71723af68e4be54a25411d973f14b18fb80b3b638f0, Actual prev hash: 23db14678ba1c5e2921aa71723af68e4be54a25411d973f14b18fb80b3b638f0
+Block validation passed for block 3
+DEBUG: Block 3 validation - Expected prev hash: 23db14678ba1c5e2921aa71723af68e4be54a25411d973f14b18fb80b3b638f0, Actual prev hash: 23db14678ba1c5e2921aa71723af68e4be54a25411d973f14b18fb80b3b638f0
+Block validation passed for block 3
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 23db14678ba1c5e2921aa71723af68e4be54a25411d973f14b18fb80b3b638f0, Block prev hash: 23db14678ba1c5e2921aa71723af68e4be54a25411d973f14b18fb80b3b638f0
+DEBUG: TW_BlockChain_add_block - Successfully added block 3, new length: 4
+Successfully committed block 3 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 4)
+Saved BlockChain To File! (Original size: 11424 bytes, Compressed size: 8357 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 3 synced to database successfully
+Node 0: Successfully created and committed block 3 in singular mode
+Node 0: Proposing block (round 10)
+DEBUG: Creating block 4 with previous hash: 624b3f8f4839a06a2387c0aacdfd2a5bb0e876818d53ab9e40f646fa1ba3260d
+Created new block with index 4 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 4 validation - Expected prev hash: 624b3f8f4839a06a2387c0aacdfd2a5bb0e876818d53ab9e40f646fa1ba3260d, Actual prev hash: 624b3f8f4839a06a2387c0aacdfd2a5bb0e876818d53ab9e40f646fa1ba3260d
+Block validation passed for block 4
+DEBUG: Block 4 validation - Expected prev hash: 624b3f8f4839a06a2387c0aacdfd2a5bb0e876818d53ab9e40f646fa1ba3260d, Actual prev hash: 624b3f8f4839a06a2387c0aacdfd2a5bb0e876818d53ab9e40f646fa1ba3260d
+Block validation passed for block 4
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 624b3f8f4839a06a2387c0aacdfd2a5bb0e876818d53ab9e40f646fa1ba3260d, Block prev hash: 624b3f8f4839a06a2387c0aacdfd2a5bb0e876818d53ab9e40f646fa1ba3260d
+DEBUG: TW_BlockChain_add_block - Successfully added block 4, new length: 5
+Successfully committed block 4 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 5)
+Saved BlockChain To File! (Original size: 11528 bytes, Compressed size: 8415 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 4 synced to database
+Node 0: Blockchain length: 5, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Creating block for singular node mode
+DEBUG: Creating block 5 with previous hash: 996ef09f2348dc0d7eff584c0864798eaed409b7357f8d4c080c9a3b93c1bd5d
+Created new block with index 5 and 0 transactions
+DEBUG: Block 5 validation - Expected prev hash: 996ef09f2348dc0d7eff584c0864798eaed409b7357f8d4c080c9a3b93c1bd5d, Actual prev hash: 996ef09f2348dc0d7eff584c0864798eaed409b7357f8d4c080c9a3b93c1bd5d
+Block validation passed for block 5
+DEBUG: Block 5 validation - Expected prev hash: 996ef09f2348dc0d7eff584c0864798eaed409b7357f8d4c080c9a3b93c1bd5d, Actual prev hash: 996ef09f2348dc0d7eff584c0864798eaed409b7357f8d4c080c9a3b93c1bd5d
+Block validation passed for block 5
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 996ef09f2348dc0d7eff584c0864798eaed409b7357f8d4c080c9a3b93c1bd5d, Block prev hash: 996ef09f2348dc0d7eff584c0864798eaed409b7357f8d4c080c9a3b93c1bd5d
+DEBUG: TW_BlockChain_add_block - Successfully added block 5, new length: 6
+Successfully committed block 5 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 6)
+Saved BlockChain To File! (Original size: 11632 bytes, Compressed size: 8474 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 5 synced to database successfully
+Node 0: Successfully created and committed block 5 in singular mode
+Node 0: Proposing block (round 20)
+DEBUG: Creating block 6 with previous hash: f37f31cbfd335b47894fb7ecb3e3b65983f68054257e3ea7113d0b510149cabe
+Created new block with index 6 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 6 validation - Expected prev hash: f37f31cbfd335b47894fb7ecb3e3b65983f68054257e3ea7113d0b510149cabe, Actual prev hash: f37f31cbfd335b47894fb7ecb3e3b65983f68054257e3ea7113d0b510149cabe
+Block validation passed for block 6
+DEBUG: Block 6 validation - Expected prev hash: f37f31cbfd335b47894fb7ecb3e3b65983f68054257e3ea7113d0b510149cabe, Actual prev hash: f37f31cbfd335b47894fb7ecb3e3b65983f68054257e3ea7113d0b510149cabe
+Block validation passed for block 6
+DEBUG: TW_BlockChain_add_block - Expected prev hash: f37f31cbfd335b47894fb7ecb3e3b65983f68054257e3ea7113d0b510149cabe, Block prev hash: f37f31cbfd335b47894fb7ecb3e3b65983f68054257e3ea7113d0b510149cabe
+DEBUG: TW_BlockChain_add_block - Successfully added block 6, new length: 7
+Successfully committed block 6 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 7)
+Saved BlockChain To File! (Original size: 11736 bytes, Compressed size: 8539 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 6 synced to database
+Node 0: Checking blockchain sync and peer status
+Node 0: Blockchain length: 7, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Creating block for singular node mode
+DEBUG: Creating block 7 with previous hash: 68948f96261650e46fc6e2a53dea708d59c12c5b57b98e411b92ca0339990aa7
+Created new block with index 7 and 0 transactions
+DEBUG: Block 7 validation - Expected prev hash: 68948f96261650e46fc6e2a53dea708d59c12c5b57b98e411b92ca0339990aa7, Actual prev hash: 68948f96261650e46fc6e2a53dea708d59c12c5b57b98e411b92ca0339990aa7
+Block validation passed for block 7
+DEBUG: Block 7 validation - Expected prev hash: 68948f96261650e46fc6e2a53dea708d59c12c5b57b98e411b92ca0339990aa7, Actual prev hash: 68948f96261650e46fc6e2a53dea708d59c12c5b57b98e411b92ca0339990aa7
+Block validation passed for block 7
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 68948f96261650e46fc6e2a53dea708d59c12c5b57b98e411b92ca0339990aa7, Block prev hash: 68948f96261650e46fc6e2a53dea708d59c12c5b57b98e411b92ca0339990aa7
+DEBUG: TW_BlockChain_add_block - Successfully added block 7, new length: 8
+Successfully committed block 7 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 8)
+Saved BlockChain To File! (Original size: 11840 bytes, Compressed size: 8596 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 7 synced to database successfully
+Node 0: Successfully created and committed block 7 in singular mode
+Node 0: Proposing block (round 30)
+DEBUG: Creating block 8 with previous hash: 0da46bbde1a88bd25c857810e05e75aeaa569d7c26e98f22a32a86d924a8d5f4
+Created new block with index 8 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 8 validation - Expected prev hash: 0da46bbde1a88bd25c857810e05e75aeaa569d7c26e98f22a32a86d924a8d5f4, Actual prev hash: 0da46bbde1a88bd25c857810e05e75aeaa569d7c26e98f22a32a86d924a8d5f4
+Block validation passed for block 8
+DEBUG: Block 8 validation - Expected prev hash: 0da46bbde1a88bd25c857810e05e75aeaa569d7c26e98f22a32a86d924a8d5f4, Actual prev hash: 0da46bbde1a88bd25c857810e05e75aeaa569d7c26e98f22a32a86d924a8d5f4
+Block validation passed for block 8
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 0da46bbde1a88bd25c857810e05e75aeaa569d7c26e98f22a32a86d924a8d5f4, Block prev hash: 0da46bbde1a88bd25c857810e05e75aeaa569d7c26e98f22a32a86d924a8d5f4
+DEBUG: TW_BlockChain_add_block - Successfully added block 8, new length: 9
+Successfully committed block 8 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 9)
+Saved BlockChain To File! (Original size: 11944 bytes, Compressed size: 8655 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 8 synced to database
+
+Received signal 15, shutting down gracefully...
+PBFT API server shutting down
+Marking node node_000 as offline...
+TinyWeb monitor thread stopping
+PBFT main consensus loop stopped for node 0
+PBFT node 0 shutdown complete
+Waiting for monitor thread to finish...
+Cleaning up system components...
+Message queues cleaned up
+Database closed successfully
+Database closed
+🧹 Blockchain Data Manager cleanup complete
+Mongoose HTTP client cleaned up
+System cleanup completed
+
+=================================================================
+🛑 TinyWeb PBFT Node shutdown complete - Goodbye!
+=================================================================

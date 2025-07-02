@@ -3,6 +3,94 @@
 #include <string.h>
 #include <time.h>
 
+// Predefined role permission sets for common use cases
+// Admin/Manager Role
+const PermissionSet ADMIN_MESSAGING = {
+    .permissions = PERMISSION_SEND_MESSAGE | PERMISSION_READ_MESSAGE | 
+                  PERMISSION_DELETE_MESSAGE | PERMISSION_EDIT_MESSAGE | 
+                  PERMISSION_FORWARD_MESSAGE | PERMISSION_SEND_EMERGENCY,
+    .scopes = (1 << SCOPE_DIRECT) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_EXTENDED_GROUP) | (1 << SCOPE_CONTACT_GROUP) | 
+              (1 << SCOPE_COMMUNITY) | (1 << SCOPE_ORGANIZATION),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+const PermissionSet ADMIN_GROUP_MANAGEMENT = {
+    .permissions = PERMISSION_CREATE_GROUP | PERMISSION_DELETE_GROUP | 
+                  PERMISSION_EDIT_GROUP | PERMISSION_INVITE_USERS | 
+                  PERMISSION_REMOVE_USERS | PERMISSION_APPROVE_MEMBERS | 
+                  PERMISSION_MODERATE_GROUP,
+    .scopes = (1 << SCOPE_PRIMARY_GROUP) | (1 << SCOPE_EXTENDED_GROUP) | 
+              (1 << SCOPE_CONTACT_GROUP) | (1 << SCOPE_COMMUNITY) | 
+              (1 << SCOPE_ORGANIZATION),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+const PermissionSet ADMIN_USER_MANAGEMENT = {
+    .permissions = PERMISSION_VIEW_STATUS | PERMISSION_VIEW_LOCATION | 
+                  PERMISSION_TRACK_LOCATION | PERMISSION_MANAGE_CONTACTS | 
+                  PERMISSION_APPROVE_CONTACTS | PERMISSION_MONITOR_ACTIVITY | 
+                  PERMISSION_SET_BOUNDARIES,
+    .scopes = (1 << SCOPE_SUPERVISED_USERS) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_EXTENDED_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+const PermissionSet ADMIN_SYSTEM = {
+    .permissions = PERMISSION_SET_CONTROLS | PERMISSION_VIEW_CONTROLS | 
+                  PERMISSION_SET_CONTENT_FILTERS | PERMISSION_VIEW_CONTENT_FILTERS | 
+                  PERMISSION_MANAGE_ROLES | PERMISSION_VIEW_LOGS | 
+                  PERMISSION_MANAGE_SETTINGS | PERMISSION_VIEW_SETTINGS,
+    .scopes = (1 << SCOPE_ORGANIZATION) | (1 << SCOPE_GLOBAL),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+// Member/User Role
+const PermissionSet MEMBER_MESSAGING = {
+    .permissions = PERMISSION_SEND_MESSAGE | PERMISSION_READ_MESSAGE | 
+                  PERMISSION_FORWARD_MESSAGE | PERMISSION_SEND_EMERGENCY,
+    .scopes = (1 << SCOPE_DIRECT) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+const PermissionSet MEMBER_BASIC = {
+    .permissions = PERMISSION_VIEW_STATUS | PERMISSION_VIEW_LOCATION,
+    .scopes = (1 << SCOPE_SELF) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+// Contact/Peer Role
+const PermissionSet CONTACT_MESSAGING = {
+    .permissions = PERMISSION_SEND_MESSAGE | PERMISSION_READ_MESSAGE | 
+                  PERMISSION_SEND_EMERGENCY,
+    .scopes = (1 << SCOPE_DIRECT) | (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
+const PermissionSet CONTACT_BASIC = {
+    .permissions = PERMISSION_VIEW_STATUS,
+    .scopes = (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
 // Check if a user has a specific permission in a specific scope
 bool has_permission_in_scope(const Role* role, uint64_t permission, permission_scope_t scope) {
     if (!role || !role->permission_sets) return false;

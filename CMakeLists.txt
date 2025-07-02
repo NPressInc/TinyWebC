@@ -175,6 +175,7 @@ add_executable(init_tool
     src/packages/sql/database.c
     src/packages/sql/schema.c
     src/packages/sql/queries.c
+    src/structs/permission/permission.c
     # Add any other required source files here
 )
 

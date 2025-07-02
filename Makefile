@@ -1287,6 +1287,7 @@ src/structs/permission/permission.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/structs/permission/permission.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.o
 .PHONY : src/structs/permission/permission.c.o
 
 src/structs/permission/permission.i: src/structs/permission/permission.c.i
@@ -1297,6 +1298,7 @@ src/structs/permission/permission.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/structs/permission/permission.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.i
 .PHONY : src/structs/permission/permission.c.i
 
 src/structs/permission/permission.s: src/structs/permission/permission.c.s
@@ -1307,6 +1309,7 @@ src/structs/permission/permission.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/structs/permission/permission.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.s
 .PHONY : src/structs/permission/permission.c.s
 
 src/tests/blockchain_test.o: src/tests/blockchain_test.c.o

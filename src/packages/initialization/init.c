@@ -9,6 +9,7 @@
 #include "packages/signing/signing.h"
 #include "packages/fileIO/blockchainIO.h"
 #include "packages/structures/blockChain/transaction_types.h"
+#include "packages/encryption/encryption.h"
 #include "structs/permission/permission.h"
 
 // Main initialization function
@@ -68,7 +69,7 @@ int initialize_network(const InitConfig* config) {
     }
 
     // Save the initialized blockchain
-    if (!saveBlockChainToFile(blockchain)) {
+    if (!saveBlockChainToFileWithPath(blockchain, config->blockchain_path)) {
         fprintf(stderr, "Error: Failed to save blockchain\n");
         free(peers);
         free_generated_keys(&keys);
@@ -77,7 +78,7 @@ int initialize_network(const InitConfig* config) {
     }
 
     // Save blockchain as JSON for human readability
-    if (!writeBlockChainToJson(blockchain)) {
+    if (!writeBlockChainToJsonWithPath(blockchain, config->blockchain_path)) {
         fprintf(stderr, "Warning: Failed to save blockchain as JSON\n");
         // Don't return error here as the main blockchain file was saved successfully
     }
@@ -93,6 +94,13 @@ int initialize_network(const InitConfig* config) {
 // Key generation functions
 int generate_initial_keys(GeneratedKeys* keys, const InitConfig* config) {
     if (!keys || !config) return -1;
+    
+    // Initialize libsodium
+    if (sodium_init() < 0) {
+        printf("DEBUG: Failed to initialize libsodium\n");
+        return -1;
+    }
+    
     keys->node_count = config->node_count;
     keys->user_count = config->user_count;
     if (keys->node_count == 0 || keys->user_count == 0) return -1;
@@ -111,11 +119,16 @@ int generate_initial_keys(GeneratedKeys* keys, const InitConfig* config) {
             free_generated_keys(keys);
             return -1;
         }
-        if (!keystore_generate_keypair()) {
+        
+        // Generate Ed25519 keypair directly using libsodium
+        unsigned char ed25519_public_key[SIGN_PUBKEY_SIZE];
+        if (crypto_sign_keypair(ed25519_public_key, keys->node_private_keys[i]) != 0) {
             free_generated_keys(keys);
             return -1;
         }
-        if (!keystore_get_encryption_public_key(keys->node_public_keys[i]) || !_keystore_get_private_key(keys->node_private_keys[i])) {
+        
+        // Convert Ed25519 public key to X25519 for encryption
+        if (crypto_sign_ed25519_pk_to_curve25519(keys->node_public_keys[i], ed25519_public_key) != 0) {
             free_generated_keys(keys);
             return -1;
         }
@@ -127,11 +140,16 @@ int generate_initial_keys(GeneratedKeys* keys, const InitConfig* config) {
             free_generated_keys(keys);
             return -1;
         }
-        if (!keystore_generate_keypair()) {
+        
+        // Generate Ed25519 keypair directly using libsodium
+        unsigned char ed25519_public_key[SIGN_PUBKEY_SIZE];
+        if (crypto_sign_keypair(ed25519_public_key, keys->user_private_keys[i]) != 0) {
             free_generated_keys(keys);
             return -1;
         }
-        if (!keystore_get_encryption_public_key(keys->user_public_keys[i]) || !_keystore_get_private_key(keys->user_private_keys[i])) {
+        
+        // Convert Ed25519 public key to X25519 for encryption
+        if (crypto_sign_ed25519_pk_to_curve25519(keys->user_public_keys[i], ed25519_public_key) != 0) {
             free_generated_keys(keys);
             return -1;
         }
@@ -229,6 +247,14 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     if (!keys || !peers || !blockchain || !config) return -1;
 
     printf("Creating initialization block...\n");
+    
+    // Initialize a keypair in the keystore for encryption operations
+    // encrypt_payload_multi requires a keypair to be loaded for ephemeral key generation
+    if (!keystore_generate_keypair()) {
+        printf("Failed to initialize keystore keypair for encryption\n");
+        return -1;
+    }
+    printf("Initialized keystore keypair for encryption operations\n");
 
     // Array to collect all initialization transactions
     TW_Transaction** init_transactions = malloc(sizeof(TW_Transaction*) * (keys->user_count * 2 + keys->node_count + 2)); // Users + roles + peers + system
@@ -398,7 +424,9 @@ unsigned char** create_all_recipients_list(const GeneratedKeys* keys, uint32_t* 
 
 // Transaction creation functions
 TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, uint32_t user_index, const unsigned char* creator_pubkey) {
-    if (!keys || user_index >= keys->user_count || !creator_pubkey) return NULL;
+    if (!keys || user_index >= keys->user_count || !creator_pubkey) {
+        return NULL;
+    }
 
     TW_TXN_UserRegistration user_data;
     memset(&user_data, 0, sizeof(user_data));

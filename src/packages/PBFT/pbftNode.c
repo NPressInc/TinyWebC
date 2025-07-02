@@ -195,7 +195,9 @@ int pbft_node_load_or_create_blockchain(PBFTNode* node) {
             printf("Failed to load blockchain from file, creating new one\n");
         }
     } else {
-        printf("No existing blockchain file found, creating new one\n");
+        printf("No existing blockchain file found at %s\n", blockchain_file);
+        printf("💡 To initialize with proper multi-recipient encryption, run:\n");
+        printf("   ./init_tool -v src/packages/initialization/configs/network_config.json\n");
     }
     
     // Create a new blockchain if loading failed or file doesn't exist

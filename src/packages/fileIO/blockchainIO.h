@@ -12,12 +12,19 @@
 // Returns true if successful, false otherwise
 bool saveBlockChainToFile(TW_BlockChain* blockChain);
 
+// Save blockchain to a file with custom path
+// Returns true if successful, false otherwise
+bool saveBlockChainToFileWithPath(TW_BlockChain* blockChain, const char* blockchain_dir);
+
 // Read blockchain from a file
 // Returns pointer to newly allocated BlockChain if successful, NULL otherwise
 // Caller is responsible for freeing the returned BlockChain
 TW_BlockChain* readBlockChainFromFile(void);
 
 bool writeBlockChainToJson(TW_BlockChain* blockChain);
+
+// Write blockchain to JSON with custom path
+bool writeBlockChainToJsonWithPath(TW_BlockChain* blockChain, const char* blockchain_dir);
 
 // ===== BLOCKCHAIN DATA MANAGER =====
 
@@ -123,5 +130,10 @@ const char* TW_data_importance_to_string(TW_DataImportance importance);
  * Calculate database size before and after operations
  */
 size_t TW_calculate_database_size(void);
+
+/**
+ * Calculate database size with custom path
+ */
+size_t TW_calculate_database_size_with_path(const char* db_path);
 
 #endif // BLOCKCHAIN_IO_H

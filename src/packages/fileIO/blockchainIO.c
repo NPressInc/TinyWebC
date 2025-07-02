@@ -31,10 +31,14 @@ static bool ensure_directory_exists(const char* path) {
 }
 
 bool saveBlockChainToFile(TW_BlockChain* blockChain) {
-    if (!blockChain) return false;
+    return saveBlockChainToFileWithPath(blockChain, BLOCKCHAIN_DIR);
+}
 
-    // Ensure state/blockchain directory exists
-    if (!ensure_directory_exists(BLOCKCHAIN_DIR)) {
+bool saveBlockChainToFileWithPath(TW_BlockChain* blockChain, const char* blockchain_dir) {
+    if (!blockChain || !blockchain_dir) return false;
+
+    // Ensure directory exists
+    if (!ensure_directory_exists(blockchain_dir)) {
         return false;
     }
 
@@ -60,8 +64,12 @@ bool saveBlockChainToFile(TW_BlockChain* blockChain) {
     }
     free(serializedData); // Free the uncompressed data
 
+    // Build filename using the provided directory
+    char blockchain_filename[512];
+    snprintf(blockchain_filename, sizeof(blockchain_filename), "%s/blockchain.dat", blockchain_dir);
+
     // Write to file
-    FILE* file = fopen(BLOCKCHAIN_FILENAME, "wb");
+    FILE* file = fopen(blockchain_filename, "wb");
     if (!file) {
         free(compressedData);
         return false;
@@ -163,7 +171,11 @@ TW_BlockChain* readBlockChainFromFile(void) {
 }
 
 bool writeBlockChainToJson(TW_BlockChain* blockChain) {
-    if (!blockChain) {
+    return writeBlockChainToJsonWithPath(blockChain, BLOCKCHAIN_DIR);
+}
+
+bool writeBlockChainToJsonWithPath(TW_BlockChain* blockChain, const char* blockchain_dir) {
+    if (!blockChain || !blockchain_dir) {
         return false;
     }
 
@@ -366,8 +378,12 @@ bool writeBlockChainToJson(TW_BlockChain* blockChain) {
         return false;
     }
 
+    // Build JSON filename using the provided directory
+    char blockchain_json_filename[512];
+    snprintf(blockchain_json_filename, sizeof(blockchain_json_filename), "%s/blockchain.json", blockchain_dir);
+
     // Write to file
-    FILE* file = fopen(BLOCKCHAIN_JSON_FILENAME, "w");
+    FILE* file = fopen(blockchain_json_filename, "w");
     if (!file) {
         free(json_str);
         cJSON_Delete(root);
@@ -381,7 +397,7 @@ bool writeBlockChainToJson(TW_BlockChain* blockChain) {
     free(json_str);
     cJSON_Delete(root);
 
-    printf("Blockchain saved as JSON to %s\n", BLOCKCHAIN_JSON_FILENAME);
+    printf("Blockchain saved as JSON to %s\n", blockchain_json_filename);
     return true;
 }
 
@@ -525,8 +541,12 @@ bool TW_BlockchainDataManager_should_load_transaction(const TW_Transaction* tx,
 }
 
 size_t TW_calculate_database_size(void) {
+    return TW_calculate_database_size_with_path("state/blockchain/blockchain.db");
+}
+
+size_t TW_calculate_database_size_with_path(const char* db_path) {
     struct stat st;
-    if (stat("state/blockchain/blockchain.db", &st) == 0) {
+    if (stat(db_path, &st) == 0) {
         return st.st_size;
     }
     return 0;
