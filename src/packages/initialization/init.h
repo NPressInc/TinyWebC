@@ -14,6 +14,7 @@
 typedef struct {
     char* keystore_path;
     char* blockchain_path;
+    char* database_path;       // Optional: if NULL, defaults to blockchain_path/blockchain.db
     char* passphrase;
     uint16_t base_port;
     uint32_t node_count;
