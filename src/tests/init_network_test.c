@@ -32,6 +32,115 @@ void cleanup_test_dirs() {
     unlink("test_state/blockchain/test_blockchain.db-shm");
 }
 
+// Helper function to verify database was created and contains expected data
+int verify_database_initialization(void) {
+    printf("Verifying database initialization...\n");
+    
+    // Initialize database connection
+    if (db_init(TEST_DB_PATH) != 0) {
+        printf("❌ Failed to initialize database connection for verification\n");
+        return 0;
+    }
+    
+    // Check that database file exists
+    FILE* db_file = fopen(TEST_DB_PATH, "r");
+    if (!db_file) {
+        printf("❌ Database file does not exist: %s\n", TEST_DB_PATH);
+        db_close();
+        return 0;
+    }
+    fclose(db_file);
+    printf("✅ Database file exists: %s\n", TEST_DB_PATH);
+    
+    // Check blockchain info
+    uint32_t block_count = 0;
+    if (db_get_block_count(&block_count) != 0) {
+        printf("❌ Failed to get block count from database\n");
+        db_close();
+        return 0;
+    }
+    
+    if (block_count == 0) {
+        printf("❌ Database contains no blocks\n");
+        db_close();
+        return 0;
+    }
+    printf("✅ Database contains %u blocks\n", block_count);
+    
+    // Check transaction count
+    uint64_t transaction_count = 0;
+    if (db_get_transaction_count(&transaction_count) != 0) {
+        printf("❌ Failed to get transaction count from database\n");
+        db_close();
+        return 0;
+    }
+    
+    if (transaction_count == 0) {
+        printf("❌ Database contains no transactions\n");
+        db_close();
+        return 0;
+    }
+    printf("✅ Database contains %llu transactions\n", (unsigned long long)transaction_count);
+    
+    // Verify we have the expected number of transactions
+    // Should be: users (4) + roles (4) + peers (2) + system (1) + filter (1) = 12 transactions
+    uint64_t expected_transactions = TEST_USER_COUNT * 2 + TEST_NODE_COUNT + 2;
+    if (transaction_count != expected_transactions) {
+        printf("❌ Expected %llu transactions, found %llu\n", 
+               (unsigned long long)expected_transactions, (unsigned long long)transaction_count);
+        db_close();
+        return 0;
+    }
+    printf("✅ Database contains expected number of transactions: %llu\n", (unsigned long long)transaction_count);
+    
+    // Check that we can query transactions by type
+    TransactionRecord* user_transactions = NULL;
+    size_t user_txn_count = 0;
+    if (db_get_transactions_by_type(TW_TXN_USER_REGISTRATION, &user_transactions, &user_txn_count) != 0) {
+        printf("❌ Failed to query user registration transactions\n");
+        db_close();
+        return 0;
+    }
+    
+    if (user_txn_count != TEST_USER_COUNT) {
+        printf("❌ Expected %u user registration transactions, found %zu\n", TEST_USER_COUNT, user_txn_count);
+        db_free_transaction_records(user_transactions, user_txn_count);
+        db_close();
+        return 0;
+    }
+    printf("✅ Database contains %zu user registration transactions\n", user_txn_count);
+    
+    // Verify transaction recipients
+    if (user_txn_count > 0) {
+        char** recipients = NULL;
+        size_t recipient_count = 0;
+        if (db_get_recipients_for_transaction(user_transactions[0].transaction_id, &recipients, &recipient_count) != 0) {
+            printf("❌ Failed to get recipients for first user transaction\n");
+            db_free_transaction_records(user_transactions, user_txn_count);
+            db_close();
+            return 0;
+        }
+        
+        size_t expected_recipients = TEST_NODE_COUNT + TEST_USER_COUNT;
+        if (recipient_count != expected_recipients) {
+            printf("❌ Expected %zu recipients for transaction, found %zu\n", expected_recipients, recipient_count);
+            db_free_recipients(recipients, recipient_count);
+            db_free_transaction_records(user_transactions, user_txn_count);
+            db_close();
+            return 0;
+        }
+        printf("✅ Transaction has expected number of recipients: %zu\n", recipient_count);
+        
+        db_free_recipients(recipients, recipient_count);
+    }
+    
+    db_free_transaction_records(user_transactions, user_txn_count);
+    db_close();
+    
+    printf("✅ Database verification completed successfully\n");
+    return 1;
+}
+
 // Helper function to load Ed25519 private key and derive X25519 public key
 unsigned char* load_key_and_get_x25519_pubkey(const char* key_path) {
     FILE* f = fopen(key_path, "rb");
@@ -404,11 +513,16 @@ int init_network_test_main(void) {
     InitConfig config = {
         .keystore_path = TEST_KEYSTORE_PATH,
         .blockchain_path = TEST_BLOCKCHAIN_PATH,
+        .database_path = TEST_DB_PATH,
         .passphrase = TEST_PASSPHRASE,
         .base_port = TEST_BASE_PORT,
         .node_count = TEST_NODE_COUNT,
         .user_count = TEST_USER_COUNT
     };
+
+    // Close the database connection before running initialization
+    // (since init.c will handle database initialization internally)
+    db_close();
 
     int result = initialize_network(&config);
     assert(result == 0 && "Network initialization should succeed");
@@ -436,18 +550,28 @@ int init_network_test_main(void) {
         printf("JSON blockchain file verified: %zu bytes read\n", bytes_read);
         printf("JSON preview: %.100s%s\n", buffer, bytes_read > 100 ? "..." : "");
     }
+
+    // Check that SQLite database file exists
+    FILE* db_f = fopen(TEST_DB_PATH, "rb");
+    assert(db_f && "SQLite database file should exist after initialization");
+    if (db_f) {
+        fclose(db_f);
+        printf("SQLite database file verified: %s\n", TEST_DB_PATH);
+    }
+
+    // Verify database initialization and content
+    if (!verify_database_initialization()) {
+        printf("Database verification failed\n");
+        return 1;
+    }
     
     // Test multi-recipient encryption
     if (!test_multi_recipient_initialization()) {
         printf("Multi-recipient initialization test failed\n");
-        db_close();
         return 1;
     }
 
     printf("init_network_test: PASSED\n");
-    
-    // Close test database
-    db_close();
     
     return 0;
 } 
