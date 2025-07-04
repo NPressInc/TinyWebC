@@ -411,6 +411,22 @@ int db_add_transaction(TW_Transaction* tx, uint32_t block_index, uint32_t tx_ind
         }
     }
 
+    // Parse and sync specific transaction types to user/role/permission tables
+    switch (tx->type) {
+        case TW_TXN_USER_REGISTRATION:
+            db_parse_and_sync_user_registration(tx, transaction_id);
+            break;
+        case TW_TXN_ROLE_ASSIGNMENT:
+            db_parse_and_sync_role_assignment(tx, transaction_id);
+            break;
+        case TW_TXN_PERMISSION_EDIT:
+            db_parse_and_sync_permission_edit(tx, transaction_id);
+            break;
+        default:
+            // No special handling needed for other transaction types
+            break;
+    }
+
     return 0;
 }
 
@@ -856,5 +872,721 @@ const char* get_transaction_type_name(TW_TransactionType type) {
         case TW_TXN_SHARED_ALBUM_CREATE:    return "SHARED_ALBUM_CREATE";
         case TW_TXN_MEDIA_ADD_TO_ALBUM_REQUEST: return "MEDIA_ADD_TO_ALBUM_REQUEST";
         default:                            return "UNKNOWN";
+    }
+}
+
+// Transaction parsing and sync functions
+int db_parse_and_sync_user_registration(TW_Transaction* tx, uint64_t transaction_id) {
+    if (!tx || !tx->payload) {
+        return -1;
+    }
+
+    // Decrypt and parse the payload
+    unsigned char* decrypted_data = NULL;
+    size_t decrypted_size = 0;
+    
+    // For now, we'll assume we can decrypt the payload
+    // In a real implementation, this would use the proper decryption functions
+    // TODO: Implement actual decryption logic
+    
+    // Parse the user registration data
+    TW_TXN_UserRegistration user_reg;
+    if (deserialize_user_registration(decrypted_data, &user_reg) != 0) {
+        if (decrypted_data) free(decrypted_data);
+        return -1;
+    }
+
+    // Convert sender pubkey to hex string
+    char sender_hex[65];
+    if (db_hex_encode(tx->sender, PUBKEY_SIZE, sender_hex, sizeof(sender_hex)) != 0) {
+        if (decrypted_data) free(decrypted_data);
+        return -1;
+    }
+
+    // Add user to database
+    int result = db_add_user(sender_hex, user_reg.username, user_reg.age, transaction_id);
+    
+    if (decrypted_data) free(decrypted_data);
+    return result;
+}
+
+int db_parse_and_sync_role_assignment(TW_Transaction* tx, uint64_t transaction_id) {
+    if (!tx || !tx->payload) {
+        return -1;
+    }
+
+    // Decrypt and parse the payload
+    unsigned char* decrypted_data = NULL;
+    size_t decrypted_size = 0;
+    
+    // TODO: Implement actual decryption logic
+    
+    // Parse the role assignment data
+    TW_TXN_RoleAssignment role_assign;
+    if (deserialize_role_assignment(decrypted_data, &role_assign) != 0) {
+        if (decrypted_data) free(decrypted_data);
+        return -1;
+    }
+
+    // Add role to database
+    int result = db_add_role(role_assign.role_name, "Auto-generated role", transaction_id);
+    
+    if (decrypted_data) free(decrypted_data);
+    return result;
+}
+
+int db_parse_and_sync_permission_edit(TW_Transaction* tx, uint64_t transaction_id) {
+    if (!tx || !tx->payload) {
+        return -1;
+    }
+
+    // Decrypt and parse the payload
+    unsigned char* decrypted_data = NULL;
+    size_t decrypted_size = 0;
+    
+    // TODO: Implement actual decryption logic
+    
+    // Parse the permission edit data
+    TW_TXN_PermissionEdit perm_edit;
+    if (deserialize_permission_edit(decrypted_data, &perm_edit) != 0) {
+        if (decrypted_data) free(decrypted_data);
+        return -1;
+    }
+
+    // Add or update permission in database
+    int result = db_add_permission(perm_edit.permission_name, perm_edit.permission_flags, 
+                                  perm_edit.scope_flags, perm_edit.condition_flags, 
+                                  0, "Auto-generated permission", transaction_id);
+    
+    if (decrypted_data) free(decrypted_data);
+    return result;
+}
+
+// User management functions
+int db_add_user(const char* pubkey, const char* username, uint8_t age, uint64_t registration_transaction_id) {
+    if (!g_db_ctx.is_initialized || !pubkey || !username) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_INSERT_USER, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, pubkey, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, username, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 3, age);
+    sqlite3_bind_int64(stmt, 4, registration_transaction_id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_update_user(const char* pubkey, const char* username, uint8_t age) {
+    if (!g_db_ctx.is_initialized || !pubkey || !username) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_UPDATE_USER, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 2, age);
+    sqlite3_bind_text(stmt, 3, pubkey, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_get_user_by_pubkey(const char* pubkey, UserRecord* user) {
+    if (!g_db_ctx.is_initialized || !pubkey || !user) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_USER_BY_PUBKEY, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, pubkey, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        user->id = sqlite3_column_int64(stmt, 0);
+        strncpy(user->pubkey, (const char*)sqlite3_column_text(stmt, 1), sizeof(user->pubkey) - 1);
+        user->pubkey[sizeof(user->pubkey) - 1] = '\0';
+        strncpy(user->username, (const char*)sqlite3_column_text(stmt, 2), sizeof(user->username) - 1);
+        user->username[sizeof(user->username) - 1] = '\0';
+        user->age = sqlite3_column_int(stmt, 3);
+        user->registration_transaction_id = sqlite3_column_int64(stmt, 4);
+        user->created_at = sqlite3_column_int64(stmt, 5);
+        user->updated_at = sqlite3_column_int64(stmt, 6);
+        user->is_active = sqlite3_column_int(stmt, 7) != 0;
+    }
+
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_ROW) ? 0 : -1;
+}
+
+int db_get_user_by_username(const char* username, UserRecord* user) {
+    if (!g_db_ctx.is_initialized || !username || !user) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_USER_BY_USERNAME, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        user->id = sqlite3_column_int64(stmt, 0);
+        strncpy(user->pubkey, (const char*)sqlite3_column_text(stmt, 1), sizeof(user->pubkey) - 1);
+        user->pubkey[sizeof(user->pubkey) - 1] = '\0';
+        strncpy(user->username, (const char*)sqlite3_column_text(stmt, 2), sizeof(user->username) - 1);
+        user->username[sizeof(user->username) - 1] = '\0';
+        user->age = sqlite3_column_int(stmt, 3);
+        user->registration_transaction_id = sqlite3_column_int64(stmt, 4);
+        user->created_at = sqlite3_column_int64(stmt, 5);
+        user->updated_at = sqlite3_column_int64(stmt, 6);
+        user->is_active = sqlite3_column_int(stmt, 7) != 0;
+    }
+
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_ROW) ? 0 : -1;
+}
+
+int db_get_all_users(UserRecord** users, size_t* count) {
+    if (!g_db_ctx.is_initialized || !users || !count) {
+        return -1;
+    }
+
+    *users = NULL;
+    *count = 0;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_ALL_USERS, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    // Count results first
+    size_t user_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        user_count++;
+    }
+
+    if (user_count == 0) {
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+
+    // Reset and allocate memory
+    sqlite3_reset(stmt);
+    UserRecord* user_array = malloc(user_count * sizeof(UserRecord));
+    if (!user_array) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    // Populate results
+    size_t index = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && index < user_count) {
+        UserRecord* user = &user_array[index];
+        user->id = sqlite3_column_int64(stmt, 0);
+        strncpy(user->pubkey, (const char*)sqlite3_column_text(stmt, 1), sizeof(user->pubkey) - 1);
+        user->pubkey[sizeof(user->pubkey) - 1] = '\0';
+        strncpy(user->username, (const char*)sqlite3_column_text(stmt, 2), sizeof(user->username) - 1);
+        user->username[sizeof(user->username) - 1] = '\0';
+        user->age = sqlite3_column_int(stmt, 3);
+        user->registration_transaction_id = sqlite3_column_int64(stmt, 4);
+        user->created_at = sqlite3_column_int64(stmt, 5);
+        user->updated_at = sqlite3_column_int64(stmt, 6);
+        user->is_active = sqlite3_column_int(stmt, 7) != 0;
+        index++;
+    }
+
+    sqlite3_finalize(stmt);
+    *users = user_array;
+    *count = index;
+    return 0;
+}
+
+int db_delete_user(const char* pubkey) {
+    if (!g_db_ctx.is_initialized || !pubkey) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_DELETE_USER, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, pubkey, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+// Role management functions
+int db_add_role(const char* name, const char* description, uint64_t assignment_transaction_id) {
+    if (!g_db_ctx.is_initialized || !name) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_INSERT_ROLE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, description, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 3, assignment_transaction_id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_update_role(const char* name, const char* description) {
+    if (!g_db_ctx.is_initialized || !name) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_UPDATE_ROLE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, description, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, name, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_get_role_by_name(const char* name, RoleRecord* role) {
+    if (!g_db_ctx.is_initialized || !name || !role) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_ROLE_BY_NAME, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        role->id = sqlite3_column_int64(stmt, 0);
+        strncpy(role->name, (const char*)sqlite3_column_text(stmt, 1), sizeof(role->name) - 1);
+        role->name[sizeof(role->name) - 1] = '\0';
+        const char* desc = (const char*)sqlite3_column_text(stmt, 2);
+        if (desc) {
+            strncpy(role->description, desc, sizeof(role->description) - 1);
+            role->description[sizeof(role->description) - 1] = '\0';
+        } else {
+            role->description[0] = '\0';
+        }
+        role->created_at = sqlite3_column_int64(stmt, 3);
+        role->updated_at = sqlite3_column_int64(stmt, 4);
+        role->assignment_transaction_id = sqlite3_column_int64(stmt, 5);
+    }
+
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_ROW) ? 0 : -1;
+}
+
+int db_get_all_roles(RoleRecord** roles, size_t* count) {
+    if (!g_db_ctx.is_initialized || !roles || !count) {
+        return -1;
+    }
+
+    *roles = NULL;
+    *count = 0;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_ALL_ROLES, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    // Count results first
+    size_t role_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        role_count++;
+    }
+
+    if (role_count == 0) {
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+
+    // Reset and allocate memory
+    sqlite3_reset(stmt);
+    RoleRecord* role_array = malloc(role_count * sizeof(RoleRecord));
+    if (!role_array) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    // Populate results
+    size_t index = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && index < role_count) {
+        RoleRecord* role = &role_array[index];
+        role->id = sqlite3_column_int64(stmt, 0);
+        strncpy(role->name, (const char*)sqlite3_column_text(stmt, 1), sizeof(role->name) - 1);
+        role->name[sizeof(role->name) - 1] = '\0';
+        const char* desc = (const char*)sqlite3_column_text(stmt, 2);
+        if (desc) {
+            strncpy(role->description, desc, sizeof(role->description) - 1);
+            role->description[sizeof(role->description) - 1] = '\0';
+        } else {
+            role->description[0] = '\0';
+        }
+        role->created_at = sqlite3_column_int64(stmt, 3);
+        role->updated_at = sqlite3_column_int64(stmt, 4);
+        role->assignment_transaction_id = sqlite3_column_int64(stmt, 5);
+        index++;
+    }
+
+    sqlite3_finalize(stmt);
+    *roles = role_array;
+    *count = index;
+    return 0;
+}
+
+int db_delete_role(const char* name) {
+    if (!g_db_ctx.is_initialized || !name) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_DELETE_ROLE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+// Permission management functions
+int db_add_permission(const char* name, uint64_t permission_flags, uint32_t scope_flags, 
+                     uint64_t condition_flags, uint8_t category, const char* description, 
+                     uint64_t edit_transaction_id) {
+    if (!g_db_ctx.is_initialized || !name) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_INSERT_PERMISSION, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 2, permission_flags);
+    sqlite3_bind_int(stmt, 3, scope_flags);
+    sqlite3_bind_int64(stmt, 4, condition_flags);
+    sqlite3_bind_int(stmt, 5, category);
+    sqlite3_bind_text(stmt, 6, description, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 7, edit_transaction_id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_update_permission(const char* name, uint64_t permission_flags, uint32_t scope_flags, 
+                        uint64_t condition_flags, uint8_t category, const char* description) {
+    if (!g_db_ctx.is_initialized || !name) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_UPDATE_PERMISSION, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int64(stmt, 1, permission_flags);
+    sqlite3_bind_int(stmt, 2, scope_flags);
+    sqlite3_bind_int64(stmt, 3, condition_flags);
+    sqlite3_bind_int(stmt, 4, category);
+    sqlite3_bind_text(stmt, 5, description, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 6, name, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_get_permission_by_name(const char* name, PermissionRecord* permission) {
+    if (!g_db_ctx.is_initialized || !name || !permission) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_PERMISSION_BY_NAME, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        permission->id = sqlite3_column_int64(stmt, 0);
+        strncpy(permission->name, (const char*)sqlite3_column_text(stmt, 1), sizeof(permission->name) - 1);
+        permission->name[sizeof(permission->name) - 1] = '\0';
+        permission->permission_flags = sqlite3_column_int64(stmt, 2);
+        permission->scope_flags = sqlite3_column_int(stmt, 3);
+        permission->condition_flags = sqlite3_column_int64(stmt, 4);
+        permission->category = sqlite3_column_int(stmt, 5);
+        const char* desc = (const char*)sqlite3_column_text(stmt, 6);
+        if (desc) {
+            strncpy(permission->description, desc, sizeof(permission->description) - 1);
+            permission->description[sizeof(permission->description) - 1] = '\0';
+        } else {
+            permission->description[0] = '\0';
+        }
+        permission->created_at = sqlite3_column_int64(stmt, 7);
+        permission->updated_at = sqlite3_column_int64(stmt, 8);
+        permission->edit_transaction_id = sqlite3_column_int64(stmt, 9);
+    }
+
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_ROW) ? 0 : -1;
+}
+
+int db_get_all_permissions(PermissionRecord** permissions, size_t* count) {
+    if (!g_db_ctx.is_initialized || !permissions || !count) {
+        return -1;
+    }
+
+    *permissions = NULL;
+    *count = 0;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_ALL_PERMISSIONS, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    // Count results first
+    size_t perm_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        perm_count++;
+    }
+
+    if (perm_count == 0) {
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+
+    // Reset and allocate memory
+    sqlite3_reset(stmt);
+    PermissionRecord* perm_array = malloc(perm_count * sizeof(PermissionRecord));
+    if (!perm_array) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    // Populate results
+    size_t index = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && index < perm_count) {
+        PermissionRecord* perm = &perm_array[index];
+        perm->id = sqlite3_column_int64(stmt, 0);
+        strncpy(perm->name, (const char*)sqlite3_column_text(stmt, 1), sizeof(perm->name) - 1);
+        perm->name[sizeof(perm->name) - 1] = '\0';
+        perm->permission_flags = sqlite3_column_int64(stmt, 2);
+        perm->scope_flags = sqlite3_column_int(stmt, 3);
+        perm->condition_flags = sqlite3_column_int64(stmt, 4);
+        perm->category = sqlite3_column_int(stmt, 5);
+        const char* desc = (const char*)sqlite3_column_text(stmt, 6);
+        if (desc) {
+            strncpy(perm->description, desc, sizeof(perm->description) - 1);
+            perm->description[sizeof(perm->description) - 1] = '\0';
+        } else {
+            perm->description[0] = '\0';
+        }
+        perm->created_at = sqlite3_column_int64(stmt, 7);
+        perm->updated_at = sqlite3_column_int64(stmt, 8);
+        perm->edit_transaction_id = sqlite3_column_int64(stmt, 9);
+        index++;
+    }
+
+    sqlite3_finalize(stmt);
+    *permissions = perm_array;
+    *count = index;
+    return 0;
+}
+
+int db_delete_permission(const char* name) {
+    if (!g_db_ctx.is_initialized || !name) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_DELETE_PERMISSION, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+// User-Role relationship functions
+int db_assign_user_role(uint64_t user_id, uint64_t role_id, uint64_t assigned_by_user_id, 
+                       uint64_t assignment_transaction_id) {
+    if (!g_db_ctx.is_initialized) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_INSERT_USER_ROLE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int64(stmt, 1, user_id);
+    sqlite3_bind_int64(stmt, 2, role_id);
+    sqlite3_bind_int64(stmt, 3, assigned_by_user_id);
+    sqlite3_bind_int64(stmt, 4, assignment_transaction_id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_remove_user_role(uint64_t user_id, uint64_t role_id) {
+    if (!g_db_ctx.is_initialized) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_DELETE_USER_ROLE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int64(stmt, 1, user_id);
+    sqlite3_bind_int64(stmt, 2, role_id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+// Role-Permission relationship functions
+int db_grant_role_permission(uint64_t role_id, uint64_t permission_id, uint64_t granted_by_user_id, 
+                            uint64_t grant_transaction_id, uint64_t time_start, uint64_t time_end) {
+    if (!g_db_ctx.is_initialized) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_INSERT_ROLE_PERMISSION, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int64(stmt, 1, role_id);
+    sqlite3_bind_int64(stmt, 2, permission_id);
+    sqlite3_bind_int64(stmt, 3, granted_by_user_id);
+    sqlite3_bind_int64(stmt, 4, grant_transaction_id);
+    sqlite3_bind_int64(stmt, 5, time_start);
+    sqlite3_bind_int64(stmt, 6, time_end);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+int db_revoke_role_permission(uint64_t role_id, uint64_t permission_id) {
+    if (!g_db_ctx.is_initialized) {
+        return -1;
+    }
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_DELETE_ROLE_PERMISSION, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int64(stmt, 1, role_id);
+    sqlite3_bind_int64(stmt, 2, permission_id);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+// Memory management functions
+void db_free_user_records(UserRecord* records, size_t count) {
+    if (records) {
+        free(records);
+    }
+}
+
+void db_free_role_records(RoleRecord* records, size_t count) {
+    if (records) {
+        free(records);
+    }
+}
+
+void db_free_permission_records(PermissionRecord* records, size_t count) {
+    if (records) {
+        free(records);
+    }
+}
+
+void db_free_user_role_records(UserRoleRecord* records, size_t count) {
+    if (records) {
+        free(records);
+    }
+}
+
+void db_free_role_permission_records(RolePermissionRecord* records, size_t count) {
+    if (records) {
+        free(records);
     }
 } 

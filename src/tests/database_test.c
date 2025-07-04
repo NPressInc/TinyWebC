@@ -8,9 +8,12 @@
 #include "database_test.h"
 #include "packages/sql/database.h"
 #include "packages/sql/queries.h"
+#include "packages/sql/schema.h"
 #include "packages/structures/blockChain/blockchain.h"
+#include "packages/structures/blockChain/transaction_types.h"
 #include "packages/fileIO/blockchainIO.h"
 #include "packages/keystore/keystore.h"
+#include "structs/permission/permission.h"
 
 #define TEST_DB_PATH "test_state/blockchain/test_blockchain.db"
 #define BLOCKCHAIN_FILE_PATH "state/blockchain/blockchain.dat"
@@ -233,6 +236,330 @@ static int test_database_performance(void) {
     return 0;
 }
 
+// Test user management functions
+static int test_user_management(void) {
+    printf("Testing user management functions...\n");
+    
+    // Test adding a user
+    const char* test_pubkey = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const char* test_username = "test_user";
+    uint8_t test_age = 25;
+    uint64_t test_tx_id = 12345;
+    
+    if (db_add_user(test_pubkey, test_username, test_age, test_tx_id) != 0) {
+        printf("✗ Failed to add user\n");
+        return 1;
+    }
+    printf("✓ User added successfully\n");
+    
+    // Test getting user by pubkey
+    UserRecord user;
+    if (db_get_user_by_pubkey(test_pubkey, &user) != 0) {
+        printf("✗ Failed to get user by pubkey\n");
+        return 1;
+    }
+    
+    // Verify user data
+    if (strcmp(user.pubkey, test_pubkey) != 0 ||
+        strcmp(user.username, test_username) != 0 ||
+        user.age != test_age ||
+        user.registration_transaction_id != test_tx_id) {
+        printf("✗ User data mismatch\n");
+        return 1;
+    }
+    printf("✓ User retrieval by pubkey successful\n");
+    
+    // Test getting user by username
+    UserRecord user2;
+    if (db_get_user_by_username(test_username, &user2) != 0) {
+        printf("✗ Failed to get user by username\n");
+        return 1;
+    }
+    
+    if (strcmp(user2.pubkey, test_pubkey) != 0) {
+        printf("✗ Username lookup failed\n");
+        return 1;
+    }
+    printf("✓ User retrieval by username successful\n");
+    
+    // Test updating user
+    const char* new_username = "updated_user";
+    uint8_t new_age = 26;
+    
+    if (db_update_user(test_pubkey, new_username, new_age) != 0) {
+        printf("✗ Failed to update user\n");
+        return 1;
+    }
+    
+    // Verify update
+    if (db_get_user_by_pubkey(test_pubkey, &user) != 0) {
+        printf("✗ Failed to get updated user\n");
+        return 1;
+    }
+    
+    if (strcmp(user.username, new_username) != 0 || user.age != new_age) {
+        printf("✗ User update verification failed\n");
+        return 1;
+    }
+    printf("✓ User update successful\n");
+    
+    // Test getting all users
+    UserRecord* users;
+    size_t user_count;
+    
+    if (db_get_all_users(&users, &user_count) != 0) {
+        printf("✗ Failed to get all users\n");
+        return 1;
+    }
+    
+    printf("✓ Retrieved %zu users\n", user_count);
+    
+    // Should have at least our test user
+    if (user_count == 0) {
+        printf("✗ No users found\n");
+        return 1;
+    }
+    
+    db_free_user_records(users, user_count);
+    
+    printf("✓ User management tests completed successfully\n");
+    return 0;
+}
+
+// Test role management functions
+static int test_role_management(void) {
+    printf("Testing role management functions...\n");
+    
+    // Test adding a role
+    const char* test_role_name = "test_admin";
+    const char* test_description = "Test administrator role";
+    uint64_t test_tx_id = 54321;
+    
+    if (db_add_role(test_role_name, test_description, test_tx_id) != 0) {
+        printf("✗ Failed to add role\n");
+        return 1;
+    }
+    printf("✓ Role added successfully\n");
+    
+    // Test getting role by name
+    RoleRecord role;
+    if (db_get_role_by_name(test_role_name, &role) != 0) {
+        printf("✗ Failed to get role by name\n");
+        return 1;
+    }
+    
+    // Verify role data
+    if (strcmp(role.name, test_role_name) != 0 ||
+        strcmp(role.description, test_description) != 0 ||
+        role.assignment_transaction_id != test_tx_id) {
+        printf("✗ Role data mismatch\n");
+        return 1;
+    }
+    printf("✓ Role retrieval successful\n");
+    
+    // Test updating role
+    const char* new_description = "Updated administrator role";
+    
+    if (db_update_role(test_role_name, new_description) != 0) {
+        printf("✗ Failed to update role\n");
+        return 1;
+    }
+    
+    // Verify update
+    if (db_get_role_by_name(test_role_name, &role) != 0) {
+        printf("✗ Failed to get updated role\n");
+        return 1;
+    }
+    
+    if (strcmp(role.description, new_description) != 0) {
+        printf("✗ Role update verification failed\n");
+        return 1;
+    }
+    printf("✓ Role update successful\n");
+    
+    // Test getting all roles
+    RoleRecord* roles;
+    size_t role_count;
+    
+    if (db_get_all_roles(&roles, &role_count) != 0) {
+        printf("✗ Failed to get all roles\n");
+        return 1;
+    }
+    
+    printf("✓ Retrieved %zu roles\n", role_count);
+    
+    if (role_count == 0) {
+        printf("✗ No roles found\n");
+        return 1;
+    }
+    
+    db_free_role_records(roles, role_count);
+    
+    printf("✓ Role management tests completed successfully\n");
+    return 0;
+}
+
+// Test permission management functions
+static int test_permission_management(void) {
+    printf("Testing permission management functions...\n");
+    
+    // Test adding a permission
+    const char* test_perm_name = "test_send_message";
+    uint64_t test_perm_flags = PERMISSION_SEND_MESSAGE;
+    uint32_t test_scope_flags = (1 << SCOPE_PRIMARY_GROUP);
+    uint64_t test_condition_flags = CONDITION_ALWAYS;
+    uint8_t test_category = PERM_CATEGORY_MESSAGING;
+    const char* test_description = "Test messaging permission";
+    uint64_t test_tx_id = 67890;
+    
+    if (db_add_permission(test_perm_name, test_perm_flags, test_scope_flags, 
+                         test_condition_flags, test_category, test_description, test_tx_id) != 0) {
+        printf("✗ Failed to add permission\n");
+        return 1;
+    }
+    printf("✓ Permission added successfully\n");
+    
+    // Test getting permission by name
+    PermissionRecord permission;
+    if (db_get_permission_by_name(test_perm_name, &permission) != 0) {
+        printf("✗ Failed to get permission by name\n");
+        return 1;
+    }
+    
+    // Verify permission data
+    if (strcmp(permission.name, test_perm_name) != 0 ||
+        permission.permission_flags != test_perm_flags ||
+        permission.scope_flags != test_scope_flags ||
+        permission.condition_flags != test_condition_flags ||
+        permission.category != test_category ||
+        strcmp(permission.description, test_description) != 0 ||
+        permission.edit_transaction_id != test_tx_id) {
+        printf("✗ Permission data mismatch\n");
+        printf("  Expected flags: %lu, got: %lu\n", test_perm_flags, permission.permission_flags);
+        printf("  Expected scope: %u, got: %u\n", test_scope_flags, permission.scope_flags);
+        return 1;
+    }
+    printf("✓ Permission retrieval successful\n");
+    
+    // Test updating permission
+    const char* new_description = "Updated messaging permission";
+    uint64_t new_perm_flags = PERMISSION_SEND_MESSAGE | PERMISSION_READ_MESSAGE;
+    
+    if (db_update_permission(test_perm_name, new_perm_flags, test_scope_flags, 
+                            test_condition_flags, test_category, new_description) != 0) {
+        printf("✗ Failed to update permission\n");
+        return 1;
+    }
+    
+    // Verify update
+    if (db_get_permission_by_name(test_perm_name, &permission) != 0) {
+        printf("✗ Failed to get updated permission\n");
+        return 1;
+    }
+    
+    if (strcmp(permission.description, new_description) != 0 ||
+        permission.permission_flags != new_perm_flags) {
+        printf("✗ Permission update verification failed\n");
+        return 1;
+    }
+    printf("✓ Permission update successful\n");
+    
+    // Test getting all permissions
+    PermissionRecord* permissions;
+    size_t permission_count;
+    
+    if (db_get_all_permissions(&permissions, &permission_count) != 0) {
+        printf("✗ Failed to get all permissions\n");
+        return 1;
+    }
+    
+    printf("✓ Retrieved %zu permissions\n", permission_count);
+    
+    if (permission_count == 0) {
+        printf("✗ No permissions found\n");
+        return 1;
+    }
+    
+    db_free_permission_records(permissions, permission_count);
+    
+    printf("✓ Permission management tests completed successfully\n");
+    return 0;
+}
+
+// Test user-role and role-permission relationships
+static int test_relationships(void) {
+    printf("Testing user-role and role-permission relationships...\n");
+    
+    // First, get the IDs of our test user and role
+    UserRecord user;
+    if (db_get_user_by_username("updated_user", &user) != 0) {
+        printf("✗ Failed to get test user for relationship test\n");
+        return 1;
+    }
+    
+    RoleRecord role;
+    if (db_get_role_by_name("test_admin", &role) != 0) {
+        printf("✗ Failed to get test role for relationship test\n");
+        return 1;
+    }
+    
+    PermissionRecord permission;
+    if (db_get_permission_by_name("test_send_message", &permission) != 0) {
+        printf("✗ Failed to get test permission for relationship test\n");
+        return 1;
+    }
+    
+    // Test assigning user to role
+    uint64_t assignment_tx_id = 99999;
+    if (db_assign_user_role(user.id, role.id, user.id, assignment_tx_id) != 0) {
+        printf("✗ Failed to assign user to role\n");
+        return 1;
+    }
+    printf("✓ User assigned to role successfully\n");
+    
+    // Test granting permission to role
+    uint64_t grant_tx_id = 88888;
+    uint64_t time_start = 0;  // No time restriction
+    uint64_t time_end = 0;
+    
+    if (db_grant_role_permission(role.id, permission.id, user.id, grant_tx_id, time_start, time_end) != 0) {
+        printf("✗ Failed to grant permission to role\n");
+        return 1;
+    }
+    printf("✓ Permission granted to role successfully\n");
+    
+    printf("✓ Relationship tests completed successfully\n");
+    return 0;
+}
+
+// Test schema migration
+static int test_schema_migration(void) {
+    printf("Testing schema migration...\n");
+    
+    // Check current schema version
+    sqlite3* db = db_get_handle();
+    if (!db) {
+        printf("✗ Failed to get database handle\n");
+        return 1;
+    }
+    
+    int version;
+    if (schema_check_version(db, &version) != 0) {
+        printf("✗ Failed to check schema version\n");
+        return 1;
+    }
+    
+    printf("✓ Current schema version: %d\n", version);
+    
+    if (version != CURRENT_SCHEMA_VERSION) {
+        printf("✗ Schema version mismatch: expected %d, got %d\n", CURRENT_SCHEMA_VERSION, version);
+        return 1;
+    }
+    
+    printf("✓ Schema migration test completed successfully\n");
+    return 0;
+}
+
 int database_test_main(void) {
     printf("=== Database Test Suite ===\n");
     
@@ -281,6 +608,66 @@ int database_test_main(void) {
     } else {
         tests_failed++;
         printf("✗ Database performance test failed\n\n");
+        db_close();
+        cleanup_test_db();
+        return 1;
+    }
+    
+    // Test 5: User management
+    if (test_user_management() == 0) {
+        tests_passed++;
+        printf("✓ User management test passed\n\n");
+    } else {
+        tests_failed++;
+        printf("✗ User management test failed\n\n");
+        db_close();
+        cleanup_test_db();
+        return 1;
+    }
+    
+    // Test 6: Role management
+    if (test_role_management() == 0) {
+        tests_passed++;
+        printf("✓ Role management test passed\n\n");
+    } else {
+        tests_failed++;
+        printf("✗ Role management test failed\n\n");
+        db_close();
+        cleanup_test_db();
+        return 1;
+    }
+    
+    // Test 7: Permission management
+    if (test_permission_management() == 0) {
+        tests_passed++;
+        printf("✓ Permission management test passed\n\n");
+    } else {
+        tests_failed++;
+        printf("✗ Permission management test failed\n\n");
+        db_close();
+        cleanup_test_db();
+        return 1;
+    }
+    
+    // Test 8: Relationships
+    if (test_relationships() == 0) {
+        tests_passed++;
+        printf("✓ Relationships test passed\n\n");
+    } else {
+        tests_failed++;
+        printf("✗ Relationships test failed\n\n");
+        db_close();
+        cleanup_test_db();
+        return 1;
+    }
+    
+    // Test 9: Schema migration
+    if (test_schema_migration() == 0) {
+        tests_passed++;
+        printf("✓ Schema migration test passed\n\n");
+    } else {
+        tests_failed++;
+        printf("✗ Schema migration test failed\n\n");
         db_close();
         cleanup_test_db();
         return 1;
