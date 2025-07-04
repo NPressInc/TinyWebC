@@ -3,6 +3,9 @@
 #include <string.h>
 #include <getopt.h>
 #include <cjson/cJSON.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "init.h"
 
 // Extended configuration structure for JSON-based initialization
@@ -310,6 +313,144 @@ void free_json_config(JsonConfig* config) {
     }
 }
 
+/**
+ * Check if a directory exists and contains files
+ */
+int directory_has_files(const char* path) {
+    DIR* dir = opendir(path);
+    if (dir == NULL) {
+        return 0; // Directory doesn't exist
+    }
+    
+    struct dirent* entry;
+    int has_files = 0;
+    
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip . and .. entries
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            has_files = 1;
+            break;
+        }
+    }
+    
+    closedir(dir);
+    return has_files;
+}
+
+/**
+ * Prompt user for yes/no confirmation
+ */
+int prompt_user_confirmation(const char* message) {
+    char response[16];
+    
+    printf("%s (y/N): ", message);
+    fflush(stdout);
+    
+    if (fgets(response, sizeof(response), stdin) == NULL) {
+        return 0; // Default to no on input error
+    }
+    
+    // Check if user responded with 'y' or 'Y'
+    if (response[0] == 'y' || response[0] == 'Y') {
+        return 1;
+    }
+    
+    return 0;
+}
+
+/**
+ * Remove all files in a directory
+ */
+int clean_directory(const char* path) {
+    DIR* dir = opendir(path);
+    if (dir == NULL) {
+        return 0; // Directory doesn't exist, nothing to clean
+    }
+    
+    struct dirent* entry;
+    char filepath[512];
+    int success = 1;
+    
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip . and .. entries
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            snprintf(filepath, sizeof(filepath), "%s/%s", path, entry->d_name);
+            
+            struct stat statbuf;
+            if (stat(filepath, &statbuf) == 0) {
+                if (S_ISREG(statbuf.st_mode)) {
+                    // Regular file - delete it
+                    if (unlink(filepath) != 0) {
+                        fprintf(stderr, "Warning: Failed to delete file %s\n", filepath);
+                        success = 0;
+                    }
+                } else if (S_ISDIR(statbuf.st_mode)) {
+                    // Directory - recursively clean and remove it
+                    if (clean_directory(filepath) && rmdir(filepath) != 0) {
+                        fprintf(stderr, "Warning: Failed to remove directory %s\n", filepath);
+                        success = 0;
+                    }
+                }
+            }
+        }
+    }
+    
+    closedir(dir);
+    return success;
+}
+
+/**
+ * Check for existing state and prompt user for cleanup
+ */
+int check_and_clean_existing_state(const char* keystore_path, const char* blockchain_path) {
+    int keystore_has_files = directory_has_files(keystore_path);
+    int blockchain_has_files = directory_has_files(blockchain_path);
+    
+    if (!keystore_has_files && !blockchain_has_files) {
+        return 0; // No existing state found
+    }
+    
+    printf("\nExisting blockchain state detected:\n");
+    if (keystore_has_files) {
+        printf("  - Keystore directory (%s) contains files\n", keystore_path);
+    }
+    if (blockchain_has_files) {
+        printf("  - Blockchain directory (%s) contains files\n", blockchain_path);
+    }
+    
+    printf("\nProceeding with initialization will overwrite existing data.\n");
+    
+    if (!prompt_user_confirmation("Do you want to delete the existing blockchain state and continue?")) {
+        printf("Initialization cancelled by user.\n");
+        return -1;
+    }
+    
+    printf("\nCleaning existing state...\n");
+    
+    int success = 1;
+    if (keystore_has_files) {
+        printf("  - Cleaning keystore directory...\n");
+        if (!clean_directory(keystore_path)) {
+            success = 0;
+        }
+    }
+    
+    if (blockchain_has_files) {
+        printf("  - Cleaning blockchain directory...\n");
+        if (!clean_directory(blockchain_path)) {
+            success = 0;
+        }
+    }
+    
+    if (!success) {
+        fprintf(stderr, "Warning: Some files could not be removed. Initialization may fail.\n");
+    } else {
+        printf("Existing state cleaned successfully.\n");
+    }
+    
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     int verbose = 0;
     const char* config_file = NULL;
@@ -383,6 +524,13 @@ int main(int argc, char* argv[]) {
     printf("  Blockchain: %s\n", config.blockchain_path);
     printf("  Base Port: %u\n", config.base_port);
     printf("\n");
+    
+    // Check for existing state and prompt user for cleanup
+    int cleanup_result = check_and_clean_existing_state(config.keystore_path, config.blockchain_path);
+    if (cleanup_result != 0) {
+        free_json_config(&json_config);
+        return cleanup_result == -1 ? 0 : 1; // Return 0 if user cancelled, 1 if cleanup failed
+    }
 
     int result = initialize_network(&config);
     if (result != 0) {
