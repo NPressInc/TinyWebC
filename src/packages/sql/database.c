@@ -285,7 +285,7 @@ int db_add_block(TW_Block* block, uint32_t block_index) {
 
     // Calculate block hash
     unsigned char block_hash[HASH_SIZE];
-    if (!TW_Block_getHash(block, block_hash)) {
+    if (TW_Block_getHash(block, block_hash) != 1) {
         return -1;
     }
     if (db_hex_encode(block_hash, HASH_SIZE, block_hash_hex, sizeof(block_hash_hex)) != 0) {
@@ -1092,14 +1092,6 @@ int db_get_user_by_username(const char* username, UserRecord* user) {
     return (rc == SQLITE_ROW) ? 0 : -1;
 }
 
-int db_get_all_users(UserRecord** users, size_t* count) {
-    if (!g_db_ctx.is_initialized || !users || !count) {
-        return -1;
-    }
-
-    *users = NULL;
-    *count = 0;
-
 // Get transactions by type
 int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** results, size_t* count) {
     if (!g_db_ctx.is_initialized || !results || !count) {
@@ -1136,10 +1128,73 @@ int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** res
         return -1;
     }
 
-    // This function was accidentally duplicated due to merge conflict - removing this version
-    // The correct version follows below
+    // Populate results
+    size_t index = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && index < result_count) {
+        TransactionRecord* record = &records[index];
+        memset(record, 0, sizeof(TransactionRecord));
+        
+        record->transaction_id = sqlite3_column_int64(stmt, 0);
+        record->block_index = sqlite3_column_int(stmt, 1);
+        record->transaction_index = sqlite3_column_int(stmt, 2);
+        record->type = sqlite3_column_int(stmt, 3);
+        
+        const char* sender = (const char*)sqlite3_column_text(stmt, 4);
+        if (sender) {
+            strncpy(record->sender, sender, sizeof(record->sender) - 1);
+            record->sender[sizeof(record->sender) - 1] = '\0';
+        }
+        
+        record->timestamp = sqlite3_column_int64(stmt, 5);
+        record->recipient_count = sqlite3_column_int(stmt, 6);
+        
+        const char* group_id = (const char*)sqlite3_column_text(stmt, 7);
+        if (group_id) {
+            strncpy(record->group_id, group_id, sizeof(record->group_id) - 1);
+            record->group_id[sizeof(record->group_id) - 1] = '\0';
+        }
+        
+        const char* signature = (const char*)sqlite3_column_text(stmt, 8);
+        if (signature) {
+            strncpy(record->signature, signature, sizeof(record->signature) - 1);
+            record->signature[sizeof(record->signature) - 1] = '\0';
+        }
+        
+        record->payload_size = sqlite3_column_int(stmt, 9);
+        
+        // Handle encrypted payload blob
+        const void* payload_blob = sqlite3_column_blob(stmt, 10);
+        int payload_blob_size = sqlite3_column_bytes(stmt, 10);
+        if (payload_blob && payload_blob_size > 0) {
+            record->encrypted_payload = malloc(payload_blob_size);
+            if (record->encrypted_payload) {
+                memcpy(record->encrypted_payload, payload_blob, payload_blob_size);
+            }
+        } else {
+            record->encrypted_payload = NULL;
+        }
+        
+        // Handle decrypted content
+        const char* decrypted = (const char*)sqlite3_column_text(stmt, 11);
+        if (decrypted) {
+            record->decrypted_content = malloc(strlen(decrypted) + 1);
+            if (record->decrypted_content) {
+                strcpy(record->decrypted_content, decrypted);
+            }
+        } else {
+            record->decrypted_content = NULL;
+        }
+        
+        record->is_decrypted = sqlite3_column_int(stmt, 12) != 0;
+        
+        index++;
+    }
+
     sqlite3_finalize(stmt);
-    return -1;
+
+    *results = records;
+    *count = index;
+    return 0;
 }
 
 // User management functions
