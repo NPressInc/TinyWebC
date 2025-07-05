@@ -882,14 +882,13 @@ int db_parse_and_sync_user_registration(TW_Transaction* tx, uint64_t transaction
     }
 
     // Decrypt the payload using the encryption functions
-    // Get our keystore public key to use as recipient
-    unsigned char recipient_pubkey[PUBKEY_SIZE];
-    if (!keystore_get_encryption_public_key(recipient_pubkey)) {
-        printf("DEBUG: db_parse_and_sync_user_registration - Failed to get keystore public key\n");
+    // Pass the transaction's recipients list to decrypt_payload
+    if (!tx->recipients || tx->recipient_count == 0) {
+        printf("DEBUG: db_parse_and_sync_user_registration - Transaction has no recipients\n");
         return -1;
     }
     
-    unsigned char* decrypted_data = decrypt_payload(tx->payload, recipient_pubkey);
+    unsigned char* decrypted_data = decrypt_payload(tx->payload, tx->recipients);
     if (!decrypted_data) {
         printf("DEBUG: db_parse_and_sync_user_registration - Failed to decrypt payload\n");
         return -1;
@@ -928,14 +927,13 @@ int db_parse_and_sync_role_assignment(TW_Transaction* tx, uint64_t transaction_i
     }
 
     // Decrypt the payload using the encryption functions
-    // Get our keystore public key to use as recipient
-    unsigned char recipient_pubkey[PUBKEY_SIZE];
-    if (!keystore_get_encryption_public_key(recipient_pubkey)) {
-        printf("DEBUG: db_parse_and_sync_role_assignment - Failed to get keystore public key\n");
+    // Pass the transaction's recipients list to decrypt_payload
+    if (!tx->recipients || tx->recipient_count == 0) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - Transaction has no recipients\n");
         return -1;
     }
     
-    unsigned char* decrypted_data = decrypt_payload(tx->payload, recipient_pubkey);
+    unsigned char* decrypted_data = decrypt_payload(tx->payload, tx->recipients);
     if (!decrypted_data) {
         printf("DEBUG: db_parse_and_sync_role_assignment - Failed to decrypt payload\n");
         return -1;
@@ -1102,6 +1100,57 @@ int db_get_all_users(UserRecord** users, size_t* count) {
     *users = NULL;
     *count = 0;
 
+// Get transactions by type
+int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** results, size_t* count) {
+    if (!g_db_ctx.is_initialized || !results || !count) {
+        return -1;
+    }
+
+    *results = NULL;
+    *count = 0;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_TRANSACTIONS_BY_TYPE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, type);
+
+    // Count results first
+    size_t result_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        result_count++;
+    }
+
+    if (result_count == 0) {
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+
+    // Reset and allocate memory
+    sqlite3_reset(stmt);
+    TransactionRecord* records = malloc(result_count * sizeof(TransactionRecord));
+    if (!records) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    // This function was accidentally duplicated due to merge conflict - removing this version
+    // The correct version follows below
+    sqlite3_finalize(stmt);
+    return -1;
+}
+
+// User management functions
+int db_get_all_users(UserRecord** users, size_t* count) {
+    if (!g_db_ctx.is_initialized || !users || !count) {
+        return -1;
+    }
+
+    *users = NULL;
+    *count = 0;
+
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_ALL_USERS, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -1132,12 +1181,14 @@ int db_get_all_users(UserRecord** users, size_t* count) {
     while (sqlite3_step(stmt) == SQLITE_ROW && index < user_count) {
         UserRecord* user = &user_array[index];
         user->id = sqlite3_column_int64(stmt, 0);
-        strncpy(user->pubkey, (const char*)sqlite3_column_text(stmt, 1), sizeof(user->pubkey) - 1);
-        user->pubkey[sizeof(user->pubkey) - 1] = '\0';
-        strncpy(user->username, (const char*)sqlite3_column_text(stmt, 2), sizeof(user->username) - 1);
-        user->username[sizeof(user->username) - 1] = '\0';
-        user->age = sqlite3_column_int(stmt, 3);
-        user->registration_transaction_id = sqlite3_column_int64(stmt, 4);
+        
+        const char* username = (const char*)sqlite3_column_text(stmt, 1);
+        if (username) {
+            strncpy(user->username, username, sizeof(user->username) - 1);
+            user->username[sizeof(user->username) - 1] = '\0';
+        }
+        
+        user->age = sqlite3_column_int(stmt, 2);
         user->created_at = sqlite3_column_int64(stmt, 5);
         user->updated_at = sqlite3_column_int64(stmt, 6);
         user->is_active = sqlite3_column_int(stmt, 7) != 0;
@@ -1615,4 +1666,4 @@ void db_free_role_permission_records(RolePermissionRecord* records, size_t count
     if (records) {
         free(records);
     }
-} 
+}
