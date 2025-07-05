@@ -857,4 +857,109 @@ const char* get_transaction_type_name(TW_TransactionType type) {
         case TW_TXN_MEDIA_ADD_TO_ALBUM_REQUEST: return "MEDIA_ADD_TO_ALBUM_REQUEST";
         default:                            return "UNKNOWN";
     }
+}
+
+// Get transactions by type
+int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** results, size_t* count) {
+    if (!g_db_ctx.is_initialized || !results || !count) {
+        return -1;
+    }
+
+    *results = NULL;
+    *count = 0;
+
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(g_db_ctx.db, SQL_SELECT_TRANSACTIONS_BY_TYPE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, type);
+
+    // Count results first
+    size_t result_count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        result_count++;
+    }
+
+    if (result_count == 0) {
+        sqlite3_finalize(stmt);
+        return 0;
+    }
+
+    // Reset and allocate memory
+    sqlite3_reset(stmt);
+    TransactionRecord* records = malloc(result_count * sizeof(TransactionRecord));
+    if (!records) {
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    // Populate results
+    size_t index = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && index < result_count) {
+        TransactionRecord* record = &records[index];
+        memset(record, 0, sizeof(TransactionRecord));
+        
+        record->transaction_id = sqlite3_column_int64(stmt, 0);
+        record->block_index = sqlite3_column_int(stmt, 1);
+        record->transaction_index = sqlite3_column_int(stmt, 2);
+        record->type = sqlite3_column_int(stmt, 3);
+        
+        const char* sender = (const char*)sqlite3_column_text(stmt, 4);
+        if (sender) {
+            strncpy(record->sender, sender, sizeof(record->sender) - 1);
+            record->sender[sizeof(record->sender) - 1] = '\0';
+        }
+        
+        record->timestamp = sqlite3_column_int64(stmt, 5);
+        record->recipient_count = sqlite3_column_int(stmt, 6);
+        
+        const char* group_id = (const char*)sqlite3_column_text(stmt, 7);
+        if (group_id) {
+            strncpy(record->group_id, group_id, sizeof(record->group_id) - 1);
+            record->group_id[sizeof(record->group_id) - 1] = '\0';
+        }
+        
+        const char* signature = (const char*)sqlite3_column_text(stmt, 8);
+        if (signature) {
+            strncpy(record->signature, signature, sizeof(record->signature) - 1);
+            record->signature[sizeof(record->signature) - 1] = '\0';
+        }
+        
+        record->payload_size = sqlite3_column_int(stmt, 9);
+        
+        // Handle encrypted payload blob
+        const void* payload_blob = sqlite3_column_blob(stmt, 10);
+        int payload_blob_size = sqlite3_column_bytes(stmt, 10);
+        if (payload_blob && payload_blob_size > 0) {
+            record->encrypted_payload = malloc(payload_blob_size);
+            if (record->encrypted_payload) {
+                memcpy(record->encrypted_payload, payload_blob, payload_blob_size);
+            }
+        } else {
+            record->encrypted_payload = NULL;
+        }
+        
+        // Handle decrypted content
+        const char* decrypted = (const char*)sqlite3_column_text(stmt, 11);
+        if (decrypted) {
+            record->decrypted_content = malloc(strlen(decrypted) + 1);
+            if (record->decrypted_content) {
+                strcpy(record->decrypted_content, decrypted);
+            }
+        } else {
+            record->decrypted_content = NULL;
+        }
+        
+        record->is_decrypted = sqlite3_column_int(stmt, 12) != 0;
+        
+        index++;
+    }
+
+    sqlite3_finalize(stmt);
+
+    *results = records;
+    *count = index;
+    return 0;
 } 

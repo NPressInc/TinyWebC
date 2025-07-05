@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include "init.h"
 #include "packages/keystore/keystore.h"
 #include "packages/structures/blockChain/blockchain.h"
@@ -10,44 +12,164 @@
 #include "packages/fileIO/blockchainIO.h"
 #include "packages/structures/blockChain/transaction_types.h"
 #include "packages/encryption/encryption.h"
+#include "packages/sql/database.h"
 #include "structs/permission/permission.h"
+
+// Helper function to clean up existing blockchain files
+static int cleanup_existing_files(const char* blockchain_path, const char* database_path) {
+    char filepath[512];
+    int success = 1;
+    
+    // Remove binary blockchain file (.dat)
+    snprintf(filepath, sizeof(filepath), "%s/blockchain.dat", blockchain_path);
+    if (access(filepath, F_OK) == 0) {
+        if (unlink(filepath) != 0) {
+            fprintf(stderr, "Warning: Failed to delete %s\n", filepath);
+            success = 0;
+        } else {
+            printf("Removed existing blockchain.dat file\n");
+        }
+    }
+    
+    // Remove JSON blockchain file (.json)
+    snprintf(filepath, sizeof(filepath), "%s/blockchain.json", blockchain_path);
+    if (access(filepath, F_OK) == 0) {
+        if (unlink(filepath) != 0) {
+            fprintf(stderr, "Warning: Failed to delete %s\n", filepath);
+            success = 0;
+        } else {
+            printf("Removed existing blockchain.json file\n");
+        }
+    }
+    
+    // Remove SQLite database files (.db, .db-wal, .db-shm)
+    // Use specified database path or default to blockchain_path/blockchain.db
+    if (database_path) {
+        strncpy(filepath, database_path, sizeof(filepath) - 1);
+        filepath[sizeof(filepath) - 1] = '\0';
+    } else {
+        snprintf(filepath, sizeof(filepath), "%s/blockchain.db", blockchain_path);
+    }
+    
+    if (access(filepath, F_OK) == 0) {
+        if (unlink(filepath) != 0) {
+            fprintf(stderr, "Warning: Failed to delete %s\n", filepath);
+            success = 0;
+        } else {
+            printf("Removed existing database file: %s\n", filepath);
+        }
+    }
+    
+    // Remove WAL file
+    snprintf(filepath + strlen(filepath), sizeof(filepath) - strlen(filepath), "-wal");
+    if (access(filepath, F_OK) == 0) {
+        if (unlink(filepath) != 0) {
+            fprintf(stderr, "Warning: Failed to delete %s\n", filepath);
+        } else {
+            printf("Removed existing WAL file: %s\n", filepath);
+        }
+    }
+    
+    // Remove shared memory file
+    // Reset filepath to database path and add -shm suffix
+    if (database_path) {
+        strncpy(filepath, database_path, sizeof(filepath) - 1);
+        filepath[sizeof(filepath) - 1] = '\0';
+    } else {
+        snprintf(filepath, sizeof(filepath), "%s/blockchain.db", blockchain_path);
+    }
+    snprintf(filepath + strlen(filepath), sizeof(filepath) - strlen(filepath), "-shm");
+    if (access(filepath, F_OK) == 0) {
+        if (unlink(filepath) != 0) {
+            fprintf(stderr, "Warning: Failed to delete %s\n", filepath);
+        } else {
+            printf("Removed existing SHM file: %s\n", filepath);
+        }
+    }
+    
+    return success;
+}
 
 // Main initialization function
 int initialize_network(const InitConfig* config) {
     if (!config) return -1;
 
+    printf("Starting network initialization...\n");
+    
+    // Ensure blockchain directory exists
+    struct stat st = {0};
+    if (stat(config->blockchain_path, &st) == -1) {
+        if (mkdir(config->blockchain_path, 0700) == -1) {
+            fprintf(stderr, "Error: Failed to create blockchain directory: %s\n", config->blockchain_path);
+            return -1;
+        }
+        printf("Created blockchain directory: %s\n", config->blockchain_path);
+    }
+    
+    // Clean up existing blockchain files
+    printf("Cleaning up existing blockchain files...\n");
+    if (!cleanup_existing_files(config->blockchain_path, config->database_path)) {
+        fprintf(stderr, "Warning: Some existing files could not be removed\n");
+    }
+
     // Initialize all pointers to NULL for proper cleanup
     GeneratedKeys keys = {0};
     TW_BlockChain* blockchain = NULL;
     PeerInfo* peers = NULL;
-
-    // 1. Generate keys
-    if (generate_initial_keys(&keys, config) != 0) {
-        fprintf(stderr, "Error: Failed to generate initial keys\n");
+    char db_path[512];
+    
+    // Initialize database
+    printf("Initializing SQLite database...\n");
+    if (config->database_path) {
+        strncpy(db_path, config->database_path, sizeof(db_path) - 1);
+        db_path[sizeof(db_path) - 1] = '\0';
+    } else {
+        snprintf(db_path, sizeof(db_path), "%s/blockchain.db", config->blockchain_path);
+    }
+    if (db_init(db_path) != 0) {
+        fprintf(stderr, "Error: Failed to initialize database\n");
         return -1;
     }
+    printf("Database initialized successfully: %s\n", db_path);
+
+    // 1. Generate keys
+    printf("Generating cryptographic keys...\n");
+    if (generate_initial_keys(&keys, config) != 0) {
+        fprintf(stderr, "Error: Failed to generate initial keys\n");
+        db_close();
+        return -1;
+    }
+    printf("Generated keys for %u nodes and %u users\n", keys.node_count, keys.user_count);
 
     // 2. Save keys to keystore
+    printf("Saving keys to keystore...\n");
     if (save_keys_to_keystore(&keys, config->keystore_path, config->passphrase) != 0) {
         fprintf(stderr, "Error: Failed to save keys to keystore\n");
         free_generated_keys(&keys);
+        db_close();
         return -1;
     }
+    printf("Keys saved to keystore: %s\n", config->keystore_path);
 
     // 3. Create blockchain
+    printf("Creating blockchain...\n");
     blockchain = TW_BlockChain_create(keys.node_public_keys[0], NULL, 0);
     if (!blockchain) {
         fprintf(stderr, "Error: Failed to create blockchain\n");
         free_generated_keys(&keys);
+        db_close();
         return -1;
     }
+    printf("Blockchain created successfully\n");
 
     // 4. Generate peer list
+    printf("Generating peer configuration...\n");
     peers = malloc(sizeof(PeerInfo) * config->node_count);
     if (!peers) {
         fprintf(stderr, "Error: Failed to allocate peer list\n");
         free_generated_keys(&keys);
         TW_BlockChain_destroy(blockchain);
+        db_close();
         return -1;
     }
 
@@ -56,38 +178,69 @@ int initialize_network(const InitConfig* config) {
         free(peers);
         free_generated_keys(&keys);
         TW_BlockChain_destroy(blockchain);
+        db_close();
         return -1;
     }
+    printf("Peer list generated for %u nodes\n", config->node_count);
 
     // 5. Create initialization block with all setup transactions
+    printf("Creating initialization block...\n");
     if (create_initialization_block(&keys, peers, blockchain, config) != 0) {
         fprintf(stderr, "Error: Failed to create initialization block\n");
         free(peers);
         free_generated_keys(&keys);
         TW_BlockChain_destroy(blockchain);
+        db_close();
         return -1;
     }
+    printf("Initialization block created with %u transactions\n", TW_BlockChain_get_last_block(blockchain)->txn_count);
 
-    // Save the initialized blockchain
+    // 6. Save the initialized blockchain to file
+    printf("Saving blockchain to file...\n");
     if (!saveBlockChainToFileWithPath(blockchain, config->blockchain_path)) {
         fprintf(stderr, "Error: Failed to save blockchain\n");
         free(peers);
         free_generated_keys(&keys);
         TW_BlockChain_destroy(blockchain);
+        db_close();
         return -1;
     }
+    printf("Blockchain saved to: %s/blockchain.dat\n", config->blockchain_path);
 
-    // Save blockchain as JSON for human readability
+    // 7. Save blockchain as JSON for human readability
+    printf("Saving blockchain as JSON...\n");
     if (!writeBlockChainToJsonWithPath(blockchain, config->blockchain_path)) {
         fprintf(stderr, "Warning: Failed to save blockchain as JSON\n");
         // Don't return error here as the main blockchain file was saved successfully
+    } else {
+        printf("Blockchain JSON saved to: %s/blockchain.json\n", config->blockchain_path);
     }
+
+    // 8. Synchronize blockchain to database
+    printf("Synchronizing blockchain to database...\n");
+    if (db_sync_blockchain(blockchain) != 0) {
+        fprintf(stderr, "Error: Failed to synchronize blockchain to database\n");
+        free(peers);
+        free_generated_keys(&keys);
+        TW_BlockChain_destroy(blockchain);
+        db_close();
+        return -1;
+    }
+    printf("Blockchain synchronized to database successfully\n");
 
     // Cleanup
     free(peers);
     free_generated_keys(&keys);
     TW_BlockChain_destroy(blockchain);
+    db_close();
 
+    printf("Network initialization completed successfully!\n");
+    printf("Files created:\n");
+    printf("  - Binary blockchain: %s/blockchain.dat\n", config->blockchain_path);
+    printf("  - JSON blockchain: %s/blockchain.json\n", config->blockchain_path);
+    printf("  - SQLite database: %s\n", db_path);
+    printf("  - Keys: %s\n", config->keystore_path);
+    
     return 0;
 }
 
