@@ -881,32 +881,44 @@ int db_parse_and_sync_user_registration(TW_Transaction* tx, uint64_t transaction
         return -1;
     }
 
-    // Decrypt and parse the payload
-    unsigned char* decrypted_data = NULL;
-    size_t decrypted_size = 0;
+    // Decrypt the payload using the encryption functions
+    // Get our keystore public key to use as recipient
+    unsigned char recipient_pubkey[PUBKEY_SIZE];
+    if (!keystore_get_encryption_public_key(recipient_pubkey)) {
+        printf("DEBUG: db_parse_and_sync_user_registration - Failed to get keystore public key\n");
+        return -1;
+    }
     
-    // For now, we'll assume we can decrypt the payload
-    // In a real implementation, this would use the proper decryption functions
-    // TODO: Implement actual decryption logic
+    unsigned char* decrypted_data = decrypt_payload(tx->payload, recipient_pubkey);
+    if (!decrypted_data) {
+        printf("DEBUG: db_parse_and_sync_user_registration - Failed to decrypt payload\n");
+        return -1;
+    }
+    
+    // Calculate the size of decrypted data
+    size_t decrypted_size = tx->payload->ciphertext_len - crypto_secretbox_MACBYTES;
     
     // Parse the user registration data
     TW_TXN_UserRegistration user_reg;
-    if (deserialize_user_registration(decrypted_data, &user_reg) != 0) {
-        if (decrypted_data) free(decrypted_data);
+    memset(&user_reg, 0, sizeof(user_reg));
+    int deserialize_result = deserialize_user_registration(decrypted_data, &user_reg);
+    if (deserialize_result < 0) {
+        printf("DEBUG: db_parse_and_sync_user_registration - Failed to deserialize user registration\n");
+        free(decrypted_data);
         return -1;
     }
 
-    // Convert sender pubkey to hex string
-    char sender_hex[65];
-    if (db_hex_encode(tx->sender, PUBKEY_SIZE, sender_hex, sizeof(sender_hex)) != 0) {
-        if (decrypted_data) free(decrypted_data);
+    // Convert user's signing public key to hex string
+    char user_pubkey_hex[65];
+    if (db_hex_encode(user_reg.user_signing_pubkey, 32, user_pubkey_hex, sizeof(user_pubkey_hex)) != 0) {
+        free(decrypted_data);
         return -1;
     }
 
-    // Add user to database
-    int result = db_add_user(sender_hex, user_reg.username, user_reg.age, transaction_id);
+    // Add user to database using the user's signing public key
+    int result = db_add_user(user_pubkey_hex, user_reg.username, user_reg.age, transaction_id);
     
-    if (decrypted_data) free(decrypted_data);
+    free(decrypted_data);
     return result;
 }
 
@@ -915,23 +927,37 @@ int db_parse_and_sync_role_assignment(TW_Transaction* tx, uint64_t transaction_i
         return -1;
     }
 
-    // Decrypt and parse the payload
-    unsigned char* decrypted_data = NULL;
-    size_t decrypted_size = 0;
+    // Decrypt the payload using the encryption functions
+    // Get our keystore public key to use as recipient
+    unsigned char recipient_pubkey[PUBKEY_SIZE];
+    if (!keystore_get_encryption_public_key(recipient_pubkey)) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - Failed to get keystore public key\n");
+        return -1;
+    }
     
-    // TODO: Implement actual decryption logic
+    unsigned char* decrypted_data = decrypt_payload(tx->payload, recipient_pubkey);
+    if (!decrypted_data) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - Failed to decrypt payload\n");
+        return -1;
+    }
+    
+    // Calculate the size of decrypted data
+    size_t decrypted_size = tx->payload->ciphertext_len - crypto_secretbox_MACBYTES;
     
     // Parse the role assignment data
     TW_TXN_RoleAssignment role_assign;
-    if (deserialize_role_assignment(decrypted_data, &role_assign) != 0) {
-        if (decrypted_data) free(decrypted_data);
+    memset(&role_assign, 0, sizeof(role_assign));
+    int deserialize_result = deserialize_role_assignment(decrypted_data, &role_assign);
+    if (deserialize_result < 0) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - Failed to deserialize role assignment\n");
+        free(decrypted_data);
         return -1;
     }
 
     // Add role to database
     int result = db_add_role(role_assign.role_name, "Auto-generated role", transaction_id);
     
-    if (decrypted_data) free(decrypted_data);
+    free(decrypted_data);
     return result;
 }
 

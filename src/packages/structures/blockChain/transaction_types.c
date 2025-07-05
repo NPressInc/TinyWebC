@@ -12,7 +12,7 @@ static void safe_strncpy(char* dest, const char* src, size_t max_len) {
 int serialize_user_registration(const TW_TXN_UserRegistration* reg, unsigned char** buffer) {
     if (!reg || !buffer) return -1;
     
-    size_t size = MAX_USERNAME_LENGTH + sizeof(uint8_t);
+    size_t size = MAX_USERNAME_LENGTH + sizeof(uint8_t) + 32; // Added 32 bytes for signing public key
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -20,6 +20,8 @@ int serialize_user_registration(const TW_TXN_UserRegistration* reg, unsigned cha
     memcpy(ptr, reg->username, MAX_USERNAME_LENGTH);
     ptr += MAX_USERNAME_LENGTH;
     memcpy(ptr, &reg->age, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(ptr, reg->user_signing_pubkey, 32);
     
     return size;
 }
@@ -31,8 +33,10 @@ int deserialize_user_registration(const unsigned char* buffer, TW_TXN_UserRegist
     memcpy(reg->username, ptr, MAX_USERNAME_LENGTH);
     ptr += MAX_USERNAME_LENGTH;
     memcpy(&reg->age, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(reg->user_signing_pubkey, ptr, 32);
     
-    return MAX_USERNAME_LENGTH + sizeof(uint8_t);
+    return MAX_USERNAME_LENGTH + sizeof(uint8_t) + 32;
 }
 
 // Role Assignment

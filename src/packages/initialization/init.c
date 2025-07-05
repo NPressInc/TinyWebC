@@ -434,6 +434,12 @@ TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, 
     // Create a simple username based on index
     snprintf(user_data.username, MAX_USERNAME_LENGTH, "user_%u", user_index);
     user_data.age = (user_index == 0) ? 35 : (user_index == 1) ? 32 : (12 + user_index); // Default ages
+    
+    // Derive Ed25519 signing public key from the user's private key
+    if (crypto_sign_ed25519_sk_to_pk(user_data.user_signing_pubkey, keys->user_private_keys[user_index]) != 0) {
+        printf("Failed to derive Ed25519 public key for user %u\n", user_index);
+        return NULL;
+    }
 
     unsigned char* serialized_buffer = NULL;
     int serialized_size = serialize_user_registration(&user_data, &serialized_buffer);

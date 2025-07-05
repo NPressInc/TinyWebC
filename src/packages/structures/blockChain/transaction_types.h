@@ -32,6 +32,7 @@ typedef struct {
 typedef struct {
     char username[MAX_USERNAME_LENGTH];
     uint8_t age;
+    unsigned char user_signing_pubkey[32]; // User's Ed25519 signing public key
     // Additional user metadata can be added here
 } TW_TXN_UserRegistration;
 
