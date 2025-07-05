@@ -193,7 +193,7 @@ int initialize_network(const InitConfig* config) {
         db_close();
         return -1;
     }
-    printf("Initialization block created with %u transactions\n", blockchain->blocks[0]->txn_count);
+    printf("Initialization block created with %u transactions\n", TW_BlockChain_get_last_block(blockchain)->txn_count);
 
     // 6. Save the initialized blockchain to file
     printf("Saving blockchain to file...\n");
