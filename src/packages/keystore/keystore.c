@@ -170,6 +170,25 @@ int _keystore_get_encryption_private_key(unsigned char* privkey_out) {
     return crypto_sign_ed25519_sk_to_curve25519(privkey_out, sign_secret_key) == 0;
 }
 
+int keystore_load_raw_ed25519_keypair(const unsigned char* private_key, const unsigned char* x25519_public_key) {
+    if (!private_key || !x25519_public_key) {
+        fprintf(stderr, "Invalid keys provided\n");
+        return 0;
+    }
+    
+    // Copy the Ed25519 private key
+    memcpy(sign_secret_key, private_key, SIGN_SECRET_SIZE);
+    
+    // Derive the Ed25519 public key from the private key
+    if (crypto_sign_ed25519_sk_to_pk(sign_public_key, sign_secret_key) != 0) {
+        fprintf(stderr, "Failed to derive Ed25519 public key\n");
+        return 0;
+    }
+    
+    keypair_loaded = 1;
+    return 1;
+}
+
 int keystore_is_keypair_loaded(void) {
     return keypair_loaded;
 }

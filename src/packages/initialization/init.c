@@ -216,7 +216,20 @@ int initialize_network(const InitConfig* config) {
         printf("Blockchain JSON saved to: %s/blockchain.json\n", config->blockchain_path);
     }
 
-    // 8. Synchronize blockchain to database
+    // 8. Load the first node's keypair into keystore for decryption
+    printf("Loading node keypair into keystore for database sync...\n");
+    keystore_cleanup(); // Clear the temporary keypair
+    if (!keystore_load_raw_ed25519_keypair(keys.node_private_keys[0], keys.node_public_keys[0])) {
+        fprintf(stderr, "Error: Failed to load node keypair into keystore\n");
+        free(peers);
+        free_generated_keys(&keys);
+        TW_BlockChain_destroy(blockchain);
+        db_close();
+        return -1;
+    }
+    printf("Node keypair loaded successfully\n");
+
+    // 9. Synchronize blockchain to database
     printf("Synchronizing blockchain to database...\n");
     if (db_sync_blockchain(blockchain) != 0) {
         fprintf(stderr, "Error: Failed to synchronize blockchain to database\n");
