@@ -6,6 +6,7 @@
 #include "packages/signing/signing.h"
 #include "packages/structures/blockChain/merkleTree.h"
 #include "packages/encryption/encryption.h"
+#include "packages/validation/transaction_validation.h"
 
 // Default validation configuration
 static const ValidationConfig DEFAULT_CONFIG = {
@@ -315,12 +316,58 @@ ValidationResult validate_transaction_signature(const TW_Transaction* transactio
     unsigned char tx_hash[HASH_SIZE];
     TW_Transaction_hash((TW_Transaction*)transaction, tx_hash);
 
-    // Verify signature using the sender's public key
-    // The verify_signature function expects:
-    // - signature: the signature to verify
-    // - message: the message that was signed (transaction hash)
-    // - message_len: length of the message (HASH_SIZE = 32 bytes)
-    // - public_key: the public key to use for verification (sender's public key)
+    // DEBUG: Output transaction hash to file for frontend comparison
+    FILE* debug_file = fopen("debug_transaction_hash_backend.txt", "w");
+    if (debug_file) {
+        fprintf(debug_file, "Backend Transaction Hash Debug\n");
+        fprintf(debug_file, "==============================\n");
+        fprintf(debug_file, "Transaction Type: %d\n", transaction->type);
+        fprintf(debug_file, "Timestamp: %lu\n", transaction->timestamp);
+        fprintf(debug_file, "Recipient Count: %d\n", transaction->recipient_count);
+        fprintf(debug_file, "Payload Size: %zu\n", transaction->payload_size);
+        
+        fprintf(debug_file, "Sender (hex): ");
+        for (int i = 0; i < PUBKEY_SIZE; i++) {
+            fprintf(debug_file, "%02x", transaction->sender[i]);
+        }
+        fprintf(debug_file, "\n");
+        
+        if (transaction->recipients && transaction->recipient_count > 0) {
+            fprintf(debug_file, "Recipients (hex):\n");
+            for (int r = 0; r < transaction->recipient_count; r++) {
+                fprintf(debug_file, "  [%d]: ", r);
+                for (int i = 0; i < PUBKEY_SIZE; i++) {
+                    fprintf(debug_file, "%02x", transaction->recipients[r * PUBKEY_SIZE + i]);
+                }
+                fprintf(debug_file, "\n");
+            }
+        }
+        
+        fprintf(debug_file, "Group ID (hex): ");
+        for (int i = 0; i < GROUP_ID_SIZE; i++) {
+            fprintf(debug_file, "%02x", transaction->group_id[i]);
+        }
+        fprintf(debug_file, "\n");
+        
+        fprintf(debug_file, "Calculated Hash (hex): ");
+        for (int i = 0; i < HASH_SIZE; i++) {
+            fprintf(debug_file, "%02x", tx_hash[i]);
+        }
+        fprintf(debug_file, "\n");
+        
+        fprintf(debug_file, "Signature (hex): ");
+        for (int i = 0; i < SIGNATURE_SIZE; i++) {
+            fprintf(debug_file, "%02x", transaction->signature[i]);
+        }
+        fprintf(debug_file, "\n");
+        
+        fclose(debug_file);
+        printf("DEBUG: Transaction hash written to debug_transaction_hash_backend.txt\n");
+    }
+
+    // Transaction signature validation with frontend compatibility
+    
+    // First try standard backend signature validation
     int verification_result = verify_signature(
         transaction->signature,     // signature
         tx_hash,                   // message (transaction hash)
@@ -328,8 +375,12 @@ ValidationResult validate_transaction_signature(const TW_Transaction* transactio
         transaction->sender        // public key (sender's public key)
     );
 
-    // verify_signature returns 0 for valid signature, -1 for invalid
     if (verification_result != 0) {
+        printf("DEBUG: Signature verification failed for hash: ");
+        for (int i = 0; i < HASH_SIZE; i++) {
+            printf("%02x", tx_hash[i]);
+        }
+        printf("\n");
         return VALIDATION_ERROR_INVALID_SIGNATURE;
     }
 
@@ -589,9 +640,18 @@ ValidationResult validate_block_consensus_rules(const TW_Block* block, const TW_
 }
 
 ValidationResult validate_transaction_permissions(const TW_Transaction* transaction, const TW_BlockChain* blockchain) {
-    // Placeholder for permission-based validation
-    // This could check if the sender has permission to perform the transaction type
     if (!transaction || !blockchain) return VALIDATION_ERROR_NULL_POINTER;
+    
+    // TODO: This function needs to be extended to include database context for full permission validation
+    // For now, we'll perform basic permission checks without database access
+    // Full permission validation (including access request validation) happens in transaction_validation.c
+    
+    // Basic validation: check if transaction type requires database validation
+    if (transaction->type == TW_TXN_ACCESS_REQUEST) {
+        // Access requests need database validation to check user roles
+        // This validation will be performed during API submission
+        printf("Access request transaction detected - requires database validation\n");
+    }
     
     return VALIDATION_SUCCESS;
 } 

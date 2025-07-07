@@ -54,7 +54,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
 
 // Transaction creation functions
 TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, uint32_t user_index, const unsigned char* creator_pubkey);
-TW_Transaction* create_role_assignment_transaction(const GeneratedKeys* keys, uint32_t user_index, const unsigned char* creator_pubkey);
+// Note: create_role_assignment_transaction removed - roles are now handled in user registration
 TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint32_t peer_index, const unsigned char* creator_pubkey, const GeneratedKeys* keys);
 TW_Transaction* create_system_config_transaction(const unsigned char* creator_pubkey, const GeneratedKeys* keys);
 TW_Transaction* create_content_filter_transaction(const unsigned char* creator_pubkey, const GeneratedKeys* keys);

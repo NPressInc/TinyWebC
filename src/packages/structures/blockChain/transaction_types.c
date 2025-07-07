@@ -12,7 +12,9 @@ static void safe_strncpy(char* dest, const char* src, size_t max_len) {
 int serialize_user_registration(const TW_TXN_UserRegistration* reg, unsigned char** buffer) {
     if (!reg || !buffer) return -1;
     
-    size_t size = MAX_USERNAME_LENGTH + sizeof(uint8_t) + 32; // Added 32 bytes for signing public key
+    size_t size = MAX_USERNAME_LENGTH + sizeof(uint8_t) + 32 + // username, age, pubkey
+                  MAX_ROLE_NAME_LENGTH + sizeof(uint8_t) +       // role name, permission set count
+                  (sizeof(PermissionSet) * reg->permission_set_count); // permission sets
     *buffer = (unsigned char*)malloc(size);
     if (!*buffer) return -1;
     
@@ -22,6 +24,18 @@ int serialize_user_registration(const TW_TXN_UserRegistration* reg, unsigned cha
     memcpy(ptr, &reg->age, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(ptr, reg->user_signing_pubkey, 32);
+    ptr += 32;
+    
+    // Add role information
+    memcpy(ptr, reg->assigned_role, MAX_ROLE_NAME_LENGTH);
+    ptr += MAX_ROLE_NAME_LENGTH;
+    memcpy(ptr, &reg->permission_set_count, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    
+    for (uint8_t i = 0; i < reg->permission_set_count; i++) {
+        memcpy(ptr, &reg->permission_sets[i], sizeof(PermissionSet));
+        ptr += sizeof(PermissionSet);
+    }
     
     return size;
 }
@@ -35,8 +49,26 @@ int deserialize_user_registration(const unsigned char* buffer, TW_TXN_UserRegist
     memcpy(&reg->age, ptr, sizeof(uint8_t));
     ptr += sizeof(uint8_t);
     memcpy(reg->user_signing_pubkey, ptr, 32);
+    ptr += 32;
     
-    return MAX_USERNAME_LENGTH + sizeof(uint8_t) + 32;
+    // Read role information
+    memcpy(reg->assigned_role, ptr, MAX_ROLE_NAME_LENGTH);
+    ptr += MAX_ROLE_NAME_LENGTH;
+    memcpy(&reg->permission_set_count, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    
+    if (reg->permission_set_count > MAX_PERMISSION_SETS_PER_ROLE) {
+        return -1; // Invalid data
+    }
+    
+    for (uint8_t i = 0; i < reg->permission_set_count; i++) {
+        memcpy(&reg->permission_sets[i], ptr, sizeof(PermissionSet));
+        ptr += sizeof(PermissionSet);
+    }
+    
+    return MAX_USERNAME_LENGTH + sizeof(uint8_t) + 32 + 
+           MAX_ROLE_NAME_LENGTH + sizeof(uint8_t) + 
+           (sizeof(PermissionSet) * reg->permission_set_count);
 }
 
 // Role Assignment
@@ -350,6 +382,33 @@ int deserialize_system_config(const unsigned char* buffer, TW_TXN_SystemConfig* 
     memcpy(&config->config_scope, ptr, sizeof(permission_scope_t));
     
     return 2 * sizeof(uint8_t) + sizeof(permission_scope_t);
+}
+
+// Access Request
+int serialize_access_request(const TW_TXN_AccessRequest* request, unsigned char** buffer) {
+    if (!request || !buffer) return -1;
+    
+    size_t size = 64 + sizeof(uint64_t); // resource_id[64] + requested_at
+    *buffer = (unsigned char*)malloc(size);
+    if (!*buffer) return -1;
+    
+    unsigned char* ptr = *buffer;
+    memcpy(ptr, request->resource_id, 64);
+    ptr += 64;
+    memcpy(ptr, &request->requested_at, sizeof(uint64_t));
+    
+    return size;
+}
+
+int deserialize_access_request(const unsigned char* buffer, TW_TXN_AccessRequest* request) {
+    if (!buffer || !request) return -1;
+    
+    const unsigned char* ptr = buffer;
+    memcpy(request->resource_id, ptr, 64);
+    ptr += 64;
+    memcpy(&request->requested_at, ptr, sizeof(uint64_t));
+    
+    return 64 + sizeof(uint64_t);
 }
 
 // Invitation transaction serialization - BLOCKCHAIN PERMISSION INTEGRATION

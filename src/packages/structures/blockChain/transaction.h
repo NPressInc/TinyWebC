@@ -40,6 +40,9 @@ typedef enum {
     // Network Management (Core)
     TW_TXN_SYSTEM_CONFIG,          // Network-wide configuration changes
     
+    // Access Control (Core)
+    TW_TXN_ACCESS_REQUEST,         // Request access to content/resource
+    
     // Invitation Management (Core - Post Genesis)
     TW_TXN_INVITATION_CREATE,      // Create family/node invitation
     TW_TXN_INVITATION_ACCEPT,      // Accept invitation

@@ -96,6 +96,7 @@ extern const PermissionSet ADMIN_MESSAGING;
 extern const PermissionSet ADMIN_GROUP_MANAGEMENT;
 extern const PermissionSet ADMIN_USER_MANAGEMENT;
 extern const PermissionSet ADMIN_SYSTEM;
+extern const PermissionSet ADMIN_BASIC;
 extern const PermissionSet MEMBER_MESSAGING;
 extern const PermissionSet MEMBER_BASIC;
 extern const PermissionSet CONTACT_MESSAGING;

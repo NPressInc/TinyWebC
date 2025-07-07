@@ -1,0 +1,115 @@
+Failed to open key file
+=================================================================
+🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!
+=================================================================
+Node Configuration:
+  Node ID: 0
+  API Port: 8000
+  Protocol: HTTP + PBFT Consensus
+  Features: Blockchain, Invitations, Encrypted Transactions
+-----------------------------------------------------------------
+Initializing TinyWeb system components...
+Message queues initialized
+System components initialized successfully
+Creating PBFT node...
+Mongoose HTTP client initialized
+Invitation system initialized
+Initializing node keys...
+Initializing keys for node 0
+Created new keys for node 0
+Loading blockchain...
+Loading/creating blockchain for node 0
+No existing blockchain file found at state/blockchain/blockchain.dat
+💡 To initialize with proper multi-recipient encryption, run:
+   ./init_tool -v src/packages/initialization/configs/network_config.json
+Created new blockchain for node 0 with length 1
+Initializing database...
+WAL mode and optimizations configured successfully
+Database schema needs migration from version 0 to 2
+Migrating database schema from version 0 to 2
+All database tables created successfully
+All database indexes created successfully
+Database schema version set to 2
+Database initialized successfully: state/blockchain/blockchain.db
+Database initialized successfully
+Registering node node_000 in database...
+Node node_000 registered successfully
+✓ Node registered successfully
+Syncing blockchain to database...
+Syncing blockchain to database (1 blocks)...
+Synced block 0/1
+Blockchain sync completed successfully
+✓ Blockchain synced to database successfully
+✅ TinyWeb PBFT node initialized successfully
+-----------------------------------------------------------------
+🌐 HTTP API Server: http://localhost:8000
+📊 Available Endpoints:
+  • GET  /                          - Node status
+  • GET  /GetBlockChainLength       - Blockchain info
+  • POST /Transaction               - Submit transaction
+  • POST /invitation/create         - Create invitation
+  • POST /invitation/accept/<code>  - Accept invitation
+  • GET  /invitation/pending        - List pending invitations
+🔧 Press Ctrl+C to shutdown gracefully
+=================================================================
+PBFT node 0 starting on port 8000
+TinyWeb monitor thread started
+Starting PBFT API server on port 8000
+PBFT node threads started successfully
+PBFT main consensus loop started for node 0
+PBFT API server listening on http://0.0.0.0:8000
+Node 0: Blockchain length: 1, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Creating block for singular node mode
+DEBUG: Creating block 1 with previous hash: 84ef9d5622652c4979a4654465d928efe4a1044e9d1cdbfa49d834675b65ba2f
+Created new block with index 1 and 0 transactions
+DEBUG: Block 1 validation - Expected prev hash: 84ef9d5622652c4979a4654465d928efe4a1044e9d1cdbfa49d834675b65ba2f, Actual prev hash: 84ef9d5622652c4979a4654465d928efe4a1044e9d1cdbfa49d834675b65ba2f
+Block validation passed for block 1
+DEBUG: Block 1 validation - Expected prev hash: 84ef9d5622652c4979a4654465d928efe4a1044e9d1cdbfa49d834675b65ba2f, Actual prev hash: 84ef9d5622652c4979a4654465d928efe4a1044e9d1cdbfa49d834675b65ba2f
+Block validation passed for block 1
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 84ef9d5622652c4979a4654465d928efe4a1044e9d1cdbfa49d834675b65ba2f, Block prev hash: 84ef9d5622652c4979a4654465d928efe4a1044e9d1cdbfa49d834675b65ba2f
+DEBUG: TW_BlockChain_add_block - Successfully added block 1, new length: 2
+Successfully committed block 1 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 2)
+Saved BlockChain To File! (Original size: 582 bytes, Compressed size: 461 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 1 synced to database successfully
+Node 0: Successfully created and committed block 1 in singular mode
+Node 0: Proposing block (round 10)
+DEBUG: Creating block 2 with previous hash: 929750c9c325cf3919a9279b90693d05f44648d0efead86347b3aa52945084e7
+Created new block with index 2 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 2 validation - Expected prev hash: 929750c9c325cf3919a9279b90693d05f44648d0efead86347b3aa52945084e7, Actual prev hash: 929750c9c325cf3919a9279b90693d05f44648d0efead86347b3aa52945084e7
+Block validation passed for block 2
+DEBUG: Block 2 validation - Expected prev hash: 929750c9c325cf3919a9279b90693d05f44648d0efead86347b3aa52945084e7, Actual prev hash: 929750c9c325cf3919a9279b90693d05f44648d0efead86347b3aa52945084e7
+Block validation passed for block 2
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 929750c9c325cf3919a9279b90693d05f44648d0efead86347b3aa52945084e7, Block prev hash: 929750c9c325cf3919a9279b90693d05f44648d0efead86347b3aa52945084e7
+DEBUG: TW_BlockChain_add_block - Successfully added block 2, new length: 3
+Successfully committed block 2 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 3)
+Saved BlockChain To File! (Original size: 686 bytes, Compressed size: 523 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 2 synced to database
+
+Received signal 15, shutting down gracefully...
+PBFT API server shutting down
+Marking node node_000 as offline...
+TinyWeb monitor thread stopping
+PBFT main consensus loop stopped for node 0
+PBFT node 0 shutdown complete
+Waiting for monitor thread to finish...
+Cleaning up system components...
+Message queues cleaned up
+Database closed successfully
+Database closed
+🧹 Blockchain Data Manager cleanup complete
+Mongoose HTTP client cleaned up
+System cleanup completed
+
+=================================================================
+🛑 TinyWeb PBFT Node shutdown complete - Goodbye!
+=================================================================

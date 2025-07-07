@@ -83,8 +83,9 @@ int verify_database_initialization(void) {
     printf("✅ Database contains %llu transactions\n", (unsigned long long)transaction_count);
     
     // Verify we have the expected number of transactions
-    // Should be: users (4) + roles (4) + peers (2) + system (1) + filter (1) = 12 transactions
-    uint64_t expected_transactions = TEST_USER_COUNT * 2 + TEST_NODE_COUNT + 2;
+    // Should be: users (4) + peers (2) + system (1) + filter (1) = 8 transactions
+    // Note: Role assignment is now handled within user registration transactions
+    uint64_t expected_transactions = TEST_USER_COUNT + TEST_NODE_COUNT + 2;
     if (transaction_count != expected_transactions) {
         printf("❌ Expected %llu transactions, found %llu\n", 
                (unsigned long long)expected_transactions, (unsigned long long)transaction_count);

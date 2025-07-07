@@ -406,6 +406,36 @@ src/packages/PBFT/pbftNode.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/pbftNode.c.s
 .PHONY : src/packages/PBFT/pbftNode.c.s
 
+src/packages/comm/accessApi.o: src/packages/comm/accessApi.c.o
+.PHONY : src/packages/comm/accessApi.o
+
+# target to build an object file
+src/packages/comm/accessApi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/accessApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/accessApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/accessApi.c.o
+.PHONY : src/packages/comm/accessApi.c.o
+
+src/packages/comm/accessApi.i: src/packages/comm/accessApi.c.i
+.PHONY : src/packages/comm/accessApi.i
+
+# target to preprocess a source file
+src/packages/comm/accessApi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/accessApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/accessApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/accessApi.c.i
+.PHONY : src/packages/comm/accessApi.c.i
+
+src/packages/comm/accessApi.s: src/packages/comm/accessApi.c.s
+.PHONY : src/packages/comm/accessApi.s
+
+# target to generate assembly for a file
+src/packages/comm/accessApi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/accessApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/accessApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/accessApi.c.s
+.PHONY : src/packages/comm/accessApi.c.s
+
 src/packages/comm/blockChainQueryApi.o: src/packages/comm/blockChainQueryApi.c.o
 .PHONY : src/packages/comm/blockChainQueryApi.o
 
@@ -473,6 +503,7 @@ src/packages/comm/nodeApi.o: src/packages/comm/nodeApi.c.o
 src/packages/comm/nodeApi.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/nodeApi.c.o
 .PHONY : src/packages/comm/nodeApi.c.o
 
 src/packages/comm/nodeApi.i: src/packages/comm/nodeApi.c.i
@@ -482,6 +513,7 @@ src/packages/comm/nodeApi.i: src/packages/comm/nodeApi.c.i
 src/packages/comm/nodeApi.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/nodeApi.c.i
 .PHONY : src/packages/comm/nodeApi.c.i
 
 src/packages/comm/nodeApi.s: src/packages/comm/nodeApi.c.s
@@ -491,6 +523,7 @@ src/packages/comm/nodeApi.s: src/packages/comm/nodeApi.c.s
 src/packages/comm/nodeApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/nodeApi.c.s
 .PHONY : src/packages/comm/nodeApi.c.s
 
 src/packages/comm/pbftApi.o: src/packages/comm/pbftApi.c.o
@@ -1312,6 +1345,30 @@ src/structs/permission/permission.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.s
 .PHONY : src/structs/permission/permission.c.s
 
+src/tests/access_request_test.o: src/tests/access_request_test.c.o
+.PHONY : src/tests/access_request_test.o
+
+# target to build an object file
+src/tests/access_request_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/access_request_test.c.o
+.PHONY : src/tests/access_request_test.c.o
+
+src/tests/access_request_test.i: src/tests/access_request_test.c.i
+.PHONY : src/tests/access_request_test.i
+
+# target to preprocess a source file
+src/tests/access_request_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/access_request_test.c.i
+.PHONY : src/tests/access_request_test.c.i
+
+src/tests/access_request_test.s: src/tests/access_request_test.c.s
+.PHONY : src/tests/access_request_test.s
+
+# target to generate assembly for a file
+src/tests/access_request_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/access_request_test.c.s
+.PHONY : src/tests/access_request_test.c.s
+
 src/tests/blockchain_test.o: src/tests/blockchain_test.c.o
 .PHONY : src/tests/blockchain_test.o
 
@@ -1565,6 +1622,9 @@ help:
 	@echo "... src/packages/PBFT/pbftNode.o"
 	@echo "... src/packages/PBFT/pbftNode.i"
 	@echo "... src/packages/PBFT/pbftNode.s"
+	@echo "... src/packages/comm/accessApi.o"
+	@echo "... src/packages/comm/accessApi.i"
+	@echo "... src/packages/comm/accessApi.s"
 	@echo "... src/packages/comm/blockChainQueryApi.o"
 	@echo "... src/packages/comm/blockChainQueryApi.i"
 	@echo "... src/packages/comm/blockChainQueryApi.s"
@@ -1652,6 +1712,9 @@ help:
 	@echo "... src/structs/permission/permission.o"
 	@echo "... src/structs/permission/permission.i"
 	@echo "... src/structs/permission/permission.s"
+	@echo "... src/tests/access_request_test.o"
+	@echo "... src/tests/access_request_test.i"
+	@echo "... src/tests/access_request_test.s"
 	@echo "... src/tests/blockchain_test.o"
 	@echo "... src/tests/blockchain_test.i"
 	@echo "... src/tests/blockchain_test.s"

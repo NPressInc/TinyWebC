@@ -14,3 +14,5 @@ add_test(InitNetworkTest "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests
 set_tests_properties(InitNetworkTest PROPERTIES  _BACKTRACE_TRIPLES "/home/william/Documents/tinyweb/CTinyWeb/CMakeLists.txt;95;add_test;/home/william/Documents/tinyweb/CTinyWeb/CMakeLists.txt;0;")
 add_test(MongooseTest "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "mongoose")
 set_tests_properties(MongooseTest PROPERTIES  _BACKTRACE_TRIPLES "/home/william/Documents/tinyweb/CTinyWeb/CMakeLists.txt;96;add_test;/home/william/Documents/tinyweb/CTinyWeb/CMakeLists.txt;0;")
+add_test(AccessRequestTest "/home/william/Documents/tinyweb/CTinyWeb/tinyweb_tests" "access_request")
+set_tests_properties(AccessRequestTest PROPERTIES  _BACKTRACE_TRIPLES "/home/william/Documents/tinyweb/CTinyWeb/CMakeLists.txt;97;add_test;/home/william/Documents/tinyweb/CTinyWeb/CMakeLists.txt;0;")

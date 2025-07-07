@@ -423,34 +423,22 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     printf("Initialized keystore keypair for encryption operations\n");
 
     // Array to collect all initialization transactions
-    TW_Transaction** init_transactions = malloc(sizeof(TW_Transaction*) * (keys->user_count * 2 + keys->node_count + 2)); // Users + roles + peers + system
+    TW_Transaction** init_transactions = malloc(sizeof(TW_Transaction*) * (keys->user_count + keys->node_count + 2)); // Users + peers + system (removed roles since they're in user registration)
     int txn_count = 0;
 
-    // 1. Create user registration transactions
+    // 1. Create user registration transactions (now includes role assignment)
     printf("Creating user registration transactions...\n");
     for (uint32_t i = 0; i < keys->user_count; i++) {
         TW_Transaction* user_txn = create_user_registration_transaction(keys, i, blockchain->creator_pubkey);
         if (user_txn) {
             init_transactions[txn_count++] = user_txn;
-            printf("Created user registration transaction for user %u\n", i);
+            printf("Created user registration transaction for user %u (includes role assignment)\n", i);
         } else {
             printf("Failed to create user registration transaction for user %u\n", i);
         }
     }
 
-    // 2. Create role assignment transactions
-    printf("Creating role assignment transactions...\n");
-    for (uint32_t i = 0; i < keys->user_count; i++) {
-        TW_Transaction* role_txn = create_role_assignment_transaction(keys, i, blockchain->creator_pubkey);
-        if (role_txn) {
-            init_transactions[txn_count++] = role_txn;
-            printf("Created role assignment transaction for user %u\n", i);
-        } else {
-            printf("Failed to create role assignment transaction for user %u\n", i);
-        }
-    }
-
-    // 3. Create peer registration transactions
+    // 2. Create peer registration transactions
     printf("Creating peer registration transactions...\n");
     for (uint32_t i = 0; i < keys->node_count; i++) {
         TW_Transaction* peer_txn = create_peer_registration_transaction(peers, i, blockchain->creator_pubkey, keys);
@@ -462,7 +450,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
         }
     }
 
-    // 4. Create system configuration transaction
+    // 3. Create system configuration transaction
     printf("Creating system configuration transaction...\n");
     TW_Transaction* config_txn = create_system_config_transaction(blockchain->creator_pubkey, keys);
     if (config_txn) {
@@ -472,7 +460,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
         printf("Failed to create system config transaction\n");
     }
 
-    // 5. Create content filter transaction
+    // 4. Create content filter transaction
     printf("Creating content filter transaction...\n");
     TW_Transaction* filter_txn = create_content_filter_transaction(blockchain->creator_pubkey, keys);
     if (filter_txn) {
@@ -609,6 +597,26 @@ TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, 
         printf("Failed to derive Ed25519 public key for user %u\n", user_index);
         return NULL;
     }
+    
+    // Assign role based on user index
+    if (user_index < 2) {
+        // First two users get admin role
+        strncpy(user_data.assigned_role, "admin", MAX_ROLE_NAME_LENGTH - 1);
+        user_data.permission_set_count = 5;  // Updated to include ADMIN_BASIC
+        
+        memcpy(&user_data.permission_sets[0], &ADMIN_MESSAGING, sizeof(PermissionSet));
+        memcpy(&user_data.permission_sets[1], &ADMIN_GROUP_MANAGEMENT, sizeof(PermissionSet));
+        memcpy(&user_data.permission_sets[2], &ADMIN_USER_MANAGEMENT, sizeof(PermissionSet));
+        memcpy(&user_data.permission_sets[3], &ADMIN_SYSTEM, sizeof(PermissionSet));
+        memcpy(&user_data.permission_sets[4], &ADMIN_BASIC, sizeof(PermissionSet));  // Added ADMIN_BASIC
+    } else {
+        // Other users get member role
+        strncpy(user_data.assigned_role, "member", MAX_ROLE_NAME_LENGTH - 1);
+        user_data.permission_set_count = 2;
+        
+        memcpy(&user_data.permission_sets[0], &MEMBER_MESSAGING, sizeof(PermissionSet));
+        memcpy(&user_data.permission_sets[1], &MEMBER_BASIC, sizeof(PermissionSet));
+    }
 
     unsigned char* serialized_buffer = NULL;
     int serialized_size = serialize_user_registration(&user_data, &serialized_buffer);
@@ -680,90 +688,9 @@ TW_Transaction* create_user_registration_transaction(const GeneratedKeys* keys, 
     return txn;
 }
 
-TW_Transaction* create_role_assignment_transaction(const GeneratedKeys* keys, uint32_t user_index, const unsigned char* creator_pubkey) {
-    if (!keys || user_index >= keys->user_count || !creator_pubkey) return NULL;
-
-    TW_TXN_RoleAssignment role_data;
-    memset(&role_data, 0, sizeof(role_data));
-
-    if (user_index < 2) {
-        // First two users get admin role
-        strncpy(role_data.role_name, "admin", MAX_ROLE_NAME_LENGTH - 1);
-        role_data.permission_set_count = 4;
-        
-        memcpy(&role_data.permission_sets[0], &ADMIN_MESSAGING, sizeof(PermissionSet));
-        memcpy(&role_data.permission_sets[1], &ADMIN_GROUP_MANAGEMENT, sizeof(PermissionSet));
-        memcpy(&role_data.permission_sets[2], &ADMIN_USER_MANAGEMENT, sizeof(PermissionSet));
-        memcpy(&role_data.permission_sets[3], &ADMIN_SYSTEM, sizeof(PermissionSet));
-    } else {
-        // Other users get member role
-        strncpy(role_data.role_name, "member", MAX_ROLE_NAME_LENGTH - 1);
-        role_data.permission_set_count = 2;
-        
-        memcpy(&role_data.permission_sets[0], &MEMBER_MESSAGING, sizeof(PermissionSet));
-        memcpy(&role_data.permission_sets[1], &MEMBER_BASIC, sizeof(PermissionSet));
-    }
-
-    unsigned char* serialized_buffer = NULL;
-    int serialized_size = serialize_role_assignment(&role_data, &serialized_buffer);
-    if (serialized_size < 0 || !serialized_buffer) {
-        return NULL;
-    }
-
-    // Create flat array of all recipients (nodes + users)
-    uint32_t total_recipients;
-    unsigned char* all_recipients_flat = create_all_recipients_flat(keys, &total_recipients);
-    if (!all_recipients_flat) {
-        free(serialized_buffer);
-        return NULL;
-    }
-
-    EncryptedPayload* encrypted_payload = encrypt_payload_multi(
-        serialized_buffer, 
-        serialized_size, 
-        all_recipients_flat,
-        total_recipients
-    );
-    free(serialized_buffer);
-    free(all_recipients_flat);
-    if (!encrypted_payload) {
-        return NULL;
-    }
-
-    // Create flat array for transaction (TW_Transaction_create expects flat array)
-    unsigned char* txn_recipients_flat = malloc(PUBKEY_SIZE * total_recipients);
-    if (!txn_recipients_flat) {
-        free_encrypted_payload(encrypted_payload);
-        return NULL;
-    }
-    
-    // Copy all recipients to flat array for transaction
-    for (uint32_t i = 0; i < keys->node_count; i++) {
-        memcpy(txn_recipients_flat + (i * PUBKEY_SIZE), keys->node_public_keys[i], PUBKEY_SIZE);
-    }
-    for (uint32_t i = 0; i < keys->user_count; i++) {
-        memcpy(txn_recipients_flat + ((keys->node_count + i) * PUBKEY_SIZE), keys->user_public_keys[i], PUBKEY_SIZE);
-    }
-
-    TW_Transaction* txn = TW_Transaction_create(
-        TW_TXN_ROLE_ASSIGNMENT,
-        creator_pubkey,
-        txn_recipients_flat,
-        total_recipients,
-        NULL,
-        encrypted_payload,
-        NULL
-    );
-    
-    if (txn) {
-        TW_Transaction_add_signature(txn);
-    } else {
-        free_encrypted_payload(encrypted_payload);
-    }
-    
-    free(txn_recipients_flat);
-    return txn;
-}
+// Note: Role assignment is now handled within user registration transactions
+// The create_role_assignment_transaction function has been removed since roles
+// are assigned as part of the user registration process
 
 TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint32_t peer_index, const unsigned char* creator_pubkey, const GeneratedKeys* keys) {
     if (!peers || !creator_pubkey || !keys) return NULL;

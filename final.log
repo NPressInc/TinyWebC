@@ -1,0 +1,157 @@
+=================================================================
+🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!
+=================================================================
+Node Configuration:
+  Node ID: 0
+  API Port: 8000
+  Protocol: HTTP + PBFT Consensus
+  Features: Blockchain, Invitations, Encrypted Transactions
+-----------------------------------------------------------------
+Initializing TinyWeb system components...
+Message queues initialized
+System components initialized successfully
+Creating PBFT node...
+Mongoose HTTP client initialized
+Invitation system initialized
+Initializing node keys...
+Initializing keys for node 0
+Loaded existing keys for node 0
+Loading blockchain...
+Loading/creating blockchain for node 0
+Loading existing blockchain from state/blockchain/blockchain.dat
+Loaded blockchain (Original size: 9316 bytes, Compressed size: 7075 bytes)
+Loaded existing blockchain for node 0 with length 15
+🔧 Blockchain Data Manager initialized
+   Critical data: 0 days (0=forever)
+   Important data: 120 days
+   Operational data: 30 days
+🔄 Database inconsistent with blockchain, reloading...
+🔄 Starting blockchain data reload...
+📊 Blockchain length: 15 blocks
+🗄️  Database size before: 151552 bytes (0.14 MB)
+⚠️ Warning: Failed to sync block 0 to database
+⚠️ Warning: Failed to sync block 1 to database
+⚠️ Warning: Failed to sync block 2 to database
+⚠️ Warning: Failed to sync block 3 to database
+⚠️ Warning: Failed to sync block 4 to database
+⚠️ Warning: Failed to sync block 5 to database
+⚠️ Warning: Failed to sync block 6 to database
+⚠️ Warning: Failed to sync block 7 to database
+⚠️ Warning: Failed to sync block 8 to database
+⚠️ Warning: Failed to sync block 9 to database
+⚠️ Warning: Failed to sync block 10 to database
+⚠️ Warning: Failed to sync block 11 to database
+⚠️ Warning: Failed to sync block 12 to database
+⚠️ Warning: Failed to sync block 13 to database
+⚠️ Warning: Failed to sync block 14 to database
+
+📈 Blockchain Reload Complete!
+⏱️  Processing time: 0.00 seconds
+🗃️  Blocks processed: 15
+📝 Transactions loaded: 0
+   └─ Critical: 0
+   └─ Important: 0
+   └─ Operational: 0
+🚫 Transactions skipped: 0
+💾 Database size: 151552 → 151552 bytes (0.14 MB)
+✅ Database successfully reloaded from blockchain
+📊 Reload Statistics:
+   Critical transactions: 0
+   Important transactions: 0
+   Operational transactions: 0
+   Transactions skipped: 0
+Initializing database...
+WAL mode and optimizations configured successfully
+Database initialized successfully: state/blockchain/blockchain.db
+Database initialized successfully
+Registering node node_000 in database...
+Node node_000 registered successfully
+✓ Node registered successfully
+Syncing blockchain to database...
+Syncing blockchain to database (15 blocks)...
+Failed to sync block 0
+Warning: Failed to sync blockchain to database
+✅ TinyWeb PBFT node initialized successfully
+-----------------------------------------------------------------
+🌐 HTTP API Server: http://localhost:8000
+📊 Available Endpoints:
+  • GET  /                          - Node status
+  • GET  /GetBlockChainLength       - Blockchain info
+  • POST /Transaction               - Submit transaction
+  • POST /invitation/create         - Create invitation
+  • POST /invitation/accept/<code>  - Accept invitation
+  • GET  /invitation/pending        - List pending invitations
+🔧 Press Ctrl+C to shutdown gracefully
+=================================================================
+PBFT node 0 starting on port 8000
+TinyWeb monitor thread started
+Starting PBFT API server on port 8000
+PBFT node threads started successfully
+PBFT main consensus loop started for node 0
+PBFT API server listening on http://0.0.0.0:8000
+[DEBUG] Processing admin user: user_0, pubkey: f9e4f98a8693d965cff1e0c3701c2c3db99b08037eb2f16c18d98f308e78992a
+[DEBUG] Hex decode result: 32
+[DEBUG] Ed25519 to X25519 conversion result: 0
+[DEBUG] X25519 hex encode result: 0
+[DEBUG] Successfully added admin user: user_0
+[DEBUG] Processing admin user: user_1, pubkey: 62f4423ea13a16923c7fb715fbec68bc622b7f15b554db85130c044bd504c02e
+[DEBUG] Hex decode result: 32
+[DEBUG] Ed25519 to X25519 conversion result: 0
+[DEBUG] X25519 hex encode result: 0
+[DEBUG] Successfully added admin user: user_1
+[DEBUG] Total admin users processed: 2
+Node 0: Blockchain length: 15, Peers: 0, Proposer ID: 0
+Node 0: Creating block for singular node
+Node 0: Creating block for singular node mode
+DEBUG: Creating block 15 with previous hash: fdf3fd90af49e1674aacb9dd1931694c195f860045fae6c515042ec421f47e34
+Created new block with index 15 and 0 transactions
+DEBUG: Block 15 validation - Expected prev hash: fdf3fd90af49e1674aacb9dd1931694c195f860045fae6c515042ec421f47e34, Actual prev hash: fdf3fd90af49e1674aacb9dd1931694c195f860045fae6c515042ec421f47e34
+Block validation passed for block 15
+DEBUG: Block 15 validation - Expected prev hash: fdf3fd90af49e1674aacb9dd1931694c195f860045fae6c515042ec421f47e34, Actual prev hash: fdf3fd90af49e1674aacb9dd1931694c195f860045fae6c515042ec421f47e34
+Block validation passed for block 15
+DEBUG: TW_BlockChain_add_block - Expected prev hash: fdf3fd90af49e1674aacb9dd1931694c195f860045fae6c515042ec421f47e34, Block prev hash: fdf3fd90af49e1674aacb9dd1931694c195f860045fae6c515042ec421f47e34
+DEBUG: TW_BlockChain_add_block - Successfully added block 15, new length: 16
+Successfully committed block 15 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 16)
+Saved BlockChain To File! (Original size: 9420 bytes, Compressed size: 7132 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 15 synced to database successfully
+Node 0: Successfully created and committed block 15 in singular mode
+Node 0: Proposing block (round 10)
+DEBUG: Creating block 16 with previous hash: 03f544d8ecc35d13ef6c78a3116ea20d214c02d77c0eb8f27c5931dddef186d3
+Created new block with index 16 and 0 transactions
+Node 0: Committing block directly (singular mode)
+DEBUG: Block 16 validation - Expected prev hash: 03f544d8ecc35d13ef6c78a3116ea20d214c02d77c0eb8f27c5931dddef186d3, Actual prev hash: 03f544d8ecc35d13ef6c78a3116ea20d214c02d77c0eb8f27c5931dddef186d3
+Block validation passed for block 16
+DEBUG: Block 16 validation - Expected prev hash: 03f544d8ecc35d13ef6c78a3116ea20d214c02d77c0eb8f27c5931dddef186d3, Actual prev hash: 03f544d8ecc35d13ef6c78a3116ea20d214c02d77c0eb8f27c5931dddef186d3
+Block validation passed for block 16
+DEBUG: TW_BlockChain_add_block - Expected prev hash: 03f544d8ecc35d13ef6c78a3116ea20d214c02d77c0eb8f27c5931dddef186d3, Block prev hash: 03f544d8ecc35d13ef6c78a3116ea20d214c02d77c0eb8f27c5931dddef186d3
+DEBUG: TW_BlockChain_add_block - Successfully added block 16, new length: 17
+Successfully committed block 16 to blockchain
+Saving blockchain after block commit...
+Node 0: Saving blockchain (length: 17)
+Saved BlockChain To File! (Original size: 9524 bytes, Compressed size: 7189 bytes)
+Blockchain saved as JSON to state/blockchain/blockchain.json
+Node 0: Successfully saved blockchain to file
+Block 16 synced to database
+
+Received signal 15, shutting down gracefully...
+PBFT API server shutting down
+Marking node node_000 as offline...
+TinyWeb monitor thread stopping
+PBFT main consensus loop stopped for node 0
+PBFT node 0 shutdown complete
+Waiting for monitor thread to finish...
+Cleaning up system components...
+Message queues cleaned up
+Database closed successfully
+Database closed
+🧹 Blockchain Data Manager cleanup complete
+Mongoose HTTP client cleaned up
+System cleanup completed
+
+=================================================================
+🛑 TinyWeb PBFT Node shutdown complete - Goodbye!
+=================================================================

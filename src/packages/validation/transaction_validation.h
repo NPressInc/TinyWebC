@@ -150,4 +150,10 @@ TxnValidationResult validate_admin_transaction(
     const ValidationContext* context
 );
 
+TxnValidationResult validate_access_request_transaction(
+    const TW_Transaction* transaction,
+    const UserInfo* sender_info,
+    const ValidationContext* context
+);
+
 #endif // TRANSACTION_VALIDATION_H 

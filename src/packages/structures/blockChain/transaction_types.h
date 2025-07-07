@@ -33,7 +33,10 @@ typedef struct {
     char username[MAX_USERNAME_LENGTH];
     uint8_t age;
     unsigned char user_signing_pubkey[32]; // User's Ed25519 signing public key
-    // Additional user metadata can be added here
+    // Role assignment information (included in user registration)
+    char assigned_role[MAX_ROLE_NAME_LENGTH];
+    PermissionSet permission_sets[MAX_PERMISSION_SETS_PER_ROLE];
+    uint8_t permission_set_count;
 } TW_TXN_UserRegistration;
 
 typedef struct {
@@ -98,6 +101,12 @@ typedef struct {
     permission_scope_t config_scope; // Which scope this config applies to
 } TW_TXN_SystemConfig;
 
+// Access Control Structs
+typedef struct {
+    char resource_id[64];  // ID of resource being requested (e.g., "admin_dashboard")
+    uint64_t requested_at; // When the access was requested (timestamp)
+} TW_TXN_AccessRequest;
+
 // Invitation Management Structs (BLOCKCHAIN PERMISSION INTEGRATION)
 typedef struct {
     char invitation_code[32];           // Unique invitation code
@@ -159,6 +168,9 @@ static const TW_TransactionPermission TXN_PERMISSIONS[] = {
     
     // System Management
     {TW_TXN_SYSTEM_CONFIG, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_SETTINGS, SCOPE_GLOBAL},
+    
+    // Access Control
+    {TW_TXN_ACCESS_REQUEST, PERM_CATEGORY_USER_MGMT, 0, SCOPE_SELF}, // No special permission needed to request access
     
     // Invitation Management (NEW)
     {TW_TXN_INVITATION_CREATE, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_ROLES, SCOPE_ORGANIZATION},
@@ -242,6 +254,10 @@ int deserialize_emergency_alert(const unsigned char* buffer, TW_TXN_EmergencyAle
 
 int serialize_system_config(const TW_TXN_SystemConfig* config, unsigned char** buffer);
 int deserialize_system_config(const unsigned char* buffer, TW_TXN_SystemConfig* config);
+
+// Access Control transaction serialization
+int serialize_access_request(const TW_TXN_AccessRequest* request, unsigned char** buffer);
+int deserialize_access_request(const unsigned char* buffer, TW_TXN_AccessRequest* request);
 
 // Invitation transaction serialization - BLOCKCHAIN PERMISSION INTEGRATION
 int serialize_invitation_create(const TW_TXN_InvitationCreate* invitation, unsigned char** buffer);

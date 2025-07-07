@@ -94,6 +94,7 @@ add_test(NAME SigningTest COMMAND tinyweb_tests signing)
 add_test(NAME BlockchainTest COMMAND tinyweb_tests blockchain)
 add_test(NAME InitNetworkTest COMMAND tinyweb_tests init_network)
 add_test(NAME MongooseTest COMMAND tinyweb_tests mongoose)
+add_test(NAME AccessRequestTest COMMAND tinyweb_tests access_request)
 
 # Custom target for "make check"
 add_custom_target(check
@@ -110,6 +111,8 @@ add_executable(pbft_node
     src/packages/comm/pbftApi.c
     src/packages/comm/blockChainQueryApi.c
     src/packages/comm/httpClient.c
+    src/packages/comm/accessApi.c
+    src/packages/comm/nodeApi.c
     src/packages/utils/jsonUtils.c
     src/packages/keystore/keystore.c
     src/packages/signing/signing.c

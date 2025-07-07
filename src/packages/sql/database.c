@@ -914,15 +914,123 @@ int db_parse_and_sync_user_registration(TW_Transaction* tx, uint64_t transaction
         return -1;
     }
 
+    printf("DEBUG: User registration - username: %s, role: %s\n", user_reg.username, user_reg.assigned_role);
+
     // Add user to database using the user's signing public key
-    int result = db_add_user(user_pubkey_hex, user_reg.username, user_reg.age, transaction_id);
+    int user_result = db_add_user(user_pubkey_hex, user_reg.username, user_reg.age, transaction_id);
+    if (user_result != 0) {
+        printf("DEBUG: db_parse_and_sync_user_registration - Failed to add user to database\n");
+        free(decrypted_data);
+        return -1;
+    }
+
+    // Add role to database (create if it doesn't exist)
+    RoleRecord existing_role;
+    int role_result = db_get_role_by_name(user_reg.assigned_role, &existing_role);
+    if (role_result != 0) {
+        // Role doesn't exist, create it
+        role_result = db_add_role(user_reg.assigned_role, "Auto-generated role", transaction_id);
+        if (role_result != 0) {
+            printf("DEBUG: db_parse_and_sync_user_registration - Failed to create role: %s\n", user_reg.assigned_role);
+            free(decrypted_data);
+            return -1;
+        }
+        printf("DEBUG: Created new role: %s\n", user_reg.assigned_role);
+    } else {
+        printf("DEBUG: Role %s already exists with ID %lu\n", user_reg.assigned_role, existing_role.id);
+    }
+
+    // Get the user ID and role ID to create the relationship
+    UserRecord user;
+    if (db_get_user_by_pubkey(user_pubkey_hex, &user) != 0) {
+        printf("DEBUG: db_parse_and_sync_user_registration - Failed to find user after creation\n");
+        free(decrypted_data);
+        return -1;
+    }
+    
+    RoleRecord role;
+    if (db_get_role_by_name(user_reg.assigned_role, &role) != 0) {
+        printf("DEBUG: db_parse_and_sync_user_registration - Failed to find role: %s\n", user_reg.assigned_role);
+        free(decrypted_data);
+        return -1;
+    }
+    
+    // Assign the role to the user
+    int assign_result = db_assign_user_role(user.id, role.id, user.id, transaction_id);
+    if (assign_result != 0) {
+        printf("DEBUG: db_parse_and_sync_user_registration - Failed to assign role %s to user %s\n", 
+               user_reg.assigned_role, user_reg.username);
+        free(decrypted_data);
+        return -1;
+    }
+    
+    printf("DEBUG: Successfully created user %s with role %s\n", user_reg.username, user_reg.assigned_role);
+    
+    // Process the permission sets for this user's role
+    printf("DEBUG: Processing %u permission sets for role %s\n", user_reg.permission_set_count, user_reg.assigned_role);
+    
+    for (uint32_t i = 0; i < user_reg.permission_set_count; i++) {
+        PermissionSet* perm_set = &user_reg.permission_sets[i];
+        
+        // Create a permission name based on the role and permission set index
+        char permission_name[64];
+        snprintf(permission_name, sizeof(permission_name), "%s_perm_%u", user_reg.assigned_role, i);
+        
+        printf("DEBUG: Processing permission set %u: name=%s, permissions=0x%lx, scopes=0x%x\n", 
+               i, permission_name, perm_set->permissions, perm_set->scopes);
+        
+        // Add permission to database (create if it doesn't exist)
+        int perm_result = db_add_permission(
+            permission_name,
+            perm_set->permissions,
+            perm_set->scopes,
+            perm_set->conditions,
+            0,  // category
+            "Auto-generated permission from user registration",
+            transaction_id
+        );
+        
+        if (perm_result != 0) {
+            printf("DEBUG: Failed to add permission %s to database (may already exist)\n", permission_name);
+        } else {
+            printf("DEBUG: Successfully added permission %s to database\n", permission_name);
+        }
+        
+        // Get the permission record to get its ID
+        PermissionRecord permission;
+        if (db_get_permission_by_name(permission_name, &permission) != 0) {
+            printf("DEBUG: Failed to find permission %s after creation\n", permission_name);
+            continue;
+        }
+        
+        printf("DEBUG: Found permission %s with ID %lu\n", permission.name, permission.id);
+        
+        // Grant this permission to the role
+        int grant_result = db_grant_role_permission(
+            role.id,
+            permission.id,
+            user.id,  // granted_by_user_id
+            transaction_id,
+            perm_set->time_start,
+            perm_set->time_end
+        );
+        
+        if (grant_result != 0) {
+            printf("DEBUG: Failed to grant permission %s to role %s\n", permission_name, user_reg.assigned_role);
+        } else {
+            printf("DEBUG: Successfully granted permission %s to role %s\n", permission_name, user_reg.assigned_role);
+        }
+    }
+    
+    printf("DEBUG: Completed processing permissions for user %s\n", user_reg.username);
     
     free(decrypted_data);
-    return result;
+    return 0;
 }
 
 int db_parse_and_sync_role_assignment(TW_Transaction* tx, uint64_t transaction_id) {
     if (!tx || !tx->payload) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - No transaction or payload\n");
         return -1;
     }
 
@@ -952,11 +1060,55 @@ int db_parse_and_sync_role_assignment(TW_Transaction* tx, uint64_t transaction_i
         return -1;
     }
 
-    // Add role to database
-    int result = db_add_role(role_assign.role_name, "Auto-generated role", transaction_id);
+    printf("DEBUG: Role assignment - role_name: %s\n", role_assign.role_name);
+
+    // Add role to database (create if it doesn't exist)
+    int role_result = db_add_role(role_assign.role_name, "Auto-generated role", transaction_id);
+    if (role_result != 0) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - Failed to add role to database\n");
+    }
+
+    // Convert transaction sender (hex string) to find the user
+    char sender_hex[65];
+    for (int i = 0; i < 32; i++) {
+        sprintf(sender_hex + (i * 2), "%02x", tx->sender[i]);
+    }
+    
+    printf("DEBUG: Looking for user with pubkey: %s\n", sender_hex);
+    
+    // Get the user ID from the sender's public key
+    UserRecord user;
+    if (db_get_user_by_pubkey(sender_hex, &user) != 0) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - Failed to find user with pubkey: %s\n", sender_hex);
+        free(decrypted_data);
+        return -1;
+    }
+    
+    printf("DEBUG: Found user: %s (ID: %lu)\n", user.username, user.id);
+    
+    // Get the role ID from the role name
+    RoleRecord role;
+    if (db_get_role_by_name(role_assign.role_name, &role) != 0) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - Failed to find role: %s\n", role_assign.role_name);
+        free(decrypted_data);
+        return -1;
+    }
+    
+    printf("DEBUG: Found role: %s (ID: %lu)\n", role.name, role.id);
+    
+    // Assign the role to the user
+    int assign_result = db_assign_user_role(user.id, role.id, user.id, transaction_id);
+    if (assign_result != 0) {
+        printf("DEBUG: db_parse_and_sync_role_assignment - Failed to assign role %s to user %s\n", 
+               role_assign.role_name, user.username);
+        free(decrypted_data);
+        return -1;
+    }
+    
+    printf("DEBUG: Successfully assigned role %s to user %s\n", role_assign.role_name, user.username);
     
     free(decrypted_data);
-    return result;
+    return 0;
 }
 
 int db_parse_and_sync_permission_edit(TW_Transaction* tx, uint64_t transaction_id) {

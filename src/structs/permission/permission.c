@@ -53,6 +53,16 @@ const PermissionSet ADMIN_SYSTEM = {
     .time_end = 0
 };
 
+// Admin Basic - includes SCOPE_SELF for self-related actions like access requests
+const PermissionSet ADMIN_BASIC = {
+    .permissions = PERMISSION_VIEW_STATUS | PERMISSION_VIEW_LOCATION,
+    .scopes = (1 << SCOPE_SELF) | (1 << SCOPE_DIRECT) | (1 << SCOPE_PRIMARY_GROUP) | 
+              (1 << SCOPE_CONTACT_GROUP),
+    .conditions = CONDITION_ALWAYS,
+    .time_start = 0,
+    .time_end = 0
+};
+
 // Member/User Role
 const PermissionSet MEMBER_MESSAGING = {
     .permissions = PERMISSION_SEND_MESSAGE | PERMISSION_READ_MESSAGE | 
@@ -259,7 +269,8 @@ Role* create_admin_role(void) {
     if (add_permission_set(role, &ADMIN_MESSAGING) != 0 ||
         add_permission_set(role, &ADMIN_GROUP_MANAGEMENT) != 0 ||
         add_permission_set(role, &ADMIN_USER_MANAGEMENT) != 0 ||
-        add_permission_set(role, &ADMIN_SYSTEM) != 0) {
+        add_permission_set(role, &ADMIN_SYSTEM) != 0 ||
+        add_permission_set(role, &ADMIN_BASIC) != 0) { // Added ADMIN_BASIC
         destroy_role(role);
         return NULL;
     }
