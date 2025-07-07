@@ -219,7 +219,7 @@ int initialize_network(const InitConfig* config) {
     // 8. Load the first node's keypair into keystore for decryption
     printf("Loading node keypair into keystore for database sync...\n");
     keystore_cleanup(); // Clear the temporary keypair
-    if (!keystore_load_raw_ed25519_keypair(keys.node_private_keys[0], keys.node_public_keys[0])) {
+    if (!keystore_load_raw_ed25519_keypair(keys.node_private_keys[0])) {
         fprintf(stderr, "Error: Failed to load node keypair into keystore\n");
         free(peers);
         free_generated_keys(&keys);
@@ -494,7 +494,10 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     TW_Block* last_block = TW_BlockChain_get_last_block(blockchain);
     unsigned char previous_hash[HASH_SIZE];
     if (last_block) {
-        TW_Block_getHash(last_block, previous_hash);
+        if (TW_Block_getHash(last_block, previous_hash) != 1) {
+            printf("Failed to get previous block hash\n");
+            return -1;
+        }
         printf("Got previous block hash\n");
     } else {
         memset(previous_hash, 0, HASH_SIZE); // All zeros if no previous block

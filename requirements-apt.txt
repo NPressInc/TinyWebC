@@ -1,0 +1,26 @@
+# CTinyWeb APT Package Requirements
+# Install with: sudo apt-get install $(cat requirements-apt.txt | grep -v '^#' | tr '\n' ' ')
+
+# Build Tools
+build-essential
+cmake
+make
+gcc
+pkg-config
+
+# Core Libraries
+libsodium-dev
+libsqlite3-dev
+libcjson-dev
+libcurl4-openssl-dev
+libmicrohttpd-dev
+liblz4-dev
+libp11-kit-dev
+libssl-dev
+libcrypto++-dev
+
+# Development Tools (optional)
+valgrind
+gdb
+strace
+ltrace 

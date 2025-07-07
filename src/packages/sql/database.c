@@ -1237,13 +1237,30 @@ int db_get_all_users(UserRecord** users, size_t* count) {
         UserRecord* user = &user_array[index];
         user->id = sqlite3_column_int64(stmt, 0);
         
-        const char* username = (const char*)sqlite3_column_text(stmt, 1);
+        // Fix: Read pubkey from column 1
+        const char* pubkey = (const char*)sqlite3_column_text(stmt, 1);
+        if (pubkey) {
+            strncpy(user->pubkey, pubkey, sizeof(user->pubkey) - 1);
+            user->pubkey[sizeof(user->pubkey) - 1] = '\0';
+        } else {
+            user->pubkey[0] = '\0';
+        }
+        
+        // Fix: Read username from column 2 (not column 1)
+        const char* username = (const char*)sqlite3_column_text(stmt, 2);
         if (username) {
             strncpy(user->username, username, sizeof(user->username) - 1);
             user->username[sizeof(user->username) - 1] = '\0';
+        } else {
+            user->username[0] = '\0';
         }
         
-        user->age = sqlite3_column_int(stmt, 2);
+        // Fix: Read age from column 3 (not column 2)
+        user->age = sqlite3_column_int(stmt, 3);
+        
+        // Fix: Read registration_transaction_id from column 4
+        user->registration_transaction_id = sqlite3_column_int64(stmt, 4);
+        
         user->created_at = sqlite3_column_int64(stmt, 5);
         user->updated_at = sqlite3_column_int64(stmt, 6);
         user->is_active = sqlite3_column_int(stmt, 7) != 0;

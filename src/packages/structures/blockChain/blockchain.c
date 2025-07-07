@@ -131,7 +131,10 @@ int TW_BlockChain_add_block(TW_BlockChain* blockchain, TW_Block* block) {
     TW_Block* last = TW_BlockChain_get_last_block(blockchain);
     unsigned char last_hash[HASH_SIZE];
     if (last) {
-        TW_Block_getHash(last, last_hash);
+        if (TW_Block_getHash(last, last_hash) != 1) {
+            printf("DEBUG: TW_BlockChain_add_block - Failed to get hash of last block\n");
+            return 0;
+        }
         
         // Debug: Print hash comparison in blockchain add
         char expected_hex[HASH_SIZE * 2 + 1];
@@ -165,7 +168,10 @@ void TW_BlockChain_get_hash(TW_BlockChain* blockchain, unsigned char* hash_out) 
         memset(hash_out, 0, HASH_SIZE);
         return;
     }
-    TW_Block_getHash(TW_BlockChain_get_last_block(blockchain), hash_out);
+    if (TW_Block_getHash(TW_BlockChain_get_last_block(blockchain), hash_out) != 1) {
+        // If hash calculation fails, set to zero hash
+        memset(hash_out, 0, HASH_SIZE);
+    }
 }
 
 /** Retrieves an array of all block hashes. */
@@ -177,7 +183,10 @@ void TW_BlockChain_get_block_hashes(TW_BlockChain* blockchain, unsigned char* ha
 
     *count = blockchain->length;
     for (uint32_t i = 0; i < blockchain->length; i++) {
-        TW_Block_getHash(blockchain->blocks[i], hashes + i * HASH_SIZE);
+        if (TW_Block_getHash(blockchain->blocks[i], hashes + i * HASH_SIZE) != 1) {
+            // If hash calculation fails, set to zero hash
+            memset(hashes + i * HASH_SIZE, 0, HASH_SIZE);
+        }
     }
 }
 

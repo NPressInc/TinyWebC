@@ -1,0 +1,60 @@
+{
+  "name": "CTinyWeb",
+  "description": "Decentralized PBFT Blockchain Node in C",
+  "setup": {
+    "os": "linux",
+    "package_manager": "apt",
+    "install_script": "./install_deps.sh",
+    "requirements_file": "./requirements-apt.txt",
+    "test_script": "./run_tests.sh"
+  },
+  "build": {
+    "system": "cmake",
+    "commands": [
+      "cmake .",
+      "make"
+    ],
+    "artifacts": [
+      "tinyweb",
+      "tinyweb_tests",
+      "pbft_node",
+      "init_tool"
+    ]
+  },
+  "test": {
+    "command": "./tinyweb_tests",
+    "runner_script": "./run_tests.sh",
+    "timeout": 60,
+    "success_criteria": "exit_code_0"
+  },
+  "pre_commit": {
+    "run_tests": true,
+    "run_build": true,
+    "scripts": [
+      "./run_tests.sh"
+    ]
+  },
+  "dependencies": {
+    "system_packages": [
+      "build-essential",
+      "cmake",
+      "make",
+      "gcc",
+      "pkg-config",
+      "libsodium-dev",
+      "libsqlite3-dev", 
+      "libcjson-dev",
+      "libcurl4-openssl-dev",
+      "libmicrohttpd-dev",
+      "liblz4-dev",
+      "libp11-kit-dev",
+      "libssl-dev"
+    ],
+    "optional_packages": [
+      "valgrind",
+      "gdb",
+      "strace",
+      "ltrace"
+    ]
+  }
+} 

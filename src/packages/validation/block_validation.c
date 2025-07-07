@@ -249,7 +249,9 @@ ValidationResult validate_block_hash_chain(const TW_Block* block, const TW_Block
     
     // Calculate expected previous hash
     unsigned char expected_prev_hash[HASH_SIZE];
-    TW_Block_getHash((TW_Block*)previous_block, expected_prev_hash);  // Cast away const
+    if (TW_Block_getHash((TW_Block*)previous_block, expected_prev_hash) != 1) {  // Cast away const
+        return VALIDATION_ERROR_INVALID_HASH;
+    }
     
     // Compare with stored previous hash
     if (memcmp(block->previous_hash, expected_prev_hash, HASH_SIZE) != 0) {
@@ -428,7 +430,9 @@ ValidationResult validate_blockchain_integrity(const TW_BlockChain* blockchain) 
     // Check that all blocks are properly linked
     for (uint32_t i = 1; i < blockchain->length; i++) {
         unsigned char prev_hash[HASH_SIZE];
-        TW_Block_getHash(blockchain->blocks[i - 1], prev_hash);
+        if (TW_Block_getHash(blockchain->blocks[i - 1], prev_hash) != 1) {
+            return VALIDATION_ERROR_INVALID_HASH;
+        }
 
         if (memcmp(blockchain->blocks[i]->previous_hash, prev_hash, HASH_SIZE) != 0) {
             return VALIDATION_ERROR_CHAIN_INTEGRITY;
