@@ -96,6 +96,121 @@ add_test(NAME InitNetworkTest COMMAND tinyweb_tests init_network)
 add_test(NAME MongooseTest COMMAND tinyweb_tests mongoose)
 add_test(NAME AccessRequestTest COMMAND tinyweb_tests access_request)
 
+# Add standalone HTTP client tests
+add_executable(simple_http_client_test
+    src/tests/simple_http_client_test.c
+    src/packages/PBFT/pbftNode.c
+    src/packages/PBFT/node.c
+    src/packages/comm/httpClient.c
+    src/packages/comm/pbftApi.c
+    src/packages/comm/blockChainQueryApi.c
+    src/packages/comm/accessApi.c
+    src/packages/comm/nodeApi.c
+    src/packages/utils/jsonUtils.c
+    src/packages/keystore/keystore.c
+    src/packages/signing/signing.c
+    src/packages/structures/blockChain/blockchain.c
+    src/packages/structures/blockChain/block.c
+    src/packages/structures/blockChain/transaction.c
+    src/packages/structures/blockChain/transaction_types.c
+    src/packages/structures/blockChain/internalTransaction.c
+    src/packages/structures/blockChain/merkleTree.c
+    src/packages/structures/blockChain/merkleTreeNode.c
+    src/packages/fileIO/blockchainIO.c
+    src/packages/encryption/encryption.c
+    src/packages/utils/byteorder.c
+    src/packages/fileIO/compression.c
+    src/packages/sql/database.c
+    src/packages/sql/schema.c
+    src/packages/sql/queries.c
+    src/packages/validation/block_validation.c
+    src/packages/validation/transaction_validation.c
+    src/structs/permission/permission.c
+    src/packages/invitation/invitation.c
+    src/packages/invitation/invitationApi.c
+    src/external/mongoose/mongoose.c
+)
+
+target_include_directories(simple_http_client_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${MICROHTTPD_INCLUDE_DIRS}
+    ${SODIUM_INCLUDE_DIRS}
+    /usr/include/cjson
+    ${LZ4_INCLUDE_DIRS}
+    src/external/mongoose
+)
+
+target_link_libraries(simple_http_client_test
+    ${MICROHTTPD_LIBRARIES}
+    cjson
+    ${SODIUM_LIBRARIES}
+    OpenSSL::Crypto
+    ${LZ4_LIBRARIES}
+    SQLite::SQLite3
+    pthread
+    m
+    ${CURL_LIBRARIES}
+)
+
+add_executable(pbft_http_client_test
+    src/tests/pbft_http_client_test.c
+    src/packages/PBFT/pbftNode.c
+    src/packages/PBFT/node.c
+    src/packages/comm/httpClient.c
+    src/packages/comm/pbftApi.c
+    src/packages/comm/blockChainQueryApi.c
+    src/packages/comm/accessApi.c
+    src/packages/comm/nodeApi.c
+    src/packages/utils/jsonUtils.c
+    src/packages/keystore/keystore.c
+    src/packages/signing/signing.c
+    src/packages/structures/blockChain/blockchain.c
+    src/packages/structures/blockChain/block.c
+    src/packages/structures/blockChain/transaction.c
+    src/packages/structures/blockChain/transaction_types.c
+    src/packages/structures/blockChain/internalTransaction.c
+    src/packages/structures/blockChain/merkleTree.c
+    src/packages/structures/blockChain/merkleTreeNode.c
+    src/packages/fileIO/blockchainIO.c
+    src/packages/encryption/encryption.c
+    src/packages/utils/byteorder.c
+    src/packages/fileIO/compression.c
+    src/packages/sql/database.c
+    src/packages/sql/schema.c
+    src/packages/sql/queries.c
+    src/packages/validation/block_validation.c
+    src/packages/validation/transaction_validation.c
+    src/structs/permission/permission.c
+    src/packages/invitation/invitation.c
+    src/packages/invitation/invitationApi.c
+    src/external/mongoose/mongoose.c
+)
+
+target_include_directories(pbft_http_client_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${MICROHTTPD_INCLUDE_DIRS}
+    ${SODIUM_INCLUDE_DIRS}
+    /usr/include/cjson
+    ${LZ4_INCLUDE_DIRS}
+    src/external/mongoose
+)
+
+target_link_libraries(pbft_http_client_test
+    ${MICROHTTPD_LIBRARIES}
+    cjson
+    ${SODIUM_LIBRARIES}
+    OpenSSL::Crypto
+    ${LZ4_LIBRARIES}
+    SQLite::SQLite3
+    pthread
+    m
+    ${CURL_LIBRARIES}
+)
+
+# Add tests to CTest
+add_test(NAME SimpleHttpClientTest COMMAND simple_http_client_test)
+add_test(NAME PbftHttpClientTest COMMAND pbft_http_client_test)
+
 # Custom target for "make check"
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
@@ -200,22 +315,14 @@ target_link_libraries(init_tool
 
 # Multi-node PBFT test is built separately in the root directory
 
-# Add simple node test
-add_executable(simple_node_test
-    simple_node_test.c
-)
+# Add fixed multi-node PBFT architecture test (only if file exists)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/multi_node_pbft_test_fixed.c")
+    add_executable(multi_node_pbft_test_fixed
+        multi_node_pbft_test_fixed.c
+    )
 
-target_link_libraries(simple_node_test 
-    ${CURL_LIBRARIES}
-    cjson
-)
-
-# Add fixed multi-node PBFT architecture test
-add_executable(multi_node_pbft_test_fixed
-    multi_node_pbft_test_fixed.c
-)
-
-target_link_libraries(multi_node_pbft_test_fixed 
-    ${CURL_LIBRARIES}
-    cjson
-)
+    target_link_libraries(multi_node_pbft_test_fixed 
+        ${CURL_LIBRARIES}
+        cjson
+    )
+endif()

@@ -10,6 +10,7 @@
 #include "packages/structures/blockChain/block.h"
 #include "packages/structures/blockChain/transaction.h"
 #include "packages/structures/blockChain/internalTransaction.h"
+#include "packages/comm/httpClient.h"
 #include "external/mongoose/mongoose.h"
 
 // Forward declare constants from pbftApi.h to avoid circular dependency
@@ -92,8 +93,8 @@ int pbft_node_calculate_min_approvals(PBFTNode* node);
 int pbft_node_sync_with_longest_chain(PBFTNode* node);
 
 // Network communication (deprecated - use httpClient.h functions directly)
-struct HttpResponse* pbft_node_http_request(const char* url, const char* method, const char* json_data);
-void pbft_node_free_http_response(struct HttpResponse* response);
+HttpResponse* pbft_node_http_request(const char* url, const char* method, const char* json_data);
+void pbft_node_free_http_response(HttpResponse* response);
 
 // Peer communication functions
 int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block, const char* block_hash);

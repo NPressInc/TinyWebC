@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <time.h>
 #include "packages/keystore/keystore.h"
 #include "packages/structures/blockChain/blockchain.h"
 
@@ -12,10 +13,11 @@
 
 // Structure to hold peer information
 typedef struct {
-    unsigned char public_key[SECRET_SIZE];
+    unsigned char public_key[PUBKEY_SIZE];
     char ip[MAX_IP_LEN]; 
     uint32_t id;  // Node ID (proposer order)
     int is_delinquent;  // Flag for delinquent status
+    uint32_t delinquent_count;  // Counter for delinquent failures
     time_t last_seen;
 } PeerInfo;
 
@@ -23,7 +25,7 @@ typedef struct {
 typedef struct {
     // Node identity
     unsigned char private_key[SECRET_SIZE];
-    unsigned char public_key[SECRET_SIZE];
+    unsigned char public_key[PUBKEY_SIZE];
     uint32_t id;  // Node ID (proposer order)
     
     // Peer management
@@ -38,7 +40,7 @@ typedef struct {
     size_t id_ip_count;
     
     struct {
-        unsigned char public_key[SECRET_SIZE];
+        unsigned char public_key[PUBKEY_SIZE];
         char ip[MAX_IP_LEN];
     } pkey_ip_map[MAX_PEERS];
     size_t pkey_ip_count;
@@ -65,7 +67,10 @@ void node_state_cleanup(void);
 int node_add_peer(const unsigned char* public_key, const char* ip_port, uint32_t id);
 int node_remove_peer(uint32_t id);
 int node_mark_peer_delinquent(uint32_t id);
+int node_reset_peer_delinquent(uint32_t id);
 int node_get_peer_info(uint32_t id, PeerInfo* info);
+size_t node_get_peer_count(void);
+size_t node_get_active_peer_count(void);
 
 // Peer lookup functions
 const char* node_get_ip_by_id(uint32_t id);

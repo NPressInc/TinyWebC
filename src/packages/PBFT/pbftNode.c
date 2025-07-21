@@ -877,8 +877,138 @@ int pbft_node_sync_with_longest_chain(PBFTNode* node) {
         return -1;  // No sync needed, but no new blocks proposed
     }
 }
-struct HttpResponse* pbft_node_http_request(const char* url, const char* method, const char* json_data) { return NULL; }
-void pbft_node_free_http_response(struct HttpResponse* response) { }
+// HTTP client integration with enhanced retry logic and exponential backoff
+HttpResponse* pbft_node_http_request(const char* url, const char* method, const char* json_data) {
+    if (!url || !method) {
+        printf("pbft_node_http_request: Invalid parameters (url=%p, method=%p)\n", 
+               (void*)url, (void*)method);
+        return NULL;
+    }
+    
+    // Validate URL format
+    if (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0) {
+        printf("pbft_node_http_request: Invalid URL format: %s\n", url);
+        return NULL;
+    }
+    
+    // Initialize HTTP client if not already done
+    if (!http_client_init()) {
+        printf("pbft_node_http_request: Failed to initialize HTTP client\n");
+        return NULL;
+    }
+    
+    // Configuration for HTTP requests with PBFT-specific settings
+    HttpClientConfig* config = http_client_config_default();
+    if (!config) {
+        printf("pbft_node_http_request: Failed to create HTTP config\n");
+        return NULL;
+    }
+    
+    // Set timeout to 10 seconds for PBFT operations (consensus needs to be responsive)
+    config->timeout_seconds = 10;
+    config->max_redirects = 2;  // Limit redirects for security
+    config->verify_ssl = 0;     // Disable SSL verification for local network
+    
+    // Convert method string to HttpMethod enum
+    HttpMethod http_method;
+    if (strcmp(method, "GET") == 0) {
+        http_method = HTTP_GET;
+    } else if (strcmp(method, "POST") == 0) {
+        http_method = HTTP_POST;
+    } else if (strcmp(method, "PUT") == 0) {
+        http_method = HTTP_PUT;
+    } else if (strcmp(method, "DELETE") == 0) {
+        http_method = HTTP_DELETE;
+    } else {
+        printf("pbft_node_http_request: Unsupported HTTP method: %s\n", method);
+        http_client_config_free(config);
+        return NULL;
+    }
+    
+    // Determine content type and headers based on data
+    const char* headers[2] = {NULL, NULL};
+    if (json_data && strlen(json_data) > 0) {
+        headers[0] = "Content-Type: application/json";
+    }
+    
+    // Configure retry parameters
+    const int max_retries = 3;
+    const int base_delay_ms = 200;    // Start with 200ms delay for better network handling
+    const int max_delay_ms = 2000;    // Cap maximum delay at 2 seconds
+    
+    // Attempt request with retries
+    HttpResponse* response = NULL;
+    for (int attempt = 0; attempt < max_retries; attempt++) {
+        // Apply exponential backoff for retries
+        if (attempt > 0) {
+            // Exponential backoff with jitter: delay = base_delay * 2^(attempt-1) + random jitter
+            int exponential_delay = base_delay_ms * (1 << (attempt - 1));
+            int jitter = rand() % 100;  // Add up to 100ms random jitter
+            int delay_ms = (exponential_delay + jitter) > max_delay_ms ? max_delay_ms : (exponential_delay + jitter);
+            
+            printf("pbft_node_http_request: Retry %d/%d after %dms delay for %s\n", 
+                   attempt + 1, max_retries, delay_ms, url);
+            usleep(delay_ms * 1000);  // Convert to microseconds
+        }
+        
+        // Free previous response if retry
+        if (response) {
+            http_response_free(response);
+            response = NULL;
+        }
+        
+        // Make the HTTP request using the unified http_client_request function
+        response = http_client_request(
+            url,
+            http_method,
+            json_data,
+            json_data ? strlen(json_data) : 0,
+            headers[0] ? headers : NULL,
+            config
+        );
+        
+        // Check if request was successful
+        if (response) {
+            if (http_client_is_success_status(response->status_code)) {
+                printf("pbft_node_http_request: Success on attempt %d - %s returned %d (size: %zu bytes)\n", 
+                       attempt + 1, url, response->status_code, response->size);
+                break;
+            } else {
+                // Log detailed failure information
+                printf("pbft_node_http_request: Attempt %d failed - %s returned %d (size: %zu bytes)\n", 
+                       attempt + 1, url, response->status_code, response->size);
+                
+                // Don't retry client errors (4xx) except timeout (408) and rate limiting (429)
+                if (response->status_code >= 400 && response->status_code < 500 && 
+                    response->status_code != 408 && response->status_code != 429) {
+                    printf("pbft_node_http_request: Client error %d, not retrying\n", response->status_code);
+                    break;
+                }
+                
+                // Continue to next retry for server errors or specific client errors
+                http_response_free(response);
+                response = NULL;
+            }
+        } else {
+            printf("pbft_node_http_request: Attempt %d failed - no response from %s (connection/timeout error)\n", 
+                   attempt + 1, url);
+        }
+    }
+    
+    if (!response) {
+        printf("pbft_node_http_request: All %d attempts failed for %s\n", max_retries, url);
+    }
+    
+    http_client_config_free(config);
+    return response;
+}
+
+// Enhanced response cleanup with proper error handling
+void pbft_node_free_http_response(HttpResponse* response) {
+    // Simply delegate to the existing http_response_free function from httpClient.c
+    http_response_free(response);
+    // Note: http_response_free already handles NULL responses safely
+}
 // Broadcasting functions using internal transactions
 int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block, const char* block_hash) { 
     if (!node || !block) return 0;
@@ -1058,15 +1188,372 @@ int pbft_node_broadcast_new_round_vote(PBFTNode* node, const char* block_hash, c
 }
 int pbft_node_broadcast_blockchain_to_new_node(PBFTNode* node, const char* peer_url) { return 0; }
 int pbft_node_rebroadcast_message(PBFTNode* node, const char* json_data, const char* route) { return 0; }
-int pbft_node_send_block_to_peer(PBFTNode* node, const char* peer_url, TW_Block* block, const char* block_hash) { return 0; }
-int pbft_node_send_verification_vote_to_peer(PBFTNode* node, const char* peer_url, const char* block_hash, const char* block_data) { return 0; }
-int pbft_node_send_commit_vote_to_peer(PBFTNode* node, const char* peer_url, const char* block_hash, const char* block_data) { return 0; }
-int pbft_node_send_new_round_vote_to_peer(PBFTNode* node, const char* peer_url, const char* block_hash, const char* block_data) { return 0; }
-int pbft_node_get_blockchain_length_from_peer(PBFTNode* node, const char* peer_url) { return 0; }
-char* pbft_node_get_last_block_hash_from_peer(PBFTNode* node, const char* peer_url) { return NULL; }
-int pbft_node_request_missing_blocks_from_peer(PBFTNode* node, const char* peer_url) { return 0; }
-int pbft_node_request_entire_blockchain_from_peer(PBFTNode* node, const char* peer_url) { return 0; }
-int pbft_node_get_pending_transactions_from_peer(PBFTNode* node, const char* peer_url, char* transactions_json) { return 0; }
+// Individual peer communication functions using HTTP client
+int pbft_node_send_block_to_peer(PBFTNode* node, const char* peer_url, TW_Block* block, const char* block_hash) {
+    if (!node || !peer_url || !block || !block_hash) {
+        printf("pbft_node_send_block_to_peer: Invalid parameters\n");
+        return 0;
+    }
+    
+    // Convert hex block hash to bytes
+    unsigned char block_hash_bytes[HASH_SIZE];
+    if (pbft_node_hex_to_bytes(block_hash, block_hash_bytes, HASH_SIZE) != HASH_SIZE) {
+        printf("pbft_node_send_block_to_peer: Invalid block hash format\n");
+        return 0;
+    }
+    
+    // Create block proposal internal transaction
+    TW_InternalTransaction* proposal = tw_create_block_proposal(
+        node->base.public_key,
+        node->base.id,
+        node->counter,  // Use counter as round number
+        block,
+        block_hash_bytes
+    );
+    
+    if (!proposal) {
+        printf("pbft_node_send_block_to_peer: Failed to create block proposal\n");
+        return 0;
+    }
+    
+    // Sign the internal transaction
+    TW_Internal_Transaction_add_signature(proposal);
+    
+    // Send binary block proposal to peer
+    int success = pbft_send_block_proposal_binary(peer_url, proposal);
+    
+    if (success) {
+        printf("pbft_node_send_block_to_peer: Successfully sent block to %s\n", peer_url);
+    } else {
+        printf("pbft_node_send_block_to_peer: Failed to send block to %s\n", peer_url);
+    }
+    
+    tw_destroy_internal_transaction(proposal);
+    return success;
+}
+
+int pbft_node_send_verification_vote_to_peer(PBFTNode* node, const char* peer_url, const char* block_hash, const char* block_data) {
+    if (!node || !peer_url || !block_hash) {
+        printf("pbft_node_send_verification_vote_to_peer: Invalid parameters\n");
+        return 0;
+    }
+    
+    // Convert hex block hash to bytes
+    unsigned char block_hash_bytes[HASH_SIZE];
+    if (pbft_node_hex_to_bytes(block_hash, block_hash_bytes, HASH_SIZE) != HASH_SIZE) {
+        printf("pbft_node_send_verification_vote_to_peer: Invalid block hash format\n");
+        return 0;
+    }
+    
+    // Create verification vote internal transaction (vote_phase = 1)
+    TW_InternalTransaction* vote = tw_create_vote_message(
+        node->base.public_key,
+        node->base.id,
+        node->counter,  // Use counter as round number
+        block_hash_bytes,
+        1  // vote_phase = 1 for verification
+    );
+    
+    if (!vote) {
+        printf("pbft_node_send_verification_vote_to_peer: Failed to create verification vote\n");
+        return 0;
+    }
+    
+    // Sign the internal transaction
+    TW_Internal_Transaction_add_signature(vote);
+    
+    // Send binary vote to peer
+    int success = pbft_send_vote_binary(peer_url, vote);
+    
+    if (success) {
+        printf("pbft_node_send_verification_vote_to_peer: Successfully sent verification vote to %s\n", peer_url);
+    } else {
+        printf("pbft_node_send_verification_vote_to_peer: Failed to send verification vote to %s\n", peer_url);
+    }
+    
+    tw_destroy_internal_transaction(vote);
+    return success;
+}
+
+int pbft_node_send_commit_vote_to_peer(PBFTNode* node, const char* peer_url, const char* block_hash, const char* block_data) {
+    if (!node || !peer_url || !block_hash) {
+        printf("pbft_node_send_commit_vote_to_peer: Invalid parameters\n");
+        return 0;
+    }
+    
+    // Convert hex block hash to bytes
+    unsigned char block_hash_bytes[HASH_SIZE];
+    if (pbft_node_hex_to_bytes(block_hash, block_hash_bytes, HASH_SIZE) != HASH_SIZE) {
+        printf("pbft_node_send_commit_vote_to_peer: Invalid block hash format\n");
+        return 0;
+    }
+    
+    // Create commit vote internal transaction (vote_phase = 2)
+    TW_InternalTransaction* vote = tw_create_vote_message(
+        node->base.public_key,
+        node->base.id,
+        node->counter,  // Use counter as round number
+        block_hash_bytes,
+        2  // vote_phase = 2 for commit
+    );
+    
+    if (!vote) {
+        printf("pbft_node_send_commit_vote_to_peer: Failed to create commit vote\n");
+        return 0;
+    }
+    
+    // Sign the internal transaction
+    TW_Internal_Transaction_add_signature(vote);
+    
+    // Send binary vote to peer
+    int success = pbft_send_vote_binary(peer_url, vote);
+    
+    if (success) {
+        printf("pbft_node_send_commit_vote_to_peer: Successfully sent commit vote to %s\n", peer_url);
+    } else {
+        printf("pbft_node_send_commit_vote_to_peer: Failed to send commit vote to %s\n", peer_url);
+    }
+    
+    tw_destroy_internal_transaction(vote);
+    return success;
+}
+
+int pbft_node_send_new_round_vote_to_peer(PBFTNode* node, const char* peer_url, const char* block_hash, const char* block_data) {
+    if (!node || !peer_url || !block_hash) {
+        printf("pbft_node_send_new_round_vote_to_peer: Invalid parameters\n");
+        return 0;
+    }
+    
+    // Convert hex block hash to bytes
+    unsigned char block_hash_bytes[HASH_SIZE];
+    if (pbft_node_hex_to_bytes(block_hash, block_hash_bytes, HASH_SIZE) != HASH_SIZE) {
+        printf("pbft_node_send_new_round_vote_to_peer: Invalid block hash format\n");
+        return 0;
+    }
+    
+    // Create new round vote internal transaction (vote_phase = 3)
+    TW_InternalTransaction* vote = tw_create_vote_message(
+        node->base.public_key,
+        node->base.id,
+        node->counter,  // Use counter as round number
+        block_hash_bytes,
+        3  // vote_phase = 3 for new round
+    );
+    
+    if (!vote) {
+        printf("pbft_node_send_new_round_vote_to_peer: Failed to create new round vote\n");
+        return 0;
+    }
+    
+    // Sign the internal transaction
+    TW_Internal_Transaction_add_signature(vote);
+    
+    // Send binary vote to peer
+    int success = pbft_send_vote_binary(peer_url, vote);
+    
+    if (success) {
+        printf("pbft_node_send_new_round_vote_to_peer: Successfully sent new round vote to %s\n", peer_url);
+    } else {
+        printf("pbft_node_send_new_round_vote_to_peer: Failed to send new round vote to %s\n", peer_url);
+    }
+    
+    tw_destroy_internal_transaction(vote);
+    return success;
+}
+// Blockchain synchronization functions using HTTP client
+int pbft_node_get_blockchain_length_from_peer(PBFTNode* node, const char* peer_url) {
+    if (!node || !peer_url) {
+        printf("pbft_node_get_blockchain_length_from_peer: Invalid parameters\n");
+        return -1;
+    }
+    
+    // Construct full URL for blockchain length endpoint
+    char full_url[512];
+    snprintf(full_url, sizeof(full_url), "%s/GetBlockChainLength", peer_url);
+    
+    // Make HTTP GET request
+    HttpResponse* response = pbft_node_http_request(full_url, "GET", NULL);
+    if (!response) {
+        printf("pbft_node_get_blockchain_length_from_peer: No response from %s\n", peer_url);
+        return -1;
+    }
+    
+    int chain_length = -1;
+    if (http_client_is_success_status(response->status_code)) {
+        // Extract chain length from JSON response
+        char* length_str = http_client_extract_json_field(response->data, "chainLength");
+        if (length_str) {
+            chain_length = atoi(length_str);
+            free(length_str);
+            printf("pbft_node_get_blockchain_length_from_peer: Peer %s has chain length %d\n", 
+                   peer_url, chain_length);
+        } else {
+            printf("pbft_node_get_blockchain_length_from_peer: Failed to parse chainLength from response\n");
+        }
+    } else {
+        printf("pbft_node_get_blockchain_length_from_peer: HTTP error %d from %s\n", 
+               response->status_code, peer_url);
+    }
+    
+    pbft_node_free_http_response(response);
+    return chain_length;
+}
+
+char* pbft_node_get_last_block_hash_from_peer(PBFTNode* node, const char* peer_url) {
+    if (!node || !peer_url) {
+        printf("pbft_node_get_last_block_hash_from_peer: Invalid parameters\n");
+        return NULL;
+    }
+    
+    // Construct full URL for last block hash endpoint
+    char full_url[512];
+    snprintf(full_url, sizeof(full_url), "%s/BlockChainLastHash", peer_url);
+    
+    // Make HTTP GET request
+    HttpResponse* response = pbft_node_http_request(full_url, "GET", NULL);
+    if (!response) {
+        printf("pbft_node_get_last_block_hash_from_peer: No response from %s\n", peer_url);
+        return NULL;
+    }
+    
+    char* last_hash = NULL;
+    if (http_client_is_success_status(response->status_code)) {
+        // Extract last hash from JSON response
+        last_hash = http_client_extract_json_field(response->data, "lastHash");
+        if (last_hash) {
+            printf("pbft_node_get_last_block_hash_from_peer: Peer %s last hash: %.16s...\n", 
+                   peer_url, last_hash);
+        } else {
+            printf("pbft_node_get_last_block_hash_from_peer: Failed to parse lastHash from response\n");
+        }
+    } else {
+        printf("pbft_node_get_last_block_hash_from_peer: HTTP error %d from %s\n", 
+               response->status_code, peer_url);
+    }
+    
+    pbft_node_free_http_response(response);
+    return last_hash;
+}
+
+int pbft_node_request_missing_blocks_from_peer(PBFTNode* node, const char* peer_url) {
+    if (!node || !peer_url || !node->base.blockchain) {
+        printf("pbft_node_request_missing_blocks_from_peer: Invalid parameters\n");
+        return -1;
+    }
+    
+    // Get our last block hash
+    char* our_last_hash = NULL;
+    if (node->base.blockchain->length > 0) {
+        TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
+        unsigned char hash_bytes[HASH_SIZE];
+        if (TW_Block_getHash(last_block, hash_bytes) == 1) {
+            our_last_hash = malloc(HASH_SIZE * 2 + 1);
+            if (our_last_hash) {
+                pbft_node_bytes_to_hex(hash_bytes, HASH_SIZE, our_last_hash);
+            }
+        }
+    }
+    
+    // Construct full URL for missing blocks endpoint
+    char full_url[512];
+    snprintf(full_url, sizeof(full_url), "%s/MissingBlockRequeset", peer_url);
+    
+    // Create JSON request with our last hash
+    char json_request[1024];
+    snprintf(json_request, sizeof(json_request), 
+             "{\"lastHash\":\"%s\",\"sender\":\"%s\",\"signature\":\"%s\",\"requestType\":\"missing_blocks\"}", 
+             our_last_hash ? our_last_hash : "0", 
+             "node_pubkey_placeholder",  // TODO: Use actual public key hex
+             "signature_placeholder");   // TODO: Sign the request
+    
+    // Make HTTP POST request
+    HttpResponse* response = pbft_node_http_request(full_url, "POST", json_request);
+    
+    int blocks_received = 0;
+    if (response && http_client_is_success_status(response->status_code)) {
+        printf("pbft_node_request_missing_blocks_from_peer: Received missing blocks response from %s\n", peer_url);
+        // TODO: Parse and process missing blocks from response
+        blocks_received = 1;  // Placeholder
+    } else {
+        printf("pbft_node_request_missing_blocks_from_peer: Failed to get missing blocks from %s (status: %d)\n", 
+               peer_url, response ? response->status_code : 0);
+    }
+    
+    if (our_last_hash) free(our_last_hash);
+    pbft_node_free_http_response(response);
+    return blocks_received;
+}
+
+int pbft_node_request_entire_blockchain_from_peer(PBFTNode* node, const char* peer_url) {
+    if (!node || !peer_url) {
+        printf("pbft_node_request_entire_blockchain_from_peer: Invalid parameters\n");
+        return -1;
+    }
+    
+    // Construct full URL for entire blockchain endpoint
+    char full_url[512];
+    snprintf(full_url, sizeof(full_url), "%s/RequestEntireBlockchain", peer_url);
+    
+    // Create JSON request
+    char json_request[512];
+    snprintf(json_request, sizeof(json_request), 
+             "{\"sender\":\"%s\",\"signature\":\"%s\",\"requestType\":\"entire_blockchain\"}", 
+             "node_pubkey_placeholder",  // TODO: Use actual public key hex
+             "signature_placeholder");   // TODO: Sign the request
+    
+    // Make HTTP POST request
+    HttpResponse* response = pbft_node_http_request(full_url, "POST", json_request);
+    
+    int success = 0;
+    if (response && http_client_is_success_status(response->status_code)) {
+        printf("pbft_node_request_entire_blockchain_from_peer: Received entire blockchain from %s\n", peer_url);
+        // TODO: Parse and process entire blockchain from response
+        success = 1;  // Placeholder
+    } else {
+        printf("pbft_node_request_entire_blockchain_from_peer: Failed to get entire blockchain from %s (status: %d)\n", 
+               peer_url, response ? response->status_code : 0);
+    }
+    
+    pbft_node_free_http_response(response);
+    return success;
+}
+
+int pbft_node_get_pending_transactions_from_peer(PBFTNode* node, const char* peer_url, char* transactions_json) {
+    if (!node || !peer_url) {
+        printf("pbft_node_get_pending_transactions_from_peer: Invalid parameters\n");
+        return -1;
+    }
+    
+    // Construct full URL for pending transactions endpoint
+    char full_url[512];
+    snprintf(full_url, sizeof(full_url), "%s/GetPendingTransactions", peer_url);
+    
+    // Make HTTP GET request
+    HttpResponse* response = pbft_node_http_request(full_url, "GET", NULL);
+    if (!response) {
+        printf("pbft_node_get_pending_transactions_from_peer: No response from %s\n", peer_url);
+        return -1;
+    }
+    
+    int transaction_count = 0;
+    if (http_client_is_success_status(response->status_code)) {
+        if (transactions_json && response->data) {
+            // Copy response data to output buffer (assuming caller allocated enough space)
+            strncpy(transactions_json, response->data, MAX_JSON_RESPONSE_SIZE - 1);
+            transactions_json[MAX_JSON_RESPONSE_SIZE - 1] = '\0';
+            
+            // TODO: Parse JSON and count actual transactions
+            transaction_count = 1;  // Placeholder
+            printf("pbft_node_get_pending_transactions_from_peer: Retrieved pending transactions from %s\n", peer_url);
+        }
+    } else {
+        printf("pbft_node_get_pending_transactions_from_peer: HTTP error %d from %s\n", 
+               response->status_code, peer_url);
+    }
+    
+    pbft_node_free_http_response(response);
+    return transaction_count;
+}
 int pbft_node_send_block_creation_signal(PBFTNode* node) {
     if (!node) return 0;
     
