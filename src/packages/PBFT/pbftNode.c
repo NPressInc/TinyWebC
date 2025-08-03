@@ -598,14 +598,12 @@ TW_Block* pbft_node_create_block(PBFTNode* node) {
             return NULL;
         }
         
-        // Debug: Print the previous hash being used
+        // Convert previous hash to hex for debugging
         char prev_hash_hex[HASH_SIZE * 2 + 1];
         pbft_node_bytes_to_hex(previous_hash, HASH_SIZE, prev_hash_hex);
-        printf("DEBUG: Creating block %d with previous hash: %s\n", new_index, prev_hash_hex);
     } else {
         // Genesis block case
         memset(previous_hash, 0, HASH_SIZE);
-        printf("DEBUG: Creating genesis block with zero previous hash\n");
     }
     
     // Set proposer ID
@@ -614,7 +612,7 @@ TW_Block* pbft_node_create_block(PBFTNode* node) {
     
     // Create the new block
     TW_Block* new_block = TW_Block_create(new_index, transactions, txn_count, 
-                                         timestamp, previous_hash, proposer_id);
+                                          timestamp, previous_hash, proposer_id);
     
     if (!new_block) {
         printf("Failed to create new block\n");
@@ -702,26 +700,16 @@ int pbft_node_validate_block(PBFTNode* node, TW_Block* block) {
         return 0;
     }
     
-    // Validate previous hash
-    if (node->base.blockchain->length > 0) {
-        TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
-        unsigned char expected_prev_hash[HASH_SIZE];
-        if (TW_Block_getHash(last_block, expected_prev_hash) != 1) {
-            printf("Failed to get hash of previous block for validation\n");
-            return 0;
-        }
-        
-        // Debug: Print hash comparison
-        char expected_hex[HASH_SIZE * 2 + 1];
-        char actual_hex[HASH_SIZE * 2 + 1];
-        pbft_node_bytes_to_hex(expected_prev_hash, HASH_SIZE, expected_hex);
-        pbft_node_bytes_to_hex(block->previous_hash, HASH_SIZE, actual_hex);
-        printf("DEBUG: Block %d validation - Expected prev hash: %s, Actual prev hash: %s\n", 
-               block->index, expected_hex, actual_hex);
-        
-        if (memcmp(block->previous_hash, expected_prev_hash, HASH_SIZE) != 0) {
-            printf("Invalid previous hash in block\n");
-            return 0;
+    // Validate previous hash (for non-genesis blocks)
+    if (block->index > 0) {
+        TW_Block* last_block = TW_BlockChain_get_last_block(node->base.blockchain);
+        if (last_block) {
+            unsigned char last_hash[HASH_SIZE];
+            if (TW_Block_getHash(last_block, last_hash) == 1) {
+                if (memcmp(block->previous_hash, last_hash, HASH_SIZE) != 0) {
+                    return false;
+                }
+            }
         }
     }
     

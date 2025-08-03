@@ -128,27 +128,25 @@ int TW_BlockChain_add_block(TW_BlockChain* blockchain, TW_Block* block) {
     if (!blockchain || !block || blockchain->length >= MAX_BLOCKS) return 0;
 
     // Basic validation: check previous hash matches last block
-    TW_Block* last = TW_BlockChain_get_last_block(blockchain);
+    TW_Block* last_block = TW_BlockChain_get_last_block(blockchain);
     unsigned char last_hash[HASH_SIZE];
-    if (last) {
-        if (TW_Block_getHash(last, last_hash) != 1) {
-            printf("DEBUG: TW_BlockChain_add_block - Failed to get hash of last block\n");
+    if (last_block) {
+        if (TW_Block_getHash(last_block, last_hash) != 1) {
+            // Failed to get hash of last block
             return 0;
         }
         
-        // Debug: Print hash comparison in blockchain add
+        // Convert hashes to hex for comparison
         char expected_hex[HASH_SIZE * 2 + 1];
-        char actual_hex[HASH_SIZE * 2 + 1];
-        // Simple hex conversion for debugging
-        for (int i = 0; i < HASH_SIZE; i++) {
-            sprintf(expected_hex + i * 2, "%02x", last_hash[i]);
-            sprintf(actual_hex + i * 2, "%02x", block->previous_hash[i]);
-        }
-        printf("DEBUG: TW_BlockChain_add_block - Expected prev hash: %s, Block prev hash: %s\n", 
-               expected_hex, actual_hex);
+        char block_hex[HASH_SIZE * 2 + 1];
         
-        if (memcmp(block->previous_hash, last_hash, HASH_SIZE) != 0) {
-            printf("DEBUG: TW_BlockChain_add_block - Hash mismatch, rejecting block\n");
+        for (int i = 0; i < HASH_SIZE; i++) {
+            sprintf(&expected_hex[i * 2], "%02x", last_hash[i]);
+            sprintf(&block_hex[i * 2], "%02x", block->previous_hash[i]);
+        }
+        
+        if (memcmp(last_hash, block->previous_hash, HASH_SIZE) != 0) {
+            // Hash mismatch, rejecting block
             return 0;
         }
     } else if (block->index != 0) {
@@ -157,8 +155,6 @@ int TW_BlockChain_add_block(TW_BlockChain* blockchain, TW_Block* block) {
 
     blockchain->blocks[blockchain->length] = block;
     blockchain->length++;
-    printf("DEBUG: TW_BlockChain_add_block - Successfully added block %d, new length: %u\n", 
-           block->index, blockchain->length);
     return 1;
 }
 

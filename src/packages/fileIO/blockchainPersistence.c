@@ -302,12 +302,30 @@ PersistenceResult blockchain_persistence_prepare_commit(TW_BlockChain* blockchai
         return PERSISTENCE_ERROR_DB_WRITE_FAILED;
     }
     
-    // Add all blocks to database within the transaction
-    for (uint32_t i = 0; i < blockchain->length; i++) {
-        if (db_add_block(blockchain->blocks[i], i) != 0) {
-            printf("❌ Failed to add block %u to database transaction\n", i);
-            blockchain_persistence_rollback_commit();
-            return PERSISTENCE_ERROR_DB_WRITE_FAILED;
+    // Add only new blocks to database within the transaction
+    uint32_t existing_db_blocks = 0;
+    if (db_get_block_count(&existing_db_blocks) == 0) {
+        // Only add blocks that are newer than what's in the database
+        for (uint32_t i = existing_db_blocks; i < blockchain->length; i++) {
+            if (db_add_block(blockchain->blocks[i], i) != 0) {
+                printf("❌ Failed to add block %u to database transaction\n", i);
+                blockchain_persistence_rollback_commit();
+                return PERSISTENCE_ERROR_DB_WRITE_FAILED;
+            }
+        }
+        
+        if (blockchain->length > existing_db_blocks) {
+            printf("   Adding %u new blocks to database (blocks %u-%u)\n", 
+                   blockchain->length - existing_db_blocks, existing_db_blocks, blockchain->length - 1);
+        }
+    } else {
+        // If we can't get block count, add all blocks (fallback behavior)
+        for (uint32_t i = 0; i < blockchain->length; i++) {
+            if (db_add_block(blockchain->blocks[i], i) != 0) {
+                printf("❌ Failed to add block %u to database transaction\n", i);
+                blockchain_persistence_rollback_commit();
+                return PERSISTENCE_ERROR_DB_WRITE_FAILED;
+            }
         }
     }
     
