@@ -508,6 +508,36 @@ src/packages/fileIO/blockchainIO.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainIO.c.s
 .PHONY : src/packages/fileIO/blockchainIO.c.s
 
+src/packages/fileIO/blockchainPersistence.o: src/packages/fileIO/blockchainPersistence.c.o
+.PHONY : src/packages/fileIO/blockchainPersistence.o
+
+# target to build an object file
+src/packages/fileIO/blockchainPersistence.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainPersistence.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainPersistence.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainPersistence.c.o
+.PHONY : src/packages/fileIO/blockchainPersistence.c.o
+
+src/packages/fileIO/blockchainPersistence.i: src/packages/fileIO/blockchainPersistence.c.i
+.PHONY : src/packages/fileIO/blockchainPersistence.i
+
+# target to preprocess a source file
+src/packages/fileIO/blockchainPersistence.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainPersistence.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainPersistence.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainPersistence.c.i
+.PHONY : src/packages/fileIO/blockchainPersistence.c.i
+
+src/packages/fileIO/blockchainPersistence.s: src/packages/fileIO/blockchainPersistence.c.s
+.PHONY : src/packages/fileIO/blockchainPersistence.s
+
+# target to generate assembly for a file
+src/packages/fileIO/blockchainPersistence.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainPersistence.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainPersistence.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainPersistence.c.s
+.PHONY : src/packages/fileIO/blockchainPersistence.c.s
+
 src/packages/fileIO/compression.o: src/packages/fileIO/compression.c.o
 .PHONY : src/packages/fileIO/compression.o
 
@@ -1571,6 +1601,9 @@ help:
 	@echo "... src/packages/fileIO/blockchainIO.o"
 	@echo "... src/packages/fileIO/blockchainIO.i"
 	@echo "... src/packages/fileIO/blockchainIO.s"
+	@echo "... src/packages/fileIO/blockchainPersistence.o"
+	@echo "... src/packages/fileIO/blockchainPersistence.i"
+	@echo "... src/packages/fileIO/blockchainPersistence.s"
 	@echo "... src/packages/fileIO/compression.o"
 	@echo "... src/packages/fileIO/compression.i"
 	@echo "... src/packages/fileIO/compression.s"

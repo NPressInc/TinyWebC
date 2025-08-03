@@ -12,6 +12,7 @@
 #include "packages/structures/blockChain/blockchain.h"
 #include "packages/signing/signing.h"
 #include "packages/sql/queries.h"
+#include "packages/fileIO/blockchainPersistence.h"
 
 // Global variables
 static PBFTNode* g_pbft_node = NULL;
@@ -92,6 +93,9 @@ int initialize_system(void) {
 // Cleanup system components
 void cleanup_system(void) {
     printf("Cleaning up system components...\n");
+    
+    // Cleanup persistence system first
+    blockchain_persistence_cleanup();
     
     // Cleanup message queues
     cleanup_message_queues();
@@ -221,36 +225,24 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // Initialize database and sync blockchain
-    printf("Initializing database...\n");
-    if (db_init("state/blockchain/blockchain.db") != 0) {
-        printf("Warning: Failed to initialize database\n");
-    } else {
-        printf("Database initialized successfully\n");
-        
-        // Register this node in the database node status tracking
+    // Register this node in the database if it's available
+    if (db_is_initialized()) {
+        printf("📝 Registering node in database...\n");
         char node_id_str[32];
         snprintf(node_id_str, sizeof(node_id_str), "node_%03u", node_id);
         
         char node_name[128];
         snprintf(node_name, sizeof(node_name), "TinyWeb Node %u", node_id);
         
-        printf("Registering node %s in database...\n", node_id_str);
         if (db_register_node(node_id_str, node_name, "127.0.0.1", port, true) == 0) {
-            printf("✓ Node registered successfully\n");
+            printf("✓ Node registered successfully: %s\n", node_id_str);
         } else {
-            printf("Warning: Failed to register node in database\n");
+            printf("⚠️ Warning: Failed to register node in database\n");
         }
         
-        // Sync blockchain to database
-        if (g_pbft_node->base.blockchain && g_pbft_node->base.blockchain->length > 0) {
-            printf("Syncing blockchain to database...\n");
-            if (db_sync_blockchain(g_pbft_node->base.blockchain) == 0) {
-                printf("✓ Blockchain synced to database successfully\n");
-            } else {
-                printf("Warning: Failed to sync blockchain to database\n");
-            }
-        }
+        printf("✅ Robust persistence system active\n");
+    } else {
+        printf("⚠️ Database not available - running in file-only mode\n");
     }
     
     // Load peers from blockchain

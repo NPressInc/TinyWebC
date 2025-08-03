@@ -23,6 +23,7 @@
 #include "../comm/nodeApi.h"
 #include "../invitation/invitationApi.h"
 #include "mongoose.h"
+#include "packages/fileIO/blockchainPersistence.h"
 
 // Forward declarations for endpoint handlers
 static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_data);
@@ -147,72 +148,77 @@ int pbft_node_load_or_create_blockchain(PBFTNode* node) {
     
     printf("Loading/creating blockchain for node %u\n", node->base.id);
     
-    // Try to load existing shared blockchain from file
+    // Initialize the robust persistence manager
     const char* blockchain_file = "state/blockchain/blockchain.dat";
+    const char* db_file = "state/blockchain/blockchain.db";
     
-    // Check if blockchain file exists
-    FILE* file = fopen(blockchain_file, "rb");
-    if (file) {
-        fclose(file);
-        printf("Loading existing blockchain from %s\n", blockchain_file);
-        
-        // Load blockchain from file
-        node->base.blockchain = readBlockChainFromFile();
-        if (node->base.blockchain) {
-            printf("Loaded existing blockchain for node %u with length %u\n", 
-                   node->base.id, node->base.blockchain->length);
-            
-            // Initialize blockchain data manager with 120-day retention for important data
-            TW_DataRetentionConfig config = {
-                .critical_days = 0,    // Keep critical data forever
-                .important_days = 120, // Keep important data for 4 months
-                .operational_days = 30 // Keep operational data for 1 month
-            };
-            
-            TW_BlockchainDataManager_init(&config);
-            
-            // Check if database reload is needed
-            if (TW_BlockchainDataManager_needs_reload(node->base.blockchain)) {
-                printf("🔄 Database inconsistent with blockchain, reloading...\n");
-                
-                TW_ReloadStats stats;
-                int result = TW_BlockchainDataManager_reload_from_blockchain(
-                    node->base.blockchain, NULL, &stats);
-                    
-                if (result == 0) {
-                    printf("✅ Database successfully reloaded from blockchain\n");
-                    printf("📊 Reload Statistics:\n");
-                    printf("   Critical transactions: %u\n", stats.critical_transactions);
-                    printf("   Important transactions: %u\n", stats.important_transactions);
-                    printf("   Operational transactions: %u\n", stats.operational_transactions);
-                    printf("   Transactions skipped: %u\n", stats.transactions_skipped);
-                } else {
-                    printf("❌ Failed to reload database from blockchain\n");
-                }
-            } else {
-                printf("✅ Database is consistent with blockchain\n");
-            }
-            
-            return 0;
-        } else {
-            printf("Failed to load blockchain from file, creating new one\n");
-        }
-    } else {
-        printf("No existing blockchain file found at %s\n", blockchain_file);
-        printf("💡 To initialize with proper multi-recipient encryption, run:\n");
-        printf("   ./init_tool -v src/packages/initialization/configs/network_config.json\n");
-    }
-    
-    // Create a new blockchain if loading failed or file doesn't exist
-    node->base.blockchain = TW_BlockChain_create(node->base.public_key, NULL, 0);
-    if (!node->base.blockchain) {
-        printf("Failed to create blockchain for node %u\n", node->base.id);
+    PersistenceResult init_result = blockchain_persistence_init(blockchain_file, db_file);
+    if (init_result != PERSISTENCE_SUCCESS) {
+        printf("❌ Failed to initialize persistence manager: %s\n", 
+               blockchain_persistence_error_string(init_result));
         return -1;
     }
     
-    printf("Created new blockchain for node %u with length %u\n", 
-           node->base.id, node->base.blockchain->length);
+    // Initialize database first (required for recovery operations)
+    printf("🔄 Initializing database for persistence operations...\n");
+    if (db_init(db_file) != 0) {
+        printf("⚠️ Database initialization failed - running in file-only mode\n");
+    } else {
+        printf("✅ Database initialized for persistence operations\n");
+    }
     
+    // Try to load blockchain using the robust persistence system with recovery
+    printf("🔄 Loading blockchain with automatic recovery...\n");
+    TW_BlockChain* loaded_blockchain = readBlockChainFromFile();
+    
+    if (loaded_blockchain) {
+        node->base.blockchain = loaded_blockchain;
+        printf("✅ Blockchain loaded: %u blocks\n", loaded_blockchain->length);
+    } else {
+        printf("Creating new blockchain...\n");
+        // Create new blockchain if none exists
+        unsigned char node_pubkey[PUBKEY_SIZE];
+        snprintf((char*)node_pubkey, PUBKEY_SIZE, "node_%u", node->base.id);
+        
+        node->base.blockchain = TW_BlockChain_create(node_pubkey, NULL, 0);
+        if (!node->base.blockchain) {
+            printf("❌ Failed to create new blockchain\n");
+            return -1;
+        }
+    }
+    
+    // Check for inconsistencies and auto-recover if needed
+    uint32_t file_length = node->base.blockchain->length;
+    uint32_t db_length = 0;
+    
+    if (db_is_initialized()) {
+        db_get_block_count(&db_length);
+        
+        if (file_length != db_length) {
+            printf("🔍 Recovery needed: Length mismatch (file: %u, db: %u)\n", file_length, db_length);
+            
+            RecoveryStats recovery_stats;
+            PersistenceResult recovery_result = blockchain_persistence_auto_recovery(
+                RECOVERY_STRATEGY_PREFER_NEWER, &recovery_stats);
+            
+            if (recovery_result == PERSISTENCE_SUCCESS) {
+                // Reload blockchain after recovery
+                TW_BlockChain_destroy(node->base.blockchain);
+                node->base.blockchain = readBlockChainFromFile();
+                if (node->base.blockchain) {
+                    printf("✅ Blockchain reloaded after recovery: %u blocks\n", 
+                           node->base.blockchain->length);
+                } else {
+                    printf("❌ Failed to reload blockchain after recovery\n");
+                    return -1;
+                }
+            } else {
+                printf("⚠️ Recovery failed, continuing with existing blockchain\n");
+            }
+        }
+    }
+    
+    printf("✅ Blockchain persistence system ready\n");
     return 0;
 }
 
@@ -734,37 +740,36 @@ int pbft_node_commit_block(PBFTNode* node, TW_Block* block) {
         return 0;
     }
     
-    // Add block to blockchain
+    // Add block to blockchain in memory
     if (TW_BlockChain_add_block(node->base.blockchain, block) == 0) {
         printf("Failed to add block to blockchain\n");
         return 0;
     }
     
-    printf("Successfully committed block %d to blockchain\n", block->index);
+    printf("Successfully committed block %d to blockchain (in memory)\n", block->index);
     
-    // Sync to database if available
-    if (db_is_initialized()) {
-        if (db_add_block(block, block->index) == 0) {
-            printf("Block %d synced to database successfully\n", block->index);
-        } else {
-            printf("Warning: Failed to sync block %d to database\n", block->index);
-        }
+    // Use the new robust persistence system with two-phase commit
+    printf("🔄 Persisting block using two-phase commit...\n");
+    PersistenceResult persist_result = blockchain_persistence_commit_block(node->base.blockchain, block);
+    
+    if (persist_result == PERSISTENCE_SUCCESS) {
+        printf("✅ Block %d persisted successfully using two-phase commit\n", block->index);
+    } else {
+        printf("❌ Failed to persist block %d: %s\n", block->index, 
+               blockchain_persistence_error_string(persist_result));
+        printf("⚠️ Block is committed in memory but persistence failed\n");
+        printf("   The system will attempt recovery on next startup\n");
+        
+        // Don't fail the commit entirely - the block is in memory
+        // The recovery system will handle inconsistency on restart
     }
     
-    // NOW clear the transaction queue since block was successfully committed
+    // Clear the transaction queue since block was successfully committed
     if (message_queues.transaction_count > 0) {
         printf("Clearing transaction queue after successful block commit (had %d transactions)\n", 
                message_queues.transaction_count);
         message_queues.transaction_count = 0;
     }
-    
-    // Save blockchain to file after successful commit
-    printf("Saving blockchain after block commit...\n");
-    if (!pbft_node_save_blockchain_periodically(node)) {
-        printf("Warning: Failed to save blockchain after committing block %d\n", block->index);
-        // Don't fail the commit just because save failed
-    }
-
     
     return 1;
 }
