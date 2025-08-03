@@ -286,7 +286,7 @@ void test_peer_count_functions() {
     node_state_cleanup();
 }
 
-int main() {
+int node_peer_management_test_main() {
     printf("Starting Node Peer Management Tests\n");
     printf("====================================\n");
     

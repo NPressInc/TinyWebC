@@ -1,9 +1,0 @@
-valgrind --leak-check=full --track-origins=yes  ./tinyweb_tests
-
-gcc main.c -o tinyweb
-
-cmake . && make && ./tinyweb_tests
-
-find src/ -name "*.c" -exec cproto {} \; > myheader.h
-
-sudo fuser -k 8080/tcp

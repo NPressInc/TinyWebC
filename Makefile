@@ -31,9 +31,6 @@ default_target: all
 
 .SUFFIXES: .hpux_make_needs_suffix_list
 
-# Produce verbose output by default.
-VERBOSE = 1
-
 # Command-line flag to silence nested $(MAKE).
 $(VERBOSE)MAKESILENT = -s
 
@@ -156,17 +153,17 @@ tinyweb_tests/fast:
 .PHONY : tinyweb_tests/fast
 
 #=============================================================================
-# Target rules for targets named simple_http_client_test
+# Target rules for targets named init_tool
 
 # Build rule for target.
-simple_http_client_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 simple_http_client_test
-.PHONY : simple_http_client_test
+init_tool: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 init_tool
+.PHONY : init_tool
 
 # fast build rule for target.
-simple_http_client_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/build
-.PHONY : simple_http_client_test/fast
+init_tool/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/build
+.PHONY : init_tool/fast
 
 #=============================================================================
 # Target rules for targets named pbft_http_client_test
@@ -181,82 +178,6 @@ pbft_http_client_test/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/build
 .PHONY : pbft_http_client_test/fast
 
-#=============================================================================
-# Target rules for targets named check
-
-# Build rule for target.
-check: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 check
-.PHONY : check
-
-# fast build rule for target.
-check/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/check.dir/build.make CMakeFiles/check.dir/build
-.PHONY : check/fast
-
-#=============================================================================
-# Target rules for targets named pbft_node
-
-# Build rule for target.
-pbft_node: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pbft_node
-.PHONY : pbft_node
-
-# fast build rule for target.
-pbft_node/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/build
-.PHONY : pbft_node/fast
-
-#=============================================================================
-# Target rules for targets named init_tool
-
-# Build rule for target.
-init_tool: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 init_tool
-.PHONY : init_tool
-
-# fast build rule for target.
-init_tool/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/build
-.PHONY : init_tool/fast
-
-#=============================================================================
-# Target rules for targets named multi_node_pbft_test_fixed
-
-# Build rule for target.
-multi_node_pbft_test_fixed: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 multi_node_pbft_test_fixed
-.PHONY : multi_node_pbft_test_fixed
-
-# fast build rule for target.
-multi_node_pbft_test_fixed/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test_fixed.dir/build.make CMakeFiles/multi_node_pbft_test_fixed.dir/build
-.PHONY : multi_node_pbft_test_fixed/fast
-
-multi_node_pbft_test_fixed.o: multi_node_pbft_test_fixed.c.o
-.PHONY : multi_node_pbft_test_fixed.o
-
-# target to build an object file
-multi_node_pbft_test_fixed.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test_fixed.dir/build.make CMakeFiles/multi_node_pbft_test_fixed.dir/multi_node_pbft_test_fixed.c.o
-.PHONY : multi_node_pbft_test_fixed.c.o
-
-multi_node_pbft_test_fixed.i: multi_node_pbft_test_fixed.c.i
-.PHONY : multi_node_pbft_test_fixed.i
-
-# target to preprocess a source file
-multi_node_pbft_test_fixed.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test_fixed.dir/build.make CMakeFiles/multi_node_pbft_test_fixed.dir/multi_node_pbft_test_fixed.c.i
-.PHONY : multi_node_pbft_test_fixed.c.i
-
-multi_node_pbft_test_fixed.s: multi_node_pbft_test_fixed.c.s
-.PHONY : multi_node_pbft_test_fixed.s
-
-# target to generate assembly for a file
-multi_node_pbft_test_fixed.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/multi_node_pbft_test_fixed.dir/build.make CMakeFiles/multi_node_pbft_test_fixed.dir/multi_node_pbft_test_fixed.c.s
-.PHONY : multi_node_pbft_test_fixed.c.s
-
 src/external/mongoose/mongoose.o: src/external/mongoose/mongoose.c.o
 .PHONY : src/external/mongoose/mongoose.o
 
@@ -264,9 +185,7 @@ src/external/mongoose/mongoose.o: src/external/mongoose/mongoose.c.o
 src/external/mongoose/mongoose.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/external/mongoose/mongoose.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/external/mongoose/mongoose.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/external/mongoose/mongoose.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/external/mongoose/mongoose.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/external/mongoose/mongoose.c.o
 .PHONY : src/external/mongoose/mongoose.c.o
 
 src/external/mongoose/mongoose.i: src/external/mongoose/mongoose.c.i
@@ -276,9 +195,7 @@ src/external/mongoose/mongoose.i: src/external/mongoose/mongoose.c.i
 src/external/mongoose/mongoose.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/external/mongoose/mongoose.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/external/mongoose/mongoose.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/external/mongoose/mongoose.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/external/mongoose/mongoose.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/external/mongoose/mongoose.c.i
 .PHONY : src/external/mongoose/mongoose.c.i
 
 src/external/mongoose/mongoose.s: src/external/mongoose/mongoose.c.s
@@ -288,9 +205,7 @@ src/external/mongoose/mongoose.s: src/external/mongoose/mongoose.c.s
 src/external/mongoose/mongoose.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/external/mongoose/mongoose.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/external/mongoose/mongoose.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/external/mongoose/mongoose.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/external/mongoose/mongoose.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/external/mongoose/mongoose.c.s
 .PHONY : src/external/mongoose/mongoose.c.s
 
 src/main.o: src/main.c.o
@@ -324,9 +239,7 @@ src/packages/PBFT/node.o: src/packages/PBFT/node.c.o
 src/packages/PBFT/node.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/node.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/node.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/PBFT/node.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/PBFT/node.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/node.c.o
 .PHONY : src/packages/PBFT/node.c.o
 
 src/packages/PBFT/node.i: src/packages/PBFT/node.c.i
@@ -336,9 +249,7 @@ src/packages/PBFT/node.i: src/packages/PBFT/node.c.i
 src/packages/PBFT/node.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/node.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/node.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/PBFT/node.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/PBFT/node.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/node.c.i
 .PHONY : src/packages/PBFT/node.c.i
 
 src/packages/PBFT/node.s: src/packages/PBFT/node.c.s
@@ -348,34 +259,8 @@ src/packages/PBFT/node.s: src/packages/PBFT/node.c.s
 src/packages/PBFT/node.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/node.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/node.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/PBFT/node.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/PBFT/node.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/node.c.s
 .PHONY : src/packages/PBFT/node.c.s
-
-src/packages/PBFT/pbftMain.o: src/packages/PBFT/pbftMain.c.o
-.PHONY : src/packages/PBFT/pbftMain.o
-
-# target to build an object file
-src/packages/PBFT/pbftMain.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/pbftMain.c.o
-.PHONY : src/packages/PBFT/pbftMain.c.o
-
-src/packages/PBFT/pbftMain.i: src/packages/PBFT/pbftMain.c.i
-.PHONY : src/packages/PBFT/pbftMain.i
-
-# target to preprocess a source file
-src/packages/PBFT/pbftMain.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/pbftMain.c.i
-.PHONY : src/packages/PBFT/pbftMain.c.i
-
-src/packages/PBFT/pbftMain.s: src/packages/PBFT/pbftMain.c.s
-.PHONY : src/packages/PBFT/pbftMain.s
-
-# target to generate assembly for a file
-src/packages/PBFT/pbftMain.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/pbftMain.c.s
-.PHONY : src/packages/PBFT/pbftMain.c.s
 
 src/packages/PBFT/pbftNode.o: src/packages/PBFT/pbftNode.c.o
 .PHONY : src/packages/PBFT/pbftNode.o
@@ -384,9 +269,7 @@ src/packages/PBFT/pbftNode.o: src/packages/PBFT/pbftNode.c.o
 src/packages/PBFT/pbftNode.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/pbftNode.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/pbftNode.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/PBFT/pbftNode.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/PBFT/pbftNode.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/pbftNode.c.o
 .PHONY : src/packages/PBFT/pbftNode.c.o
 
 src/packages/PBFT/pbftNode.i: src/packages/PBFT/pbftNode.c.i
@@ -396,9 +279,7 @@ src/packages/PBFT/pbftNode.i: src/packages/PBFT/pbftNode.c.i
 src/packages/PBFT/pbftNode.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/pbftNode.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/pbftNode.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/PBFT/pbftNode.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/PBFT/pbftNode.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/pbftNode.c.i
 .PHONY : src/packages/PBFT/pbftNode.c.i
 
 src/packages/PBFT/pbftNode.s: src/packages/PBFT/pbftNode.c.s
@@ -408,9 +289,7 @@ src/packages/PBFT/pbftNode.s: src/packages/PBFT/pbftNode.c.s
 src/packages/PBFT/pbftNode.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/PBFT/pbftNode.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/PBFT/pbftNode.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/PBFT/pbftNode.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/PBFT/pbftNode.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/PBFT/pbftNode.c.s
 .PHONY : src/packages/PBFT/pbftNode.c.s
 
 src/packages/comm/accessApi.o: src/packages/comm/accessApi.c.o
@@ -420,9 +299,7 @@ src/packages/comm/accessApi.o: src/packages/comm/accessApi.c.o
 src/packages/comm/accessApi.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/accessApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/accessApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/accessApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/accessApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/accessApi.c.o
 .PHONY : src/packages/comm/accessApi.c.o
 
 src/packages/comm/accessApi.i: src/packages/comm/accessApi.c.i
@@ -432,9 +309,7 @@ src/packages/comm/accessApi.i: src/packages/comm/accessApi.c.i
 src/packages/comm/accessApi.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/accessApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/accessApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/accessApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/accessApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/accessApi.c.i
 .PHONY : src/packages/comm/accessApi.c.i
 
 src/packages/comm/accessApi.s: src/packages/comm/accessApi.c.s
@@ -444,9 +319,7 @@ src/packages/comm/accessApi.s: src/packages/comm/accessApi.c.s
 src/packages/comm/accessApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/accessApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/accessApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/accessApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/accessApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/accessApi.c.s
 .PHONY : src/packages/comm/accessApi.c.s
 
 src/packages/comm/blockChainQueryApi.o: src/packages/comm/blockChainQueryApi.c.o
@@ -456,9 +329,7 @@ src/packages/comm/blockChainQueryApi.o: src/packages/comm/blockChainQueryApi.c.o
 src/packages/comm/blockChainQueryApi.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/blockChainQueryApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/blockChainQueryApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/blockChainQueryApi.c.o
 .PHONY : src/packages/comm/blockChainQueryApi.c.o
 
 src/packages/comm/blockChainQueryApi.i: src/packages/comm/blockChainQueryApi.c.i
@@ -468,9 +339,7 @@ src/packages/comm/blockChainQueryApi.i: src/packages/comm/blockChainQueryApi.c.i
 src/packages/comm/blockChainQueryApi.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/blockChainQueryApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/blockChainQueryApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/blockChainQueryApi.c.i
 .PHONY : src/packages/comm/blockChainQueryApi.c.i
 
 src/packages/comm/blockChainQueryApi.s: src/packages/comm/blockChainQueryApi.c.s
@@ -480,9 +349,7 @@ src/packages/comm/blockChainQueryApi.s: src/packages/comm/blockChainQueryApi.c.s
 src/packages/comm/blockChainQueryApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/blockChainQueryApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/blockChainQueryApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/blockChainQueryApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/blockChainQueryApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/blockChainQueryApi.c.s
 .PHONY : src/packages/comm/blockChainQueryApi.c.s
 
 src/packages/comm/httpClient.o: src/packages/comm/httpClient.c.o
@@ -492,9 +359,7 @@ src/packages/comm/httpClient.o: src/packages/comm/httpClient.c.o
 src/packages/comm/httpClient.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/httpClient.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/httpClient.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/httpClient.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/httpClient.c.o
 .PHONY : src/packages/comm/httpClient.c.o
 
 src/packages/comm/httpClient.i: src/packages/comm/httpClient.c.i
@@ -504,9 +369,7 @@ src/packages/comm/httpClient.i: src/packages/comm/httpClient.c.i
 src/packages/comm/httpClient.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/httpClient.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/httpClient.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/httpClient.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/httpClient.c.i
 .PHONY : src/packages/comm/httpClient.c.i
 
 src/packages/comm/httpClient.s: src/packages/comm/httpClient.c.s
@@ -516,9 +379,7 @@ src/packages/comm/httpClient.s: src/packages/comm/httpClient.c.s
 src/packages/comm/httpClient.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/httpClient.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/httpClient.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/httpClient.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/httpClient.c.s
 .PHONY : src/packages/comm/httpClient.c.s
 
 src/packages/comm/nodeApi.o: src/packages/comm/nodeApi.c.o
@@ -528,9 +389,7 @@ src/packages/comm/nodeApi.o: src/packages/comm/nodeApi.c.o
 src/packages/comm/nodeApi.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/nodeApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/nodeApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/nodeApi.c.o
 .PHONY : src/packages/comm/nodeApi.c.o
 
 src/packages/comm/nodeApi.i: src/packages/comm/nodeApi.c.i
@@ -540,9 +399,7 @@ src/packages/comm/nodeApi.i: src/packages/comm/nodeApi.c.i
 src/packages/comm/nodeApi.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/nodeApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/nodeApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/nodeApi.c.i
 .PHONY : src/packages/comm/nodeApi.c.i
 
 src/packages/comm/nodeApi.s: src/packages/comm/nodeApi.c.s
@@ -552,9 +409,7 @@ src/packages/comm/nodeApi.s: src/packages/comm/nodeApi.c.s
 src/packages/comm/nodeApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/nodeApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/nodeApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/nodeApi.c.s
 .PHONY : src/packages/comm/nodeApi.c.s
 
 src/packages/comm/pbftApi.o: src/packages/comm/pbftApi.c.o
@@ -564,9 +419,7 @@ src/packages/comm/pbftApi.o: src/packages/comm/pbftApi.c.o
 src/packages/comm/pbftApi.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/pbftApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/pbftApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/pbftApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/pbftApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/pbftApi.c.o
 .PHONY : src/packages/comm/pbftApi.c.o
 
 src/packages/comm/pbftApi.i: src/packages/comm/pbftApi.c.i
@@ -576,9 +429,7 @@ src/packages/comm/pbftApi.i: src/packages/comm/pbftApi.c.i
 src/packages/comm/pbftApi.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/pbftApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/pbftApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/pbftApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/pbftApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/pbftApi.c.i
 .PHONY : src/packages/comm/pbftApi.c.i
 
 src/packages/comm/pbftApi.s: src/packages/comm/pbftApi.c.s
@@ -588,9 +439,7 @@ src/packages/comm/pbftApi.s: src/packages/comm/pbftApi.c.s
 src/packages/comm/pbftApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/pbftApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/pbftApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/comm/pbftApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/comm/pbftApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/comm/pbftApi.c.s
 .PHONY : src/packages/comm/pbftApi.c.s
 
 src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
@@ -600,10 +449,8 @@ src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
 src/packages/encryption/encryption.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/encryption/encryption.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/encryption/encryption.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/encryption/encryption.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/encryption/encryption.c.o
 .PHONY : src/packages/encryption/encryption.c.o
 
 src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
@@ -613,10 +460,8 @@ src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
 src/packages/encryption/encryption.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/encryption/encryption.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/encryption/encryption.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/encryption/encryption.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/encryption/encryption.c.i
 .PHONY : src/packages/encryption/encryption.c.i
 
 src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
@@ -626,10 +471,8 @@ src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
 src/packages/encryption/encryption.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/encryption/encryption.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/encryption/encryption.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/encryption/encryption.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/encryption/encryption.c.s
 .PHONY : src/packages/encryption/encryption.c.s
 
 src/packages/fileIO/blockchainIO.o: src/packages/fileIO/blockchainIO.c.o
@@ -639,10 +482,8 @@ src/packages/fileIO/blockchainIO.o: src/packages/fileIO/blockchainIO.c.o
 src/packages/fileIO/blockchainIO.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/fileIO/blockchainIO.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainIO.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/fileIO/blockchainIO.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/blockchainIO.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainIO.c.o
 .PHONY : src/packages/fileIO/blockchainIO.c.o
 
 src/packages/fileIO/blockchainIO.i: src/packages/fileIO/blockchainIO.c.i
@@ -652,10 +493,8 @@ src/packages/fileIO/blockchainIO.i: src/packages/fileIO/blockchainIO.c.i
 src/packages/fileIO/blockchainIO.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/fileIO/blockchainIO.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainIO.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/fileIO/blockchainIO.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/blockchainIO.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainIO.c.i
 .PHONY : src/packages/fileIO/blockchainIO.c.i
 
 src/packages/fileIO/blockchainIO.s: src/packages/fileIO/blockchainIO.c.s
@@ -665,10 +504,8 @@ src/packages/fileIO/blockchainIO.s: src/packages/fileIO/blockchainIO.c.s
 src/packages/fileIO/blockchainIO.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/blockchainIO.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/blockchainIO.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/fileIO/blockchainIO.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainIO.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/fileIO/blockchainIO.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/blockchainIO.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/blockchainIO.c.s
 .PHONY : src/packages/fileIO/blockchainIO.c.s
 
 src/packages/fileIO/compression.o: src/packages/fileIO/compression.c.o
@@ -678,10 +515,8 @@ src/packages/fileIO/compression.o: src/packages/fileIO/compression.c.o
 src/packages/fileIO/compression.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/fileIO/compression.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/compression.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/fileIO/compression.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/compression.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/compression.c.o
 .PHONY : src/packages/fileIO/compression.c.o
 
 src/packages/fileIO/compression.i: src/packages/fileIO/compression.c.i
@@ -691,10 +526,8 @@ src/packages/fileIO/compression.i: src/packages/fileIO/compression.c.i
 src/packages/fileIO/compression.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/fileIO/compression.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/compression.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/fileIO/compression.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/compression.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/compression.c.i
 .PHONY : src/packages/fileIO/compression.c.i
 
 src/packages/fileIO/compression.s: src/packages/fileIO/compression.c.s
@@ -704,10 +537,8 @@ src/packages/fileIO/compression.s: src/packages/fileIO/compression.c.s
 src/packages/fileIO/compression.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/fileIO/compression.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/compression.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/fileIO/compression.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/fileIO/compression.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/fileIO/compression.c.s
 .PHONY : src/packages/fileIO/compression.c.s
 
 src/packages/initialization/init.o: src/packages/initialization/init.c.o
@@ -718,6 +549,7 @@ src/packages/initialization/init.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/initialization/init.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/initialization/init.c.o
 .PHONY : src/packages/initialization/init.c.o
 
 src/packages/initialization/init.i: src/packages/initialization/init.c.i
@@ -728,6 +560,7 @@ src/packages/initialization/init.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/initialization/init.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/initialization/init.c.i
 .PHONY : src/packages/initialization/init.c.i
 
 src/packages/initialization/init.s: src/packages/initialization/init.c.s
@@ -738,6 +571,7 @@ src/packages/initialization/init.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/initialization/init.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/initialization/init.c.s
 .PHONY : src/packages/initialization/init.c.s
 
 src/packages/initialization/init_tool.o: src/packages/initialization/init_tool.c.o
@@ -771,9 +605,7 @@ src/packages/invitation/invitation.o: src/packages/invitation/invitation.c.o
 src/packages/invitation/invitation.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/invitation/invitation.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitation.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitation.c.o
 .PHONY : src/packages/invitation/invitation.c.o
 
 src/packages/invitation/invitation.i: src/packages/invitation/invitation.c.i
@@ -783,9 +615,7 @@ src/packages/invitation/invitation.i: src/packages/invitation/invitation.c.i
 src/packages/invitation/invitation.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/invitation/invitation.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitation.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitation.c.i
 .PHONY : src/packages/invitation/invitation.c.i
 
 src/packages/invitation/invitation.s: src/packages/invitation/invitation.c.s
@@ -795,9 +625,7 @@ src/packages/invitation/invitation.s: src/packages/invitation/invitation.c.s
 src/packages/invitation/invitation.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/invitation/invitation.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitation.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitation.c.s
 .PHONY : src/packages/invitation/invitation.c.s
 
 src/packages/invitation/invitationApi.o: src/packages/invitation/invitationApi.c.o
@@ -807,9 +635,7 @@ src/packages/invitation/invitationApi.o: src/packages/invitation/invitationApi.c
 src/packages/invitation/invitationApi.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/invitation/invitationApi.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitationApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitationApi.c.o
 .PHONY : src/packages/invitation/invitationApi.c.o
 
 src/packages/invitation/invitationApi.i: src/packages/invitation/invitationApi.c.i
@@ -819,9 +645,7 @@ src/packages/invitation/invitationApi.i: src/packages/invitation/invitationApi.c
 src/packages/invitation/invitationApi.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/invitation/invitationApi.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitationApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitationApi.c.i
 .PHONY : src/packages/invitation/invitationApi.c.i
 
 src/packages/invitation/invitationApi.s: src/packages/invitation/invitationApi.c.s
@@ -831,9 +655,7 @@ src/packages/invitation/invitationApi.s: src/packages/invitation/invitationApi.c
 src/packages/invitation/invitationApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/invitation/invitationApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitationApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/invitation/invitationApi.c.s
 .PHONY : src/packages/invitation/invitationApi.c.s
 
 src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
@@ -843,10 +665,8 @@ src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 src/packages/keystore/keystore.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/keystore/keystore.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/keystore/keystore.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/keystore/keystore.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.c.o
 
 src/packages/keystore/keystore.i: src/packages/keystore/keystore.c.i
@@ -856,10 +676,8 @@ src/packages/keystore/keystore.i: src/packages/keystore/keystore.c.i
 src/packages/keystore/keystore.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/keystore/keystore.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/keystore/keystore.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/keystore/keystore.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/keystore/keystore.c.i
 .PHONY : src/packages/keystore/keystore.c.i
 
 src/packages/keystore/keystore.s: src/packages/keystore/keystore.c.s
@@ -869,10 +687,8 @@ src/packages/keystore/keystore.s: src/packages/keystore/keystore.c.s
 src/packages/keystore/keystore.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/keystore/keystore.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/keystore/keystore.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/keystore/keystore.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/keystore/keystore.c.s
 .PHONY : src/packages/keystore/keystore.c.s
 
 src/packages/signing/signing.o: src/packages/signing/signing.c.o
@@ -882,10 +698,8 @@ src/packages/signing/signing.o: src/packages/signing/signing.c.o
 src/packages/signing/signing.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/signing/signing.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/signing/signing.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/signing/signing.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/signing/signing.c.o
 .PHONY : src/packages/signing/signing.c.o
 
 src/packages/signing/signing.i: src/packages/signing/signing.c.i
@@ -895,10 +709,8 @@ src/packages/signing/signing.i: src/packages/signing/signing.c.i
 src/packages/signing/signing.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/signing/signing.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/signing/signing.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/signing/signing.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/signing/signing.c.i
 .PHONY : src/packages/signing/signing.c.i
 
 src/packages/signing/signing.s: src/packages/signing/signing.c.s
@@ -908,10 +720,8 @@ src/packages/signing/signing.s: src/packages/signing/signing.c.s
 src/packages/signing/signing.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/signing/signing.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/signing/signing.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/signing/signing.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/signing/signing.c.s
 .PHONY : src/packages/signing/signing.c.s
 
 src/packages/sql/database.o: src/packages/sql/database.c.o
@@ -921,10 +731,8 @@ src/packages/sql/database.o: src/packages/sql/database.c.o
 src/packages/sql/database.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/database.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/database.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/database.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/database.c.o
 .PHONY : src/packages/sql/database.c.o
 
 src/packages/sql/database.i: src/packages/sql/database.c.i
@@ -934,10 +742,8 @@ src/packages/sql/database.i: src/packages/sql/database.c.i
 src/packages/sql/database.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/database.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/database.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/database.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/database.c.i
 .PHONY : src/packages/sql/database.c.i
 
 src/packages/sql/database.s: src/packages/sql/database.c.s
@@ -947,10 +753,8 @@ src/packages/sql/database.s: src/packages/sql/database.c.s
 src/packages/sql/database.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/database.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/database.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/database.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/database.c.s
 .PHONY : src/packages/sql/database.c.s
 
 src/packages/sql/queries.o: src/packages/sql/queries.c.o
@@ -960,10 +764,8 @@ src/packages/sql/queries.o: src/packages/sql/queries.c.o
 src/packages/sql/queries.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/queries.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/queries.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/queries.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/queries.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/queries.c.o
 .PHONY : src/packages/sql/queries.c.o
 
 src/packages/sql/queries.i: src/packages/sql/queries.c.i
@@ -973,10 +775,8 @@ src/packages/sql/queries.i: src/packages/sql/queries.c.i
 src/packages/sql/queries.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/queries.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/queries.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/queries.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/queries.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/queries.c.i
 .PHONY : src/packages/sql/queries.c.i
 
 src/packages/sql/queries.s: src/packages/sql/queries.c.s
@@ -986,10 +786,8 @@ src/packages/sql/queries.s: src/packages/sql/queries.c.s
 src/packages/sql/queries.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/queries.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/queries.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/queries.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/queries.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/queries.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/queries.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/queries.c.s
 .PHONY : src/packages/sql/queries.c.s
 
 src/packages/sql/schema.o: src/packages/sql/schema.c.o
@@ -999,10 +797,8 @@ src/packages/sql/schema.o: src/packages/sql/schema.c.o
 src/packages/sql/schema.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/schema.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/schema.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/schema.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/schema.c.o
 .PHONY : src/packages/sql/schema.c.o
 
 src/packages/sql/schema.i: src/packages/sql/schema.c.i
@@ -1012,10 +808,8 @@ src/packages/sql/schema.i: src/packages/sql/schema.c.i
 src/packages/sql/schema.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/schema.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/schema.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/schema.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/schema.c.i
 .PHONY : src/packages/sql/schema.c.i
 
 src/packages/sql/schema.s: src/packages/sql/schema.c.s
@@ -1025,10 +819,8 @@ src/packages/sql/schema.s: src/packages/sql/schema.c.s
 src/packages/sql/schema.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/sql/schema.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/schema.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/sql/schema.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/sql/schema.c.s
 .PHONY : src/packages/sql/schema.c.s
 
 src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/block.c.o
@@ -1038,10 +830,8 @@ src/packages/structures/blockChain/block.o: src/packages/structures/blockChain/b
 src/packages/structures/blockChain/block.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/block.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/block.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/block.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/block.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/block.c.o
 .PHONY : src/packages/structures/blockChain/block.c.o
 
 src/packages/structures/blockChain/block.i: src/packages/structures/blockChain/block.c.i
@@ -1051,10 +841,8 @@ src/packages/structures/blockChain/block.i: src/packages/structures/blockChain/b
 src/packages/structures/blockChain/block.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/block.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/block.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/block.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/block.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/block.c.i
 .PHONY : src/packages/structures/blockChain/block.c.i
 
 src/packages/structures/blockChain/block.s: src/packages/structures/blockChain/block.c.s
@@ -1064,10 +852,8 @@ src/packages/structures/blockChain/block.s: src/packages/structures/blockChain/b
 src/packages/structures/blockChain/block.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/block.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/block.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/block.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/block.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/block.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/block.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/block.c.s
 .PHONY : src/packages/structures/blockChain/block.c.s
 
 src/packages/structures/blockChain/blockchain.o: src/packages/structures/blockChain/blockchain.c.o
@@ -1077,10 +863,8 @@ src/packages/structures/blockChain/blockchain.o: src/packages/structures/blockCh
 src/packages/structures/blockChain/blockchain.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/blockchain.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/blockchain.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.o
 .PHONY : src/packages/structures/blockChain/blockchain.c.o
 
 src/packages/structures/blockChain/blockchain.i: src/packages/structures/blockChain/blockchain.c.i
@@ -1090,10 +874,8 @@ src/packages/structures/blockChain/blockchain.i: src/packages/structures/blockCh
 src/packages/structures/blockChain/blockchain.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/blockchain.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/blockchain.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.i
 .PHONY : src/packages/structures/blockChain/blockchain.c.i
 
 src/packages/structures/blockChain/blockchain.s: src/packages/structures/blockChain/blockchain.c.s
@@ -1103,10 +885,8 @@ src/packages/structures/blockChain/blockchain.s: src/packages/structures/blockCh
 src/packages/structures/blockChain/blockchain.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/blockchain.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/blockchain.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/blockchain.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/blockchain.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/blockchain.c.s
 .PHONY : src/packages/structures/blockChain/blockchain.c.s
 
 src/packages/structures/blockChain/internalTransaction.o: src/packages/structures/blockChain/internalTransaction.c.o
@@ -1116,9 +896,7 @@ src/packages/structures/blockChain/internalTransaction.o: src/packages/structure
 src/packages/structures/blockChain/internalTransaction.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/internalTransaction.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/internalTransaction.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/internalTransaction.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/internalTransaction.c.o
 .PHONY : src/packages/structures/blockChain/internalTransaction.c.o
 
 src/packages/structures/blockChain/internalTransaction.i: src/packages/structures/blockChain/internalTransaction.c.i
@@ -1128,9 +906,7 @@ src/packages/structures/blockChain/internalTransaction.i: src/packages/structure
 src/packages/structures/blockChain/internalTransaction.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/internalTransaction.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/internalTransaction.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/internalTransaction.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/internalTransaction.c.i
 .PHONY : src/packages/structures/blockChain/internalTransaction.c.i
 
 src/packages/structures/blockChain/internalTransaction.s: src/packages/structures/blockChain/internalTransaction.c.s
@@ -1140,9 +916,7 @@ src/packages/structures/blockChain/internalTransaction.s: src/packages/structure
 src/packages/structures/blockChain/internalTransaction.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/internalTransaction.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/internalTransaction.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/internalTransaction.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/internalTransaction.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/internalTransaction.c.s
 .PHONY : src/packages/structures/blockChain/internalTransaction.c.s
 
 src/packages/structures/blockChain/merkleTree.o: src/packages/structures/blockChain/merkleTree.c.o
@@ -1152,10 +926,8 @@ src/packages/structures/blockChain/merkleTree.o: src/packages/structures/blockCh
 src/packages/structures/blockChain/merkleTree.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/merkleTree.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTree.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.o
 .PHONY : src/packages/structures/blockChain/merkleTree.c.o
 
 src/packages/structures/blockChain/merkleTree.i: src/packages/structures/blockChain/merkleTree.c.i
@@ -1165,10 +937,8 @@ src/packages/structures/blockChain/merkleTree.i: src/packages/structures/blockCh
 src/packages/structures/blockChain/merkleTree.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/merkleTree.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTree.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.i
 .PHONY : src/packages/structures/blockChain/merkleTree.c.i
 
 src/packages/structures/blockChain/merkleTree.s: src/packages/structures/blockChain/merkleTree.c.s
@@ -1178,10 +948,8 @@ src/packages/structures/blockChain/merkleTree.s: src/packages/structures/blockCh
 src/packages/structures/blockChain/merkleTree.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTree.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTree.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/merkleTree.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTree.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTree.c.s
 .PHONY : src/packages/structures/blockChain/merkleTree.c.s
 
 src/packages/structures/blockChain/merkleTreeNode.o: src/packages/structures/blockChain/merkleTreeNode.c.o
@@ -1191,10 +959,8 @@ src/packages/structures/blockChain/merkleTreeNode.o: src/packages/structures/blo
 src/packages/structures/blockChain/merkleTreeNode.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.o
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.o
 
 src/packages/structures/blockChain/merkleTreeNode.i: src/packages/structures/blockChain/merkleTreeNode.c.i
@@ -1204,10 +970,8 @@ src/packages/structures/blockChain/merkleTreeNode.i: src/packages/structures/blo
 src/packages/structures/blockChain/merkleTreeNode.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.i
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.i
 
 src/packages/structures/blockChain/merkleTreeNode.s: src/packages/structures/blockChain/merkleTreeNode.c.s
@@ -1217,10 +981,8 @@ src/packages/structures/blockChain/merkleTreeNode.s: src/packages/structures/blo
 src/packages/structures/blockChain/merkleTreeNode.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/merkleTreeNode.c.s
 .PHONY : src/packages/structures/blockChain/merkleTreeNode.c.s
 
 src/packages/structures/blockChain/transaction.o: src/packages/structures/blockChain/transaction.c.o
@@ -1230,10 +992,8 @@ src/packages/structures/blockChain/transaction.o: src/packages/structures/blockC
 src/packages/structures/blockChain/transaction.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/transaction.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/transaction.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction.c.o
 .PHONY : src/packages/structures/blockChain/transaction.c.o
 
 src/packages/structures/blockChain/transaction.i: src/packages/structures/blockChain/transaction.c.i
@@ -1243,10 +1003,8 @@ src/packages/structures/blockChain/transaction.i: src/packages/structures/blockC
 src/packages/structures/blockChain/transaction.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/transaction.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/transaction.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction.c.i
 .PHONY : src/packages/structures/blockChain/transaction.c.i
 
 src/packages/structures/blockChain/transaction.s: src/packages/structures/blockChain/transaction.c.s
@@ -1256,10 +1014,8 @@ src/packages/structures/blockChain/transaction.s: src/packages/structures/blockC
 src/packages/structures/blockChain/transaction.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/transaction.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/transaction.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction.c.s
 .PHONY : src/packages/structures/blockChain/transaction.c.s
 
 src/packages/structures/blockChain/transaction_types.o: src/packages/structures/blockChain/transaction_types.c.o
@@ -1269,10 +1025,8 @@ src/packages/structures/blockChain/transaction_types.o: src/packages/structures/
 src/packages/structures/blockChain/transaction_types.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/transaction_types.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction_types.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.o
 .PHONY : src/packages/structures/blockChain/transaction_types.c.o
 
 src/packages/structures/blockChain/transaction_types.i: src/packages/structures/blockChain/transaction_types.c.i
@@ -1282,10 +1036,8 @@ src/packages/structures/blockChain/transaction_types.i: src/packages/structures/
 src/packages/structures/blockChain/transaction_types.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/transaction_types.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction_types.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.i
 .PHONY : src/packages/structures/blockChain/transaction_types.c.i
 
 src/packages/structures/blockChain/transaction_types.s: src/packages/structures/blockChain/transaction_types.c.s
@@ -1295,10 +1047,8 @@ src/packages/structures/blockChain/transaction_types.s: src/packages/structures/
 src/packages/structures/blockChain/transaction_types.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/structures/blockChain/transaction_types.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/structures/blockChain/transaction_types.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/structures/blockChain/transaction_types.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/structures/blockChain/transaction_types.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/structures/blockChain/transaction_types.c.s
 .PHONY : src/packages/structures/blockChain/transaction_types.c.s
 
 src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o
@@ -1308,10 +1058,8 @@ src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o
 src/packages/utils/byteorder.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/utils/byteorder.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/byteorder.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/utils/byteorder.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/byteorder.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/byteorder.c.o
 .PHONY : src/packages/utils/byteorder.c.o
 
 src/packages/utils/byteorder.i: src/packages/utils/byteorder.c.i
@@ -1321,10 +1069,8 @@ src/packages/utils/byteorder.i: src/packages/utils/byteorder.c.i
 src/packages/utils/byteorder.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/utils/byteorder.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/byteorder.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/utils/byteorder.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/byteorder.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/byteorder.c.i
 .PHONY : src/packages/utils/byteorder.c.i
 
 src/packages/utils/byteorder.s: src/packages/utils/byteorder.c.s
@@ -1334,10 +1080,8 @@ src/packages/utils/byteorder.s: src/packages/utils/byteorder.c.s
 src/packages/utils/byteorder.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/utils/byteorder.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/byteorder.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/utils/byteorder.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/byteorder.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/byteorder.c.s
 .PHONY : src/packages/utils/byteorder.c.s
 
 src/packages/utils/jsonUtils.o: src/packages/utils/jsonUtils.c.o
@@ -1347,9 +1091,7 @@ src/packages/utils/jsonUtils.o: src/packages/utils/jsonUtils.c.o
 src/packages/utils/jsonUtils.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/jsonUtils.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/jsonUtils.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/utils/jsonUtils.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/jsonUtils.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/utils/jsonUtils.c.o
 .PHONY : src/packages/utils/jsonUtils.c.o
 
 src/packages/utils/jsonUtils.i: src/packages/utils/jsonUtils.c.i
@@ -1359,9 +1101,7 @@ src/packages/utils/jsonUtils.i: src/packages/utils/jsonUtils.c.i
 src/packages/utils/jsonUtils.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/jsonUtils.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/jsonUtils.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/utils/jsonUtils.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/jsonUtils.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/utils/jsonUtils.c.i
 .PHONY : src/packages/utils/jsonUtils.c.i
 
 src/packages/utils/jsonUtils.s: src/packages/utils/jsonUtils.c.s
@@ -1371,9 +1111,7 @@ src/packages/utils/jsonUtils.s: src/packages/utils/jsonUtils.c.s
 src/packages/utils/jsonUtils.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/jsonUtils.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/jsonUtils.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/utils/jsonUtils.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/jsonUtils.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/utils/jsonUtils.c.s
 .PHONY : src/packages/utils/jsonUtils.c.s
 
 src/packages/utils/print.o: src/packages/utils/print.c.o
@@ -1383,6 +1121,7 @@ src/packages/utils/print.o: src/packages/utils/print.c.o
 src/packages/utils/print.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/print.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/print.c.o
 .PHONY : src/packages/utils/print.c.o
 
 src/packages/utils/print.i: src/packages/utils/print.c.i
@@ -1392,6 +1131,7 @@ src/packages/utils/print.i: src/packages/utils/print.c.i
 src/packages/utils/print.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/print.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/print.c.i
 .PHONY : src/packages/utils/print.c.i
 
 src/packages/utils/print.s: src/packages/utils/print.c.s
@@ -1401,6 +1141,7 @@ src/packages/utils/print.s: src/packages/utils/print.c.s
 src/packages/utils/print.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/print.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/print.c.s
 .PHONY : src/packages/utils/print.c.s
 
 src/packages/validation/block_validation.o: src/packages/validation/block_validation.c.o
@@ -1410,9 +1151,7 @@ src/packages/validation/block_validation.o: src/packages/validation/block_valida
 src/packages/validation/block_validation.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/block_validation.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/block_validation.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/validation/block_validation.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/validation/block_validation.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/validation/block_validation.c.o
 .PHONY : src/packages/validation/block_validation.c.o
 
 src/packages/validation/block_validation.i: src/packages/validation/block_validation.c.i
@@ -1422,9 +1161,7 @@ src/packages/validation/block_validation.i: src/packages/validation/block_valida
 src/packages/validation/block_validation.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/block_validation.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/block_validation.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/validation/block_validation.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/validation/block_validation.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/validation/block_validation.c.i
 .PHONY : src/packages/validation/block_validation.c.i
 
 src/packages/validation/block_validation.s: src/packages/validation/block_validation.c.s
@@ -1434,9 +1171,7 @@ src/packages/validation/block_validation.s: src/packages/validation/block_valida
 src/packages/validation/block_validation.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/block_validation.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/block_validation.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/validation/block_validation.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/validation/block_validation.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/validation/block_validation.c.s
 .PHONY : src/packages/validation/block_validation.c.s
 
 src/packages/validation/transaction_validation.o: src/packages/validation/transaction_validation.c.o
@@ -1446,9 +1181,7 @@ src/packages/validation/transaction_validation.o: src/packages/validation/transa
 src/packages/validation/transaction_validation.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/transaction_validation.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/transaction_validation.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/validation/transaction_validation.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/validation/transaction_validation.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/validation/transaction_validation.c.o
 .PHONY : src/packages/validation/transaction_validation.c.o
 
 src/packages/validation/transaction_validation.i: src/packages/validation/transaction_validation.c.i
@@ -1458,9 +1191,7 @@ src/packages/validation/transaction_validation.i: src/packages/validation/transa
 src/packages/validation/transaction_validation.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/transaction_validation.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/transaction_validation.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/validation/transaction_validation.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/validation/transaction_validation.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/validation/transaction_validation.c.i
 .PHONY : src/packages/validation/transaction_validation.c.i
 
 src/packages/validation/transaction_validation.s: src/packages/validation/transaction_validation.c.s
@@ -1470,9 +1201,7 @@ src/packages/validation/transaction_validation.s: src/packages/validation/transa
 src/packages/validation/transaction_validation.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/transaction_validation.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/transaction_validation.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/packages/validation/transaction_validation.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/validation/transaction_validation.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/packages/validation/transaction_validation.c.s
 .PHONY : src/packages/validation/transaction_validation.c.s
 
 src/structs/permission/permission.o: src/structs/permission/permission.c.o
@@ -1482,10 +1211,8 @@ src/structs/permission/permission.o: src/structs/permission/permission.c.o
 src/structs/permission/permission.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/structs/permission/permission.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/structs/permission/permission.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/structs/permission/permission.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/structs/permission/permission.c.o
 .PHONY : src/structs/permission/permission.c.o
 
 src/structs/permission/permission.i: src/structs/permission/permission.c.i
@@ -1495,10 +1222,8 @@ src/structs/permission/permission.i: src/structs/permission/permission.c.i
 src/structs/permission/permission.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/structs/permission/permission.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/structs/permission/permission.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/structs/permission/permission.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/structs/permission/permission.c.i
 .PHONY : src/structs/permission/permission.c.i
 
 src/structs/permission/permission.s: src/structs/permission/permission.c.s
@@ -1508,10 +1233,8 @@ src/structs/permission/permission.s: src/structs/permission/permission.c.s
 src/structs/permission/permission.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/structs/permission/permission.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/structs/permission/permission.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_node.dir/build.make CMakeFiles/pbft_node.dir/src/structs/permission/permission.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/structs/permission/permission.c.s
 .PHONY : src/structs/permission/permission.c.s
 
 src/tests/access_request_test.o: src/tests/access_request_test.c.o
@@ -1735,7 +1458,6 @@ src/tests/pbft_http_client_test.o: src/tests/pbft_http_client_test.c.o
 
 # target to build an object file
 src/tests/pbft_http_client_test.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/pbft_http_client_test.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/tests/pbft_http_client_test.c.o
 .PHONY : src/tests/pbft_http_client_test.c.o
 
@@ -1744,7 +1466,6 @@ src/tests/pbft_http_client_test.i: src/tests/pbft_http_client_test.c.i
 
 # target to preprocess a source file
 src/tests/pbft_http_client_test.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/pbft_http_client_test.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/tests/pbft_http_client_test.c.i
 .PHONY : src/tests/pbft_http_client_test.c.i
 
@@ -1753,7 +1474,6 @@ src/tests/pbft_http_client_test.s: src/tests/pbft_http_client_test.c.s
 
 # target to generate assembly for a file
 src/tests/pbft_http_client_test.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/pbft_http_client_test.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/tests/pbft_http_client_test.c.s
 .PHONY : src/tests/pbft_http_client_test.c.s
 
@@ -1780,57 +1500,6 @@ src/tests/signing_test.s: src/tests/signing_test.c.s
 src/tests/signing_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/signing_test.c.s
 .PHONY : src/tests/signing_test.c.s
-
-src/tests/simple_http_client_test.o: src/tests/simple_http_client_test.c.o
-.PHONY : src/tests/simple_http_client_test.o
-
-# target to build an object file
-src/tests/simple_http_client_test.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/simple_http_client_test.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/tests/simple_http_client_test.c.o
-.PHONY : src/tests/simple_http_client_test.c.o
-
-src/tests/simple_http_client_test.i: src/tests/simple_http_client_test.c.i
-.PHONY : src/tests/simple_http_client_test.i
-
-# target to preprocess a source file
-src/tests/simple_http_client_test.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/simple_http_client_test.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/tests/simple_http_client_test.c.i
-.PHONY : src/tests/simple_http_client_test.c.i
-
-src/tests/simple_http_client_test.s: src/tests/simple_http_client_test.c.s
-.PHONY : src/tests/simple_http_client_test.s
-
-# target to generate assembly for a file
-src/tests/simple_http_client_test.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/simple_http_client_test.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_http_client_test.dir/build.make CMakeFiles/simple_http_client_test.dir/src/tests/simple_http_client_test.c.s
-.PHONY : src/tests/simple_http_client_test.c.s
-
-src/tests/simple_node_peer_test.o: src/tests/simple_node_peer_test.c.o
-.PHONY : src/tests/simple_node_peer_test.o
-
-# target to build an object file
-src/tests/simple_node_peer_test.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/simple_node_peer_test.c.o
-.PHONY : src/tests/simple_node_peer_test.c.o
-
-src/tests/simple_node_peer_test.i: src/tests/simple_node_peer_test.c.i
-.PHONY : src/tests/simple_node_peer_test.i
-
-# target to preprocess a source file
-src/tests/simple_node_peer_test.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/simple_node_peer_test.c.i
-.PHONY : src/tests/simple_node_peer_test.c.i
-
-src/tests/simple_node_peer_test.s: src/tests/simple_node_peer_test.c.s
-.PHONY : src/tests/simple_node_peer_test.s
-
-# target to generate assembly for a file
-src/tests/simple_node_peer_test.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/simple_node_peer_test.c.s
-.PHONY : src/tests/simple_node_peer_test.c.s
 
 src/tests/test_runner.o: src/tests/test_runner.c.o
 .PHONY : src/tests/test_runner.o
@@ -1865,17 +1534,10 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... test"
-	@echo "... check"
 	@echo "... init_tool"
-	@echo "... multi_node_pbft_test_fixed"
 	@echo "... pbft_http_client_test"
-	@echo "... pbft_node"
-	@echo "... simple_http_client_test"
 	@echo "... tinyweb"
 	@echo "... tinyweb_tests"
-	@echo "... multi_node_pbft_test_fixed.o"
-	@echo "... multi_node_pbft_test_fixed.i"
-	@echo "... multi_node_pbft_test_fixed.s"
 	@echo "... src/external/mongoose/mongoose.o"
 	@echo "... src/external/mongoose/mongoose.i"
 	@echo "... src/external/mongoose/mongoose.s"
@@ -1885,9 +1547,6 @@ help:
 	@echo "... src/packages/PBFT/node.o"
 	@echo "... src/packages/PBFT/node.i"
 	@echo "... src/packages/PBFT/node.s"
-	@echo "... src/packages/PBFT/pbftMain.o"
-	@echo "... src/packages/PBFT/pbftMain.i"
-	@echo "... src/packages/PBFT/pbftMain.s"
 	@echo "... src/packages/PBFT/pbftNode.o"
 	@echo "... src/packages/PBFT/pbftNode.i"
 	@echo "... src/packages/PBFT/pbftNode.s"
@@ -2014,12 +1673,6 @@ help:
 	@echo "... src/tests/signing_test.o"
 	@echo "... src/tests/signing_test.i"
 	@echo "... src/tests/signing_test.s"
-	@echo "... src/tests/simple_http_client_test.o"
-	@echo "... src/tests/simple_http_client_test.i"
-	@echo "... src/tests/simple_http_client_test.s"
-	@echo "... src/tests/simple_node_peer_test.o"
-	@echo "... src/tests/simple_node_peer_test.i"
-	@echo "... src/tests/simple_node_peer_test.s"
 	@echo "... src/tests/test_runner.o"
 	@echo "... src/tests/test_runner.i"
 	@echo "... src/tests/test_runner.s"

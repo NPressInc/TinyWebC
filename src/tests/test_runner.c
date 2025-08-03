@@ -12,6 +12,7 @@
 #include "tests/http_client_test.h"
 #include "tests/invitation_test.h"
 #include "tests/access_request_test.h"
+#include "tests/node_peer_management_test.h"
 
 
 int main(int argc, char* argv[]) {
@@ -25,7 +26,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 9;
+        int total_tests = 10;
 
         printf("Running all tests...\n\n");
 
@@ -136,6 +137,18 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         printf("\n");
 
+        // Run node peer management tests
+        printf("Running node peer management tests...\n");
+        if (node_peer_management_test_main() == 0) {
+            printf("✓ Node peer management tests passed\n");
+            tests_passed++;
+        } else {
+            printf("✗ Node peer management tests failed\n");
+            tests_failed++;
+        }
+        keystore_cleanup();
+        printf("\n");
+
         // Print summary
         printf("Test Summary:\n");
         printf("Total tests: %d\n", total_tests);
@@ -199,9 +212,15 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         return result;
     }
+    else if (strcmp(argv[1], "node_peer_management") == 0) {
+        printf("Running node peer management test...\n");
+        int result = node_peer_management_test_main();
+        keystore_cleanup();
+        return result;
+    }
     else {
         printf("Unknown test: %s\n", argv[1]);
-        printf("Available tests: encryption, signing, blockchain, init_network, database, mongoose, http_client, invitation, access_request\n");
+        printf("Available tests: encryption, signing, blockchain, init_network, database, mongoose, http_client, invitation, access_request, node_peer_management\n");
         return 1;
     }
 

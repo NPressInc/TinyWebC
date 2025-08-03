@@ -11,3 +11,28 @@ blockchain.json
 test_state/blockchain/test_blockchain.db
 state/blockchain/blockchain.db-shm
 state/blockchain/blockchain.db-wal
+
+# Build artifacts and executables
+tinyweb_tests
+init_tool
+pbft_http_client_test
+node_peer_management_test
+node_peer_test
+Makefile
+cmake_install.cmake
+CTestTestfile.cmake
+
+# Debug and temporary files
+debug_transaction_hash_backend.txt
+cmds.txt
+debug_state/
+Testing/
+
+# Node.js (if accidentally added again)
+node_modules/
+package-lock.json
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
