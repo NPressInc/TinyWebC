@@ -269,6 +269,7 @@ void handle_access_request_poll(struct mg_connection* c, struct mg_http_message*
     
     // Query database for successful access requests in the last 24 hours
     // Ensure database is initialized
+    // TODO: This should use node-specific database path when node context is available
     if (db_init("state/blockchain/blockchain.db") != 0) {
         printf("[ERROR] Failed to initialize database for access request polling\n");
     }

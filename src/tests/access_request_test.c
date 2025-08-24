@@ -40,7 +40,7 @@ int test_member_access_denial(void);
 // Helper to load user_0 private key
 int load_user0_key(void) {
     char key_path[256];
-    snprintf(key_path, sizeof(key_path), "%s/user_0_key.bin", TEST_KEYSTORE_DIR);
+    snprintf(key_path, sizeof(key_path), "%s/user_0_private.key", TEST_KEYSTORE_DIR);
     
     FILE* f = fopen(key_path, "rb");
     if (!f) {

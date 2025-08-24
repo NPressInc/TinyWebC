@@ -13,6 +13,7 @@
 #include "packages/signing/signing.h"
 #include "packages/sql/queries.h"
 #include "packages/fileIO/blockchainPersistence.h"
+#include "packages/utils/statePaths.h"
 
 // Global variables
 static PBFTNode* g_pbft_node = NULL;
@@ -74,8 +75,8 @@ int parse_arguments(int argc, char* argv[], uint32_t* node_id, uint16_t* port) {
 }
 
 // Initialize system components
-int initialize_system(void) {
-    printf("Initializing TinyWeb system components...\n");
+int initialize_system(uint32_t node_id) {
+    printf("Initializing TinyWeb system components for node %u...\n", node_id);
     
     // Initialize sodium for cryptography
     if (sodium_init() < 0) {
@@ -83,10 +84,17 @@ int initialize_system(void) {
         return -1;
     }
     
+    // Initialize node-specific state paths
+    NodeStatePaths paths;
+    if (!state_paths_init(node_id, &paths)) {
+        printf("Failed to initialize node state paths\n");
+        return -1;
+    }
+    
     // Initialize message queues
     init_message_queues();
     
-    printf("System components initialized successfully\n");
+    printf("System components initialized successfully for node %u\n", node_id);
     return 0;
 }
 
@@ -183,7 +191,7 @@ int main(int argc, char* argv[]) {
     printf("  Node ID: %u\n", node_id);
     printf("  API Port: %u\n", port);
     printf("  Protocol: HTTP + PBFT Consensus\n");
-    printf("  Features: Blockchain, Invitations, Encrypted Transactions\n");
+    printf("  Features: Blockchain, Encrypted Transactions\n");
     printf("-----------------------------------------------------------------\n");
     
     // Set up signal handlers for graceful shutdown
@@ -191,7 +199,7 @@ int main(int argc, char* argv[]) {
     signal(SIGTERM, signal_handler);
     
     // Initialize system components
-    if (initialize_system() != 0) {
+    if (initialize_system(node_id) != 0) {
         fprintf(stderr, "Failed to initialize system components\n");
         return 1;
     }
@@ -256,10 +264,7 @@ int main(int argc, char* argv[]) {
     printf("📊 Available Endpoints:\n");
     printf("  • GET  /                          - Node status\n");
     printf("  • GET  /GetBlockChainLength       - Blockchain info\n");
-    printf("  • POST /Transaction               - Submit transaction\n");
-    printf("  • POST /invitation/create         - Create invitation\n");
-    printf("  • POST /invitation/accept/<code>  - Accept invitation\n");
-    printf("  • GET  /invitation/pending        - List pending invitations\n");
+    printf("  • POST /Transaction               - Submit transaction\n");\
     printf("🔧 Press Ctrl+C to shutdown gracefully\n");
     printf("=================================================================\n");
     

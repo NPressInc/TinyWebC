@@ -23,7 +23,7 @@ int signing_test_main(void) {
     }
 
     // Load the existing key file instead of generating a new one
-    if (!keystore_load_private_key("node_key.bin", "testpass")) {
+    if (!keystore_load_private_key("node_private.key", "testpass")) {
         printf("Failed to load private key\n");
         keystore_cleanup();
         return 1;

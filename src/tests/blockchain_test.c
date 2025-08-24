@@ -110,7 +110,7 @@ int blockchain_test_main(void) {
         return 1;
     }
 
-    if (keystore_load_private_key("node_key.bin", "testpass") == 0) {
+    if (keystore_load_private_key("node_private.key", "testpass") == 0) {
         printf("Failed to load private key\n");
         return 1;
     }

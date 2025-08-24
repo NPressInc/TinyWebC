@@ -21,7 +21,7 @@ int encryption_test_main(void) {
         return 1;
     }
 
-    if (!keystore_save_private_key("node_key.bin", "testpass")) {
+    if (!keystore_save_private_key("node_private.key", "testpass")) {
         printf("Failed to save private key\n");
         return 1;
     }
@@ -49,7 +49,7 @@ int encryption_test_main(void) {
     keystore_cleanup();
 
     // Load the private key
-    if (!keystore_load_private_key("node_key.bin", "testpass")) {
+    if (!keystore_load_private_key("node_private.key", "testpass")) {
         printf("Failed to load private key\n");
         return 1;
     }

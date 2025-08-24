@@ -14,7 +14,6 @@ add_compile_definitions(
 file(GLOB_RECURSE SOURCES "src/*.c")
 list(FILTER SOURCES EXCLUDE REGEX "src/tests/.*")
 list(FILTER SOURCES EXCLUDE REGEX "src/packages/initialization/init_tool.c")
-list(FILTER SOURCES EXCLUDE REGEX "src/packages/PBFT/pbftMain.c")
 
 # Explicitly ensure mongoose source is included
 set(MONGOOSE_SOURCES
@@ -59,7 +58,6 @@ file(GLOB_RECURSE LIB_SOURCES "src/*.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/main.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/tests/.*")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/initialization/init_tool.c")
-list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/PBFT/pbftMain.c")
 # Note: init_network_test.c is now included since it has init_network_test_main instead of main
 
 # Ensure test_runner.c is the main entry point for tests
@@ -116,6 +114,7 @@ add_executable(init_tool
     src/packages/structures/blockChain/transaction.c
     src/packages/structures/blockChain/transaction_types.c
     src/packages/utils/byteorder.c
+    src/packages/utils/statePaths.c
     src/packages/fileIO/compression.c
     src/packages/sql/database.c
     src/packages/sql/schema.c

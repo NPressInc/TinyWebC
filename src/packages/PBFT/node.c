@@ -14,7 +14,7 @@
 
 // Speed modifier in microseconds (1 second = 1000000 microseconds)
 #define SPEED_MODIFIER 1000000
-#define KEYSTORE_PATH "state/keys/node_key.bin"
+#define KEYSTORE_PATH "state/keys/node_private.key" // Legacy path for backward compatibility
 #define KEYSTORE_PASSPHRASE "testpass"  // TODO: Make this configurable
 
 // Global node state

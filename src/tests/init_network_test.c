@@ -465,7 +465,7 @@ int test_multi_recipient_initialization(void) {
     // Test node keys
     for (int i = 0; i < TEST_NODE_COUNT; i++) {
         char key_path[256];
-        snprintf(key_path, sizeof(key_path), "%snode_%d_key.bin", TEST_KEYSTORE_PATH, i);
+        snprintf(key_path, sizeof(key_path), "%snode_%d_private.key", TEST_KEYSTORE_PATH, i);
         
         char key_name[64];
         snprintf(key_name, sizeof(key_name), "Node %d", i);
@@ -478,7 +478,7 @@ int test_multi_recipient_initialization(void) {
     // Test user keys
     for (int i = 0; i < TEST_USER_COUNT; i++) {
         char key_path[256];
-        snprintf(key_path, sizeof(key_path), "%suser_%d_key.bin", TEST_KEYSTORE_PATH, i);
+        snprintf(key_path, sizeof(key_path), "%suser_%d_private.key", TEST_KEYSTORE_PATH, i);
         
         char key_name[64];
         snprintf(key_name, sizeof(key_name), "User %d", i);

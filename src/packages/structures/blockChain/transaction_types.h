@@ -107,41 +107,6 @@ typedef struct {
     uint64_t requested_at; // When the access was requested (timestamp)
 } TW_TXN_AccessRequest;
 
-// Invitation Management Structs (BLOCKCHAIN PERMISSION INTEGRATION)
-typedef struct {
-    char invitation_code[32];           // Unique invitation code
-    char family_name[32];               // Family network name
-    char invited_name[MAX_USERNAME_LENGTH]; // Name of person being invited
-    char invitation_message[128];       // Personal invitation message
-    uint8_t invitation_type;            // Type of invitation (family_member, admin, node, etc.)
-    uint8_t status;                     // Current status (pending, accepted, etc.)
-    uint64_t created_at;                // When invitation was created
-    uint64_t expires_at;                // When invitation expires
-    unsigned char inviter_pubkey[32];   // Public key of person who created invitation
-    uint64_t granted_permissions;       // Permissions to grant upon acceptance
-    permission_scope_t permission_scope; // What scope they'll have access to
-    uint8_t requires_supervision;       // Whether they need parental oversight
-    char proposed_ip[16];               // For node invitations - IP address
-    uint16_t proposed_port;             // For node invitations - port
-    unsigned char invitation_signature[64]; // Cryptographic signature
-} TW_TXN_InvitationCreate;
-
-typedef struct {
-    char invitation_code[32];           // Code of invitation being accepted
-    unsigned char invitee_pubkey[32];   // Public key of person accepting
-    char invitee_name[MAX_USERNAME_LENGTH]; // Name of person accepting
-    unsigned char acceptance_signature[64]; // Cryptographic signature of acceptance
-    uint64_t timestamp;                 // When acceptance occurred
-} TW_TXN_InvitationAccept;
-
-typedef struct {
-    char invitation_code[32];           // Code of invitation being revoked
-    unsigned char revoker_pubkey[32];   // Public key of person revoking (must be admin)
-    char revocation_reason[128];        // Reason for revocation
-    unsigned char revocation_signature[64]; // Cryptographic signature of revocation
-    uint64_t timestamp;                 // When revocation occurred
-} TW_TXN_InvitationRevoke;
-
 // Transaction Permission Mappings
 static const TW_TransactionPermission TXN_PERMISSIONS[] = {
     // User Management
@@ -171,11 +136,6 @@ static const TW_TransactionPermission TXN_PERMISSIONS[] = {
     
     // Access Control
     {TW_TXN_ACCESS_REQUEST, PERM_CATEGORY_USER_MGMT, 0, SCOPE_SELF}, // No special permission needed to request access
-    
-    // Invitation Management (NEW)
-    {TW_TXN_INVITATION_CREATE, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_ROLES, SCOPE_ORGANIZATION},
-    {TW_TXN_INVITATION_ACCEPT, PERM_CATEGORY_USER_MGMT, 0, SCOPE_SELF}, // No special permission needed
-    {TW_TXN_INVITATION_REVOKE, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_ROLES, SCOPE_ORGANIZATION}
 };
 
 // Helper function to check if a role has permission for a transaction type in a specific scope
@@ -258,15 +218,5 @@ int deserialize_system_config(const unsigned char* buffer, TW_TXN_SystemConfig* 
 // Access Control transaction serialization
 int serialize_access_request(const TW_TXN_AccessRequest* request, unsigned char** buffer);
 int deserialize_access_request(const unsigned char* buffer, TW_TXN_AccessRequest* request);
-
-// Invitation transaction serialization - BLOCKCHAIN PERMISSION INTEGRATION
-int serialize_invitation_create(const TW_TXN_InvitationCreate* invitation, unsigned char** buffer);
-int deserialize_invitation_create(const unsigned char* buffer, TW_TXN_InvitationCreate* invitation);
-
-int serialize_invitation_accept(const TW_TXN_InvitationAccept* acceptance, unsigned char** buffer);
-int deserialize_invitation_accept(const unsigned char* buffer, TW_TXN_InvitationAccept* acceptance);
-
-int serialize_invitation_revoke(const TW_TXN_InvitationRevoke* revocation, unsigned char** buffer);
-int deserialize_invitation_revoke(const unsigned char* buffer, TW_TXN_InvitationRevoke* revocation);
 
 #endif // TW_TRANSACTION_TYPES_H 

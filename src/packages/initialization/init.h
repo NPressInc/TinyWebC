@@ -19,6 +19,7 @@ typedef struct {
     uint16_t base_port;
     uint32_t node_count;
     uint32_t user_count;
+    int node_specific_dirs;    // If true, create state/node_X/ directories for each node
 } InitConfig;
 
 // Structure to hold generated keys
@@ -46,6 +47,7 @@ int initialize_network(const InitConfig* config);
 // Key generation functions
 int generate_initial_keys(GeneratedKeys* keys, const InitConfig* config);
 int save_keys_to_keystore(const GeneratedKeys* keys, const char* keystore_path, const char* passphrase);
+int save_keys_to_keystore_with_config(const GeneratedKeys* keys, const InitConfig* config);
 
 // Peer configuration functions
 int generate_peer_list(PeerInfo* peers, const GeneratedKeys* keys, uint16_t base_port);

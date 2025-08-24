@@ -42,15 +42,6 @@ typedef enum {
     
     // Access Control (Core)
     TW_TXN_ACCESS_REQUEST,         // Request access to content/resource
-    
-    // Invitation Management (Core - Post Genesis)
-    TW_TXN_INVITATION_CREATE,      // Create family/node invitation
-    TW_TXN_INVITATION_ACCEPT,      // Accept invitation
-    TW_TXN_INVITATION_REVOKE,      // Revoke invitation (admin only)
-    
-    // Proximity-Based Invitations (Enhanced Security)
-    TW_TXN_PROXIMITY_INVITATION,   // Create invitation with proximity validation
-    TW_TXN_PROXIMITY_VALIDATION,   // Submit proximity proof validation
 
     // ===== Phase 2 - Enhanced Communication & Media =====
     // These features build on the core functionality and add richer media support

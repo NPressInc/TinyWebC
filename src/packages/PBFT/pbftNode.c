@@ -16,12 +16,23 @@
 #include "../comm/httpClient.h"
 #include "../sql/database.h"
 #include "../fileIO/blockchainIO.h"
-#include "../invitation/invitation.h"
-#include "../invitation/invitationApi.h"
+#include "../utils/statePaths.h"
 #include "../comm/blockChainQueryApi.h"
+
+// Global node ID for state path resolution
+static uint32_t g_current_node_id = 0;
+
+// Helper function to get current node's database path
+static bool get_current_node_db_path(char* buffer, size_t buffer_size) {
+    if (g_current_node_id == 0) {
+        // Fallback to default path if node ID not set
+        snprintf(buffer, buffer_size, "state/blockchain/blockchain.db");
+        return true;
+    }
+    return state_paths_get_database_file(g_current_node_id, buffer, buffer_size);
+}
 #include "../comm/accessApi.h"
 #include "../comm/nodeApi.h"
-#include "../invitation/invitationApi.h"
 #include "mongoose.h"
 #include "packages/fileIO/blockchainPersistence.h"
 
@@ -56,6 +67,9 @@ PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port) {
     node->api_port = api_port;
     node->running = 1;
     
+    // Set global node ID for path resolution
+    g_current_node_id = node_id;
+    
     // Initialize mutex
     if (pthread_mutex_init(&node->state_mutex, NULL) != 0) {
         free(node);
@@ -65,15 +79,6 @@ PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port) {
     // Initialize HTTP client for peer communication
     if (!http_client_init()) {
         printf("Failed to initialize HTTP client for node %u\n", node_id);
-        pthread_mutex_destroy(&node->state_mutex);
-        free(node);
-        return NULL;
-    }
-    
-    // Initialize invitation system
-    if (!invitation_system_init()) {
-        printf("Failed to initialize invitation system for node %u\n", node_id);
-        http_client_cleanup();
         pthread_mutex_destroy(&node->state_mutex);
         free(node);
         return NULL;
@@ -93,8 +98,6 @@ void pbft_node_destroy(PBFTNode* node) {
     // Cleanup HTTP client
     http_client_cleanup();
     
-    // Cleanup invitation system
-    invitation_system_cleanup();
     
     pthread_mutex_destroy(&node->state_mutex);
     free(node);
@@ -111,9 +114,17 @@ int pbft_node_initialize_keys(PBFTNode* node) {
         return -1;
     }
     
+    // Initialize node-specific paths
+    NodeStatePaths paths;
+    if (!state_paths_init(node->base.id, &paths)) {
+        printf("Failed to initialize state paths for node %u\n", node->base.id);
+        return -1;
+    }
+    
     // Try to load existing private key, or generate new one
     char filename[256];
-    snprintf(filename, sizeof(filename), "state/keys/node_%u_private.key", node->base.id);
+    strncpy(filename, paths.private_key_file, sizeof(filename) - 1);
+    filename[sizeof(filename) - 1] = '\0';
     
     // Try to load existing key
     if (keystore_load_private_key(filename, "default_passphrase") == 1) {
@@ -148,9 +159,16 @@ int pbft_node_load_or_create_blockchain(PBFTNode* node) {
     
     printf("Loading/creating blockchain for node %u\n", node->base.id);
     
-    // Initialize the robust persistence manager
-    const char* blockchain_file = "state/blockchain/blockchain.dat";
-    const char* db_file = "state/blockchain/blockchain.db";
+    // Initialize node-specific paths
+    NodeStatePaths paths;
+    if (!state_paths_init(node->base.id, &paths)) {
+        printf("Failed to initialize state paths for node %u\n", node->base.id);
+        return -1;
+    }
+    
+    // Initialize the robust persistence manager with node-specific paths
+    const char* blockchain_file = paths.blockchain_file;
+    const char* db_file = paths.database_file;
     
     PersistenceResult init_result = blockchain_persistence_init(blockchain_file, db_file);
     if (init_result != PERSISTENCE_SUCCESS) {
@@ -169,7 +187,7 @@ int pbft_node_load_or_create_blockchain(PBFTNode* node) {
     
     // Try to load blockchain using the robust persistence system with recovery
     printf("🔄 Loading blockchain with automatic recovery...\n");
-    TW_BlockChain* loaded_blockchain = readBlockChainFromFile();
+    TW_BlockChain* loaded_blockchain = readBlockChainFromFileWithPath(paths.blockchain_dir);
     
     if (loaded_blockchain) {
         node->base.blockchain = loaded_blockchain;
@@ -204,7 +222,7 @@ int pbft_node_load_or_create_blockchain(PBFTNode* node) {
             if (recovery_result == PERSISTENCE_SUCCESS) {
                 // Reload blockchain after recovery
                 TW_BlockChain_destroy(node->base.blockchain);
-                node->base.blockchain = readBlockChainFromFile();
+                node->base.blockchain = readBlockChainFromFileWithPath(paths.blockchain_dir);
                 if (node->base.blockchain) {
                     printf("✅ Blockchain reloaded after recovery: %u blocks\n", 
                            node->base.blockchain->length);
@@ -432,8 +450,6 @@ static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_dat
             handle_add_new_block_singular_endpoint(c, hm, node);
         } else if (mg_strcmp(hm->uri, mg_str("/api/network/stats")) == 0) {
             handle_get_network_stats(c, hm);
-        } else if (mg_strcmp(hm->uri, mg_str("/api/invitations/stats")) == 0) {
-            handle_get_invitation_stats(c, hm);
         } else if (mg_strcmp(hm->uri, mg_str("/api/family/members")) == 0) {
             handle_get_family_members(c, hm);
         } else if (mg_strcmp(hm->uri, mg_str("/api/activity")) == 0) {
@@ -452,36 +468,10 @@ static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_dat
         } else if (strstr(hm->uri.buf, "/api/transactions/") != NULL && 
                    mg_strcmp(hm->uri, mg_str("/api/transactions")) != 0) {
             handle_get_transaction_by_hash(c, hm);
-        } else if (mg_strcmp(hm->uri, mg_str("/invitation/create")) == 0) {
-            handle_invitation_create(c, hm);
-        } else if (mg_strcmp(hm->uri, mg_str("/invitation/pending")) == 0) {
-            handle_invitation_get_pending(c, hm);
-        } else if (mg_strcmp(hm->uri, mg_str("/invitation/stats")) == 0) {
-            handle_invitation_get_stats(c, hm);
-        } else if (strstr(hm->uri.buf, "/invitation/accept/") != NULL) {
-            // Extract invitation code from URI path
-            char invitation_code[32];
-            const char* code_start = strstr(hm->uri.buf, "/invitation/accept/") + 19;
-            size_t code_len = hm->uri.len - (code_start - hm->uri.buf);
-            if (code_len >= 32) code_len = 31;
-            strncpy(invitation_code, code_start, code_len);
-            invitation_code[code_len] = '\0';
-            handle_invitation_accept(c, hm, invitation_code);
-        } else if (strstr(hm->uri.buf, "/invitation/revoke/") != NULL) {
-            // Extract invitation code from URI path
-            char invitation_code[32];
-            const char* code_start = strstr(hm->uri.buf, "/invitation/revoke/") + 19;
-            size_t code_len = hm->uri.len - (code_start - hm->uri.buf);
-            if (code_len >= 32) code_len = 31;
-            strncpy(invitation_code, code_start, code_len);
-            invitation_code[code_len] = '\0';
-            handle_invitation_revoke(c, hm, invitation_code);
         } else if (mg_strcmp(hm->uri, mg_str("/api/access/submit")) == 0) {
             handle_access_request_submit_pbft(c, hm);
         } else if (mg_strcmp(hm->uri, mg_str("/api/access/poll")) == 0) {
             handle_access_request_poll(c, hm);
-        } else if (mg_strcmp(hm->uri, mg_str("/api/v1/recipients/keys")) == 0) {
-            handle_get_recipient_keys(c, hm);
         } else {
             // 404 Not Found
             mg_http_reply(c, 404, "Content-Type: application/json\r\n", 
@@ -2554,7 +2544,12 @@ int is_user_verified(const unsigned char* public_key, TW_BlockChain* blockchain)
     if (!public_key || !blockchain) return 0;
     
     // Open database connection for verification
-    if (db_init("state/blockchain/blockchain.db") != 0) {
+    char db_path[512];
+    if (!get_current_node_db_path(db_path, sizeof(db_path))) {
+        printf("Failed to get database path for user verification\n");
+        return 0;
+    }
+    if (db_init(db_path) != 0) {
         printf("Failed to open database for user verification\n");
         return 0;
     }
@@ -2599,7 +2594,13 @@ int validate_transaction_permissions_for_node(TW_Transaction* transaction, PBFTN
     }
     
     // Open database connection for validation
-    if (db_init("state/blockchain/blockchain.db") != 0) {
+    char db_path[512];
+    if (!get_current_node_db_path(db_path, sizeof(db_path))) {
+        printf("Failed to get database path for validation\n");
+        destroy_validation_context(context);
+        return 0;
+    }
+    if (db_init(db_path) != 0) {
         printf("Failed to open database for validation\n");
         destroy_validation_context(context);
         return 0;

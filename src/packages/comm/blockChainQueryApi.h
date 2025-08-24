@@ -16,7 +16,6 @@ char* transaction_to_json_string(TW_Transaction* tx);
 // REST API endpoint handlers for blockchain data queries
 void handle_get_network_stats(struct mg_connection* c, struct mg_http_message* hm);
 void handle_get_block_by_hash(struct mg_connection* c, struct mg_http_message* hm);
-void handle_get_invitation_stats(struct mg_connection* c, struct mg_http_message* hm);
 void handle_get_family_members(struct mg_connection* c, struct mg_http_message* hm);
 void handle_get_activity(struct mg_connection* c, struct mg_http_message* hm);
 void handle_get_blocks(struct mg_connection* c, struct mg_http_message* hm);

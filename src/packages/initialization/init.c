@@ -4,6 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include "init.h"
 #include "packages/keystore/keystore.h"
 #include "packages/structures/blockChain/blockchain.h"
@@ -120,11 +121,17 @@ int initialize_network(const InitConfig* config) {
     
     // Initialize database
     printf("Initializing SQLite database...\n");
-    if (config->database_path) {
-        strncpy(db_path, config->database_path, sizeof(db_path) - 1);
-        db_path[sizeof(db_path) - 1] = '\0';
-    } else {
+    if (config->node_specific_dirs) {
+        // For node-specific mode, we'll create databases per node later
+        // For now, use a temporary database for initialization
         snprintf(db_path, sizeof(db_path), "%s/blockchain.db", config->blockchain_path);
+    } else {
+        if (config->database_path) {
+            strncpy(db_path, config->database_path, sizeof(db_path) - 1);
+            db_path[sizeof(db_path) - 1] = '\0';
+        } else {
+            snprintf(db_path, sizeof(db_path), "%s/blockchain.db", config->blockchain_path);
+        }
     }
     if (db_init(db_path) != 0) {
         fprintf(stderr, "Error: Failed to initialize database\n");
@@ -143,13 +150,17 @@ int initialize_network(const InitConfig* config) {
 
     // 2. Save keys to keystore
     printf("Saving keys to keystore...\n");
-    if (save_keys_to_keystore(&keys, config->keystore_path, config->passphrase) != 0) {
+    if (save_keys_to_keystore_with_config(&keys, config) != 0) {
         fprintf(stderr, "Error: Failed to save keys to keystore\n");
         free_generated_keys(&keys);
         db_close();
         return -1;
     }
-    printf("Keys saved to keystore: %s\n", config->keystore_path);
+    if (config->node_specific_dirs) {
+        printf("Keys saved in node-specific directories\n");
+    } else {
+        printf("Keys saved to keystore: %s\n", config->keystore_path);
+    }
 
     // 3. Create blockchain
     printf("Creating blockchain...\n");
@@ -197,23 +208,50 @@ int initialize_network(const InitConfig* config) {
 
     // 6. Save the initialized blockchain to file
     printf("Saving blockchain to file...\n");
-    if (!saveBlockChainToFileWithPath(blockchain, config->blockchain_path)) {
-        fprintf(stderr, "Error: Failed to save blockchain\n");
-        free(peers);
-        free_generated_keys(&keys);
-        TW_BlockChain_destroy(blockchain);
-        db_close();
-        return -1;
-    }
-    printf("Blockchain saved to: %s/blockchain.dat\n", config->blockchain_path);
-
-    // 7. Save blockchain as JSON for human readability
-    printf("Saving blockchain as JSON...\n");
-    if (!writeBlockChainToJsonWithPath(blockchain, config->blockchain_path)) {
-        fprintf(stderr, "Warning: Failed to save blockchain as JSON\n");
-        // Don't return error here as the main blockchain file was saved successfully
+    
+    if (config->node_specific_dirs) {
+        // Save blockchain to each node's directory
+        for (uint32_t i = 0; i < config->node_count; i++) {
+            char node_blockchain_dir[512];
+            snprintf(node_blockchain_dir, sizeof(node_blockchain_dir), "state/node_%u/blockchain", i);
+            
+            if (!saveBlockChainToFileWithPath(blockchain, node_blockchain_dir)) {
+                fprintf(stderr, "Error: Failed to save blockchain for node %u\n", i);
+                free(peers);
+                free_generated_keys(&keys);
+                TW_BlockChain_destroy(blockchain);
+                db_close();
+                return -1;
+            }
+            printf("Blockchain saved for node %u: %s/blockchain.dat\n", i, node_blockchain_dir);
+            
+            // Also save JSON for each node
+            if (!writeBlockChainToJsonWithPath(blockchain, node_blockchain_dir)) {
+                fprintf(stderr, "Warning: Failed to save blockchain JSON for node %u\n", i);
+            } else {
+                printf("Blockchain JSON saved for node %u: %s/blockchain.json\n", i, node_blockchain_dir);
+            }
+        }
     } else {
-        printf("Blockchain JSON saved to: %s/blockchain.json\n", config->blockchain_path);
+        // Original behavior: save to global directory
+        if (!saveBlockChainToFileWithPath(blockchain, config->blockchain_path)) {
+            fprintf(stderr, "Error: Failed to save blockchain\n");
+            free(peers);
+            free_generated_keys(&keys);
+            TW_BlockChain_destroy(blockchain);
+            db_close();
+            return -1;
+        }
+        printf("Blockchain saved to: %s/blockchain.dat\n", config->blockchain_path);
+
+        // 7. Save blockchain as JSON for human readability
+        printf("Saving blockchain as JSON...\n");
+        if (!writeBlockChainToJsonWithPath(blockchain, config->blockchain_path)) {
+            fprintf(stderr, "Warning: Failed to save blockchain as JSON\n");
+            // Don't return error here as the main blockchain file was saved successfully
+        } else {
+            printf("Blockchain JSON saved to: %s/blockchain.json\n", config->blockchain_path);
+        }
     }
 
     // 8. Load the first node's keypair into keystore for decryption
@@ -241,6 +279,40 @@ int initialize_network(const InitConfig* config) {
     }
     printf("Blockchain synchronized to database successfully\n");
 
+    // 10. Create node-specific databases if in debug mode
+    if (config->node_specific_dirs) {
+        printf("Creating node-specific databases...\n");
+        
+        for (uint32_t i = 0; i < config->node_count; i++) {
+            char node_db_path[512];
+            snprintf(node_db_path, sizeof(node_db_path), "state/node_%u/blockchain/blockchain.db", i);
+            
+            // Close current database
+            db_close();
+            
+            // Initialize node-specific database
+            if (db_init(node_db_path) != 0) {
+                fprintf(stderr, "Error: Failed to initialize database for node %u\n", i);
+                free(peers);
+                free_generated_keys(&keys);
+                TW_BlockChain_destroy(blockchain);
+                return -1;
+            }
+            
+            // Sync blockchain to this node's database
+            if (db_sync_blockchain(blockchain) != 0) {
+                fprintf(stderr, "Error: Failed to sync blockchain to database for node %u\n", i);
+                free(peers);
+                free_generated_keys(&keys);
+                TW_BlockChain_destroy(blockchain);
+                db_close();
+                return -1;
+            }
+            
+            printf("Database created for node %u: %s\n", i, node_db_path);
+        }
+    }
+
     // Cleanup
     free(peers);
     free_generated_keys(&keys);
@@ -248,11 +320,23 @@ int initialize_network(const InitConfig* config) {
     db_close();
 
     printf("Network initialization completed successfully!\n");
-    printf("Files created:\n");
-    printf("  - Binary blockchain: %s/blockchain.dat\n", config->blockchain_path);
-    printf("  - JSON blockchain: %s/blockchain.json\n", config->blockchain_path);
-    printf("  - SQLite database: %s\n", db_path);
-    printf("  - Keys: %s\n", config->keystore_path);
+    if (config->node_specific_dirs) {
+        printf("Files created in node-specific directories:\n");
+        for (uint32_t i = 0; i < config->node_count; i++) {
+            printf("  Node %u:\n", i);
+            printf("    - Blockchain: state/node_%u/blockchain/blockchain.dat\n", i);
+            printf("    - JSON: state/node_%u/blockchain/blockchain.json\n", i);
+            printf("    - Database: state/node_%u/blockchain/blockchain.db\n", i);
+            printf("    - Private Key: state/node_%u/keys/node_%u_private.key\n", i, i);
+        }
+        printf("  Global user keys: %s/user_*_private.key\n", config->keystore_path);
+    } else {
+        printf("Files created:\n");
+        printf("  - Binary blockchain: %s/blockchain.dat\n", config->blockchain_path);
+        printf("  - JSON blockchain: %s/blockchain.json\n", config->blockchain_path);
+        printf("  - SQLite database: %s\n", db_path);
+        printf("  - Keys: %s\n", config->keystore_path);
+    }
     
     return 0;
 }
@@ -328,7 +412,7 @@ int save_keys_to_keystore(const GeneratedKeys* keys, const char* keystore_path, 
     // Save node keys
     for (uint32_t i = 0; i < keys->node_count; i++) {
         char node_key_path[256];
-        snprintf(node_key_path, sizeof(node_key_path), "%s/node_%u_key.bin", keystore_path, i);
+        snprintf(node_key_path, sizeof(node_key_path), "%s/node_%u_private.key", keystore_path, i);
         FILE* f = fopen(node_key_path, "wb");
         if (!f) return -1;
         fwrite(keys->node_private_keys[i], 1, SIGN_SECRET_SIZE, f);
@@ -337,12 +421,80 @@ int save_keys_to_keystore(const GeneratedKeys* keys, const char* keystore_path, 
     // Save user keys
     for (uint32_t i = 0; i < keys->user_count; i++) {
         char user_key_path[256];
-        snprintf(user_key_path, sizeof(user_key_path), "%s/user_%u_key.bin", keystore_path, i);
+        snprintf(user_key_path, sizeof(user_key_path), "%s/user_%u_private.key", keystore_path, i);
         FILE* f = fopen(user_key_path, "wb");
         if (!f) return -1;
         fwrite(keys->user_private_keys[i], 1, SIGN_SECRET_SIZE, f);
         fclose(f);
     }
+    return 0;
+}
+
+int save_keys_to_keystore_with_config(const GeneratedKeys* keys, const InitConfig* config) {
+    if (!keys || !config) return -1;
+    
+    if (config->node_specific_dirs) {
+        // Create node-specific directories and save keys there
+        printf("Creating node-specific key directories...\n");
+        
+        for (uint32_t i = 0; i < keys->node_count; i++) {
+            // Create directory structure: state/node_X/keys/
+            char node_dir[512];
+            char node_keys_dir[512];
+            char node_blockchain_dir[512];
+            
+            snprintf(node_dir, sizeof(node_dir), "state/node_%u", i);
+            snprintf(node_keys_dir, sizeof(node_keys_dir), "state/node_%u/keys", i);
+            snprintf(node_blockchain_dir, sizeof(node_blockchain_dir), "state/node_%u/blockchain", i);
+            
+            // Create directories
+            if (mkdir(node_dir, 0700) == -1 && errno != EEXIST) {
+                fprintf(stderr, "Failed to create node directory: %s\n", node_dir);
+                return -1;
+            }
+            if (mkdir(node_keys_dir, 0700) == -1 && errno != EEXIST) {
+                fprintf(stderr, "Failed to create node keys directory: %s\n", node_keys_dir);
+                return -1;
+            }
+            if (mkdir(node_blockchain_dir, 0700) == -1 && errno != EEXIST) {
+                fprintf(stderr, "Failed to create node blockchain directory: %s\n", node_blockchain_dir);
+                return -1;
+            }
+            
+            // Save node private key
+            char node_key_path[512];
+            snprintf(node_key_path, sizeof(node_key_path), "%s/node_%u_private.key", node_keys_dir, i);
+            FILE* f = fopen(node_key_path, "wb");
+            if (!f) {
+                fprintf(stderr, "Failed to create node key file: %s\n", node_key_path);
+                return -1;
+            }
+            fwrite(keys->node_private_keys[i], 1, SIGN_SECRET_SIZE, f);
+            fclose(f);
+            
+            printf("Created node %u key: %s\n", i, node_key_path);
+        }
+        
+        // For node-specific mode, save user keys in the global keys directory
+        // (users are not node-specific)
+        for (uint32_t i = 0; i < keys->user_count; i++) {
+            char user_key_path[512];
+            snprintf(user_key_path, sizeof(user_key_path), "%s/user_%u_private.key", config->keystore_path, i);
+            FILE* f = fopen(user_key_path, "wb");
+            if (!f) {
+                fprintf(stderr, "Failed to create user key file: %s\n", user_key_path);
+                return -1;
+            }
+            fwrite(keys->user_private_keys[i], 1, SIGN_SECRET_SIZE, f);
+            fclose(f);
+            
+            printf("Created user %u key: %s\n", i, user_key_path);
+        }
+    } else {
+        // Use the original function for backwards compatibility
+        return save_keys_to_keystore(keys, config->keystore_path, config->passphrase);
+    }
+    
     return 0;
 }
 

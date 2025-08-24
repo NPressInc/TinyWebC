@@ -21,6 +21,11 @@ bool saveBlockChainToFileWithPath(TW_BlockChain* blockChain, const char* blockch
 // Caller is responsible for freeing the returned BlockChain
 TW_BlockChain* readBlockChainFromFile(void);
 
+// Read blockchain from a file with custom path
+// Returns pointer to newly allocated BlockChain if successful, NULL otherwise
+// Caller is responsible for freeing the returned BlockChain
+TW_BlockChain* readBlockChainFromFileWithPath(const char* blockchain_dir);
+
 bool writeBlockChainToJson(TW_BlockChain* blockChain);
 
 // Write blockchain to JSON with custom path
@@ -31,7 +36,7 @@ bool writeBlockChainToJsonWithPath(TW_BlockChain* blockChain, const char* blockc
 // Data importance classification for efficient loading
 typedef enum {
     DATA_CRITICAL,      // Always keep (permissions, users, network config, system settings)
-    DATA_IMPORTANT,     // Keep for specified days (messages, invitations, location updates) 
+    DATA_IMPORTANT,     // Keep for specified days (messages, location updates) 
     DATA_OPERATIONAL,   // Keep for short term (media requests, temporary settings)
     DATA_EPHEMERAL     // Don't persist (call requests, temporary states)
 } TW_DataImportance;

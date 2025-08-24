@@ -252,14 +252,6 @@ void handle_get_network_stats(struct mg_connection* c, struct mg_http_message* h
                     activity_type = "permission_granted";
                     description = "Role assignment updated";
                     break;
-                case TW_TXN_INVITATION_CREATE:
-                    activity_type = "invitation_sent";
-                    description = "Invitation created";
-                    break;
-                case TW_TXN_INVITATION_ACCEPT:
-                    activity_type = "user_joined";
-                    description = "Invitation accepted";
-                    break;
                 default:
                     activity_type = "transaction";
                     description = "Transaction processed";
@@ -372,80 +364,6 @@ void handle_get_block_by_hash(struct mg_connection* c, struct mg_http_message* h
         free(json_str);
     }
     
-    cJSON_Delete(resp);
-}
-
-void handle_get_invitation_stats(struct mg_connection* c, struct mg_http_message* hm) {
-    cJSON* resp = cJSON_CreateObject();
-    if (!resp) {
-        send_error_response(c, "Failed to create JSON response");
-        return;
-    }
-    
-    // Get invitation statistics from database by querying transaction types
-    uint32_t total_created = 0;
-    uint32_t total_accepted = 0;
-    uint32_t total_pending = 0;
-    uint32_t total_expired = 0;
-    
-    if (db_is_initialized()) {
-        // Query invitation creation transactions
-        TransactionRecord* create_results = NULL;
-        size_t create_count = 0;
-        if (query_transactions_by_type(TW_TXN_INVITATION_CREATE, 1000, &create_results, &create_count) == 0) {
-            total_created = create_count;
-            if (create_results) {
-                db_free_transaction_records(create_results, create_count);
-            }
-        }
-        
-        // Query invitation acceptance transactions
-        TransactionRecord* accept_results = NULL;
-        size_t accept_count = 0;
-        if (query_transactions_by_type(TW_TXN_INVITATION_ACCEPT, 1000, &accept_results, &accept_count) == 0) {
-            total_accepted = accept_count;
-            if (accept_results) {
-                db_free_transaction_records(accept_results, accept_count);
-            }
-        }
-        
-        // Calculate pending invitations (created but not accepted)
-        // This is a simplified calculation - in a real system you'd track invitation IDs
-        total_pending = (total_created > total_accepted) ? (total_created - total_accepted) : 0;
-        
-        // Query invitation revocation transactions to adjust pending count
-        TransactionRecord* revoke_results = NULL;
-        size_t revoke_count = 0;
-        if (query_transactions_by_type(TW_TXN_INVITATION_REVOKE, 1000, &revoke_results, &revoke_count) == 0) {
-            // Subtract revoked invitations from pending count
-            if (total_pending > revoke_count) {
-                total_pending -= revoke_count;
-            } else {
-                total_pending = 0;
-            }
-            if (revoke_results) {
-                db_free_transaction_records(revoke_results, revoke_count);
-            }
-        }
-        
-        // For now, we don't track expiration times in database, so total_expired = 0
-        // In a real system, you'd check invitation timestamps against expiration periods
-        total_expired = 0;
-    }
-    
-    // Build response matching InvitationStats interface
-    cJSON_AddNumberToObject(resp, "totalCreated", total_created);
-    cJSON_AddNumberToObject(resp, "totalAccepted", total_accepted);
-    cJSON_AddNumberToObject(resp, "totalPending", total_pending);
-    cJSON_AddNumberToObject(resp, "totalExpired", total_expired);
-    
-    char* json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        send_json_response(c, 200, json_str);
-        free(json_str);
-    } else {
-        send_error_response(c, "Failed to serialize JSON response");
-    }
     cJSON_Delete(resp);
 }
 
@@ -564,14 +482,6 @@ void handle_get_activity(struct mg_connection* c, struct mg_http_message* hm) {
                 case TW_TXN_ROLE_ASSIGNMENT:
                     activity_type = "permission_granted";
                     description = "Role assignment updated";
-                    break;
-                case TW_TXN_INVITATION_CREATE:
-                    activity_type = "invitation_sent";
-                    description = "Invitation created";
-                    break;
-                case TW_TXN_INVITATION_ACCEPT:
-                    activity_type = "user_joined";
-                    description = "Invitation accepted";
                     break;
                 default:
                     activity_type = "transaction";

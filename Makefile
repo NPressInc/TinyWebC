@@ -1174,6 +1174,39 @@ src/packages/utils/print.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/print.c.s
 .PHONY : src/packages/utils/print.c.s
 
+src/packages/utils/statePaths.o: src/packages/utils/statePaths.c.o
+.PHONY : src/packages/utils/statePaths.o
+
+# target to build an object file
+src/packages/utils/statePaths.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/statePaths.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/statePaths.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/statePaths.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/statePaths.c.o
+.PHONY : src/packages/utils/statePaths.c.o
+
+src/packages/utils/statePaths.i: src/packages/utils/statePaths.c.i
+.PHONY : src/packages/utils/statePaths.i
+
+# target to preprocess a source file
+src/packages/utils/statePaths.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/statePaths.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/statePaths.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/statePaths.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/statePaths.c.i
+.PHONY : src/packages/utils/statePaths.c.i
+
+src/packages/utils/statePaths.s: src/packages/utils/statePaths.c.s
+.PHONY : src/packages/utils/statePaths.s
+
+# target to generate assembly for a file
+src/packages/utils/statePaths.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/statePaths.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/statePaths.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/statePaths.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/utils/statePaths.c.s
+.PHONY : src/packages/utils/statePaths.c.s
+
 src/packages/validation/block_validation.o: src/packages/validation/block_validation.c.o
 .PHONY : src/packages/validation/block_validation.o
 
@@ -1664,6 +1697,9 @@ help:
 	@echo "... src/packages/utils/print.o"
 	@echo "... src/packages/utils/print.i"
 	@echo "... src/packages/utils/print.s"
+	@echo "... src/packages/utils/statePaths.o"
+	@echo "... src/packages/utils/statePaths.i"
+	@echo "... src/packages/utils/statePaths.s"
 	@echo "... src/packages/validation/block_validation.o"
 	@echo "... src/packages/validation/block_validation.i"
 	@echo "... src/packages/validation/block_validation.s"

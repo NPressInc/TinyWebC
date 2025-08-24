@@ -10,7 +10,6 @@
 #include "tests/database_test.h"
 #include "tests/mongoose_test.h"
 #include "tests/http_client_test.h"
-#include "tests/invitation_test.h"
 #include "tests/access_request_test.h"
 #include "tests/node_peer_management_test.h"
 
@@ -26,7 +25,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 10;
+        int total_tests = 9;
 
         printf("Running all tests...\n\n");
 
@@ -113,18 +112,6 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         printf("\n");
 
-        // Run invitation tests
-        printf("Running invitation tests...\n");
-        if (invitation_test_main() == 0) {
-            printf("✓ Invitation tests passed\n");
-            tests_passed++;
-        } else {
-            printf("✗ Invitation tests failed\n");
-            tests_failed++;
-        }
-        keystore_cleanup();
-        printf("\n");
-
         // Run access request tests
         printf("Running access request tests...\n");
         if (access_request_test_main() == 0) {
@@ -200,12 +187,6 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         return result;
     }
-    else if (strcmp(argv[1], "invitation") == 0) {
-        printf("Running invitation test...\n");
-        int result = invitation_test_main();
-        keystore_cleanup();
-        return result;
-    }
     else if (strcmp(argv[1], "access_request") == 0) {
         printf("Running access request test...\n");
         int result = access_request_test_main();
@@ -220,7 +201,7 @@ int main(int argc, char* argv[]) {
     }
     else {
         printf("Unknown test: %s\n", argv[1]);
-        printf("Available tests: encryption, signing, blockchain, init_network, database, mongoose, http_client, invitation, access_request, node_peer_management\n");
+        printf("Available tests: encryption, signing, blockchain, init_network, database, mongoose, http_client, access_request, node_peer_management\n");
         return 1;
     }
 

@@ -843,10 +843,6 @@ const char* get_transaction_type_name(TW_TransactionType type) {
         case TW_TXN_LOCATION_UPDATE:        return "LOCATION_UPDATE";
         case TW_TXN_EMERGENCY_ALERT:        return "EMERGENCY_ALERT";
         case TW_TXN_SYSTEM_CONFIG:          return "SYSTEM_CONFIG";
-        case TW_TXN_INVITATION_CREATE:      return "INVITATION_CREATE";
-        case TW_TXN_INVITATION_ACCEPT:      return "INVITATION_ACCEPT";
-        case TW_TXN_INVITATION_REVOKE:      return "INVITATION_REVOKE";
-        case TW_TXN_PROXIMITY_INVITATION:   return "PROXIMITY_INVITATION";
         case TW_TXN_PROXIMITY_VALIDATION:   return "PROXIMITY_VALIDATION";
         case TW_TXN_VOICE_CALL_REQ:         return "VOICE_CALL_REQ";
         case TW_TXN_VIDEO_CALL_REQ:         return "VIDEO_CALL_REQ";

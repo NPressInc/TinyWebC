@@ -21,7 +21,6 @@ extern Route routes[];
 // Function declarations
 void handle_json(struct mg_connection* c, struct mg_http_message* hm);
 void handle_binary(struct mg_connection* c, struct mg_http_message* hm);
-void handle_get_recipient_keys(struct mg_connection* c, struct mg_http_message* hm);
 void start_node_api(const char* port);
 
 #endif // TW_NODE_API_H

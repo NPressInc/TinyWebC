@@ -115,7 +115,6 @@ make              # Compile
 - ✅ Database tests
 - ✅ Network initialization tests
 - ✅ HTTP client tests
-- ✅ Invitation system tests
 - ✅ Mongoose tests
 
 ## For AI Agents and CI/CD

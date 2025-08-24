@@ -8,6 +8,7 @@
 #include <cjson/cJSON.h>
 #include "packages/structures/blockChain/block.h"
 #include "packages/structures/blockChain/transaction.h"
+#include "packages/utils/statePaths.h"
 
 #define BLOCKCHAIN_DIR "state/blockchain"
 #define BLOCKCHAIN_FILENAME BLOCKCHAIN_DIR "/blockchain.dat"
@@ -165,6 +166,81 @@ TW_BlockChain* readBlockChainFromFile(void) {
     if (blockChain) {
         printf("Loaded blockchain (Original size: %zu bytes, Compressed size: %zu bytes)\n", 
                originalSize, compressedSize);
+    }
+
+    return blockChain;
+}
+
+TW_BlockChain* readBlockChainFromFileWithPath(const char* blockchain_dir) {
+    if (!blockchain_dir) {
+        return readBlockChainFromFile();  // Fallback to default path
+    }
+    
+    // Build the full filename with provided directory
+    char blockchain_filename[512];
+    snprintf(blockchain_filename, sizeof(blockchain_filename), "%s/blockchain.dat", blockchain_dir);
+    
+    // Open and read file
+    FILE* file = fopen(blockchain_filename, "rb");
+    if (!file) {
+        printf("Failed to open file: %s\n", blockchain_filename);
+        return NULL;
+    }
+
+    // Read original size first
+    size_t originalSize;
+    size_t read = fread(&originalSize, sizeof(size_t), 1, file);
+    if (read != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    // Read compressed size
+    size_t compressedSize;
+    read = fread(&compressedSize, sizeof(size_t), 1, file);
+    if (read != 1) {
+        fclose(file);
+        return NULL;
+    }
+
+    // Read compressed data
+    unsigned char* compressedData = malloc(compressedSize);
+    if (!compressedData) {
+        fclose(file);
+        return NULL;
+    }
+
+    read = fread(compressedData, 1, compressedSize, file);
+    fclose(file);
+
+    if (read != compressedSize) {
+        free(compressedData);
+        return NULL;
+    }
+
+    // Decompress the data
+    unsigned char* serializedData;
+    size_t serializedSize;
+    if (!decompress_data(compressedData, compressedSize, &serializedData, &serializedSize)) {
+        free(compressedData);
+        return NULL;
+    }
+    free(compressedData);
+
+    // Verify the decompressed size matches the original size
+    if (serializedSize != originalSize) {
+        printf("Size mismatch: expected %zu bytes, got %zu bytes\n", originalSize, serializedSize);
+        free(serializedData);
+        return NULL;
+    }
+
+    // Deserialize to BlockChain
+    TW_BlockChain* blockChain = TW_BlockChain_deserialize(serializedData, serializedSize);
+    free(serializedData);
+
+    if (blockChain) {
+        printf("Loaded blockchain from %s (Original size: %zu bytes, Compressed size: %zu bytes)\n", 
+               blockchain_filename, originalSize, compressedSize);
     }
 
     return blockChain;
@@ -439,13 +515,6 @@ bool TW_is_critical_transaction_type(TW_TransactionType type) {
         // Permission System - Critical for Security
         case TW_TXN_PERMISSION_EDIT:
         case TW_TXN_PARENTAL_CONTROL:
-        
-        // Invitation System - Critical for Network Growth
-        case TW_TXN_INVITATION_CREATE:
-        case TW_TXN_INVITATION_ACCEPT:
-        case TW_TXN_INVITATION_REVOKE:
-        case TW_TXN_PROXIMITY_INVITATION:
-        case TW_TXN_PROXIMITY_VALIDATION:
             return true;
             
         default:
@@ -541,6 +610,7 @@ bool TW_BlockchainDataManager_should_load_transaction(const TW_Transaction* tx,
 }
 
 size_t TW_calculate_database_size(void) {
+    // TODO: This should use node-specific database path when node context is available
     return TW_calculate_database_size_with_path("state/blockchain/blockchain.db");
 }
 

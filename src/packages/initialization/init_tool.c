@@ -60,8 +60,10 @@ void print_usage(const char* program_name) {
     printf("Options:\n");
     printf("  -h, --help          Show this help message\n");
     printf("  -v, --verbose       Enable verbose output\n");
+    printf("  -d, --debug-nodes   Create node-specific directories (state/node_X/)\n");
     printf("\nExample:\n");
     printf("  %s src/packages/initialization/configs/network_config.json\n", program_name);
+    printf("  %s -d config.json  # Create node-specific directories for multi-node testing\n", program_name);
 }
 
 int parse_json_config(const char* config_file, JsonConfig* config) {
@@ -453,24 +455,29 @@ int check_and_clean_existing_state(const char* keystore_path, const char* blockc
 
 int main(int argc, char* argv[]) {
     int verbose = 0;
+    int debug_nodes = 0;
     const char* config_file = NULL;
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"verbose", no_argument, 0, 'v'},
+        {"debug-nodes", no_argument, 0, 'd'},
         {0, 0, 0, 0}
     };
 
     int opt;
     int option_index = 0;
 
-    while ((opt = getopt_long(argc, argv, "hv", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvd", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'h':
                 print_usage(argv[0]);
                 return 0;
             case 'v':
                 verbose = 1;
+                break;
+            case 'd':
+                debug_nodes = 1;
                 break;
             default:
                 print_usage(argv[0]);
@@ -510,7 +517,8 @@ int main(int argc, char* argv[]) {
         .passphrase = json_config.passphrase ? json_config.passphrase : "testpass",
         .base_port = json_config.base_port ? json_config.base_port : BASE_PORT,
         .node_count = json_config.node_count,
-        .user_count = json_config.admin_count + json_config.member_count
+        .user_count = json_config.admin_count + json_config.member_count,
+        .node_specific_dirs = debug_nodes
     };
 
     printf("Initializing '%s' network...\n", json_config.network_name ? json_config.network_name : "TinyWeb");
@@ -523,6 +531,7 @@ int main(int argc, char* argv[]) {
     printf("  Keystore: %s\n", config.keystore_path);
     printf("  Blockchain: %s\n", config.blockchain_path);
     printf("  Base Port: %u\n", config.base_port);
+    printf("  Mode: %s\n", debug_nodes ? "Node-specific directories (debug)" : "Global directories");
     printf("\n");
     
     // Check for existing state and prompt user for cleanup
