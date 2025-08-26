@@ -634,7 +634,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     TW_Block* last_block = TW_BlockChain_get_last_block(blockchain);
     unsigned char previous_hash[HASH_SIZE];
     if (last_block) {
-        if (TW_Block_getHash(last_block, previous_hash) != 1) {
+        if (TW_Block_getHash(last_block, previous_hash) != 0) {
             printf("Failed to get previous block hash\n");
             return -1;
         }
@@ -676,7 +676,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     TW_Block_buildMerkleTree(init_block);
 
     // Add the block to the blockchain
-    if (TW_BlockChain_add_block(blockchain, init_block) == 0) {
+    if (TW_BlockChain_add_block(blockchain, init_block) != 0) {
         printf("Failed to add block to blockchain\n");
         TW_Block_destroy(init_block);
         free(init_transactions);

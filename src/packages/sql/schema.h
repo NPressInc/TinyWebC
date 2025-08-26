@@ -2,7 +2,7 @@
 #define SCHEMA_H
 
 // Database schema version
-#define CURRENT_SCHEMA_VERSION 2
+#define CURRENT_SCHEMA_VERSION 3
 
 // SQL statements for creating tables
 extern const char* SQL_CREATE_BLOCKCHAIN_INFO;

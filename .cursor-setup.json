@@ -17,7 +17,6 @@
     "artifacts": [
       "tinyweb",
       "tinyweb_tests",
-      "pbft_node",
       "init_tool"
     ]
   },

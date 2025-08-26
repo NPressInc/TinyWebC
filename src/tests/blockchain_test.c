@@ -197,7 +197,7 @@ int blockchain_test_main(void) {
         }
         
         // Add the block to the chain
-        if (!TW_BlockChain_add_block(blockchain, new_block)) {
+        if (TW_BlockChain_add_block(blockchain, new_block) != 0) {
             printf("Failed to add block %d to chain\n", block_index);
             TW_Block_destroy(new_block);
             free_validation_config(validation_config);

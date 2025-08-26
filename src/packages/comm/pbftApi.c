@@ -166,7 +166,7 @@ int process_internal_transaction(TW_InternalTransaction* txn) {
             // Add to pending blocks for validation
             if (txn->block_data) {
                 unsigned char block_hash[HASH_SIZE];
-                if (TW_Block_getHash(txn->block_data, block_hash) == 1) {
+                if (TW_Block_getHash(txn->block_data, block_hash) == 0) {
                     char hash_hex[HASH_SIZE * 2 + 1];
                     // Convert hash to hex for storage
                     for (int i = 0; i < HASH_SIZE; i++) {
@@ -333,7 +333,7 @@ int validate_block_proposal(TW_InternalTransaction* proposal) {
     
     // Validate block hash matches block data
     unsigned char computed_hash[HASH_SIZE];
-    if (TW_Block_getHash(proposal->block_data, computed_hash) != 1) {
+    if (TW_Block_getHash(proposal->block_data, computed_hash) != 0) {
         printf("Failed to compute block hash for validation\n");
         return 0;
     }

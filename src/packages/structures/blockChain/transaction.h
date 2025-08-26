@@ -102,6 +102,7 @@ typedef struct {
     TW_TransactionType type;
     unsigned char sender[PUBKEY_SIZE];
     uint64_t timestamp;
+    char resource_id[64];
     unsigned char* recipients; // pubkey size * max recipients is max size
     uint8_t recipient_count;
     unsigned char group_id[GROUP_ID_SIZE];

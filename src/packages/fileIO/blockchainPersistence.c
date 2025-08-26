@@ -86,7 +86,7 @@ static PersistenceResult calculate_blockchain_checksum(TW_BlockChain* blockchain
     for (uint32_t i = 0; i < blockchain->length; i++) {
         if (blockchain->blocks[i]) {
             unsigned char block_hash[32];
-            if (TW_Block_getHash(blockchain->blocks[i], block_hash) == 1) {
+            if (TW_Block_getHash(blockchain->blocks[i], block_hash) == 0) {
                 crypto_hash_sha256_update(&state, block_hash, sizeof(block_hash));
             }
         }
@@ -909,7 +909,7 @@ PersistenceResult blockchain_persistence_repair_file_from_database(RecoveryStats
         
         // Verify block hash
         unsigned char calculated_hash[32];
-        if (TW_Block_getHash(block, calculated_hash) == 1) {
+        if (TW_Block_getHash(block, calculated_hash) == 0) {
             if (memcmp(calculated_hash, expected_block_hash, 32) == 0) {
                 blocks_verified++;
                 if (block_index % 100 == 0 || block_index < 10) {
@@ -971,7 +971,7 @@ PersistenceResult blockchain_persistence_repair_file_from_database(RecoveryStats
             }
         } else {
             // Add subsequent blocks using the standard blockchain function
-            if (TW_BlockChain_add_block(reconstructed_blockchain, block) == 1) {
+            if (TW_BlockChain_add_block(reconstructed_blockchain, block) == 0) {
                 // Only log success for early blocks or every 100 blocks
                 if (block_index % 100 == 0 || block_index < 10) {
                     printf("   ✅ Block %u added successfully\n", block_index);

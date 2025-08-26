@@ -250,7 +250,7 @@ ValidationResult validate_block_hash_chain(const TW_Block* block, const TW_Block
     
     // Calculate expected previous hash
     unsigned char expected_prev_hash[HASH_SIZE];
-    if (TW_Block_getHash((TW_Block*)previous_block, expected_prev_hash) != 1) {  // Cast away const
+    if (TW_Block_getHash((TW_Block*)previous_block, expected_prev_hash) != 0) {  // Cast away const
         return VALIDATION_ERROR_INVALID_HASH;
     }
     
@@ -481,7 +481,7 @@ ValidationResult validate_blockchain_integrity(const TW_BlockChain* blockchain) 
     // Check that all blocks are properly linked
     for (uint32_t i = 1; i < blockchain->length; i++) {
         unsigned char prev_hash[HASH_SIZE];
-        if (TW_Block_getHash(blockchain->blocks[i - 1], prev_hash) != 1) {
+        if (TW_Block_getHash(blockchain->blocks[i - 1], prev_hash) != 0) {
             return VALIDATION_ERROR_INVALID_HASH;
         }
 

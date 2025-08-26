@@ -123,7 +123,7 @@ void TW_Block_buildMerkleTree(TW_Block* block) {
 int TW_Block_getHash(TW_Block* block, unsigned char* hash_out) {
     if (!block || !hash_out) {
         if (hash_out) memset(hash_out, 0, HASH_SIZE);
-        return 0; // Return 0 to indicate failure
+        return -1; // Return negative to indicate failure
     }
 
     size_t buffer_size = sizeof(block->index) + 
@@ -137,7 +137,7 @@ int TW_Block_getHash(TW_Block* block, unsigned char* hash_out) {
     unsigned char* buffer = malloc(buffer_size);
     if (!buffer) {
         memset(hash_out, 0, HASH_SIZE);
-        return 0; // Return 0 to indicate failure
+        return -2; // Return negative to indicate failure
     }
 
     memcpy(buffer + offset, &block->index, sizeof(block->index));
@@ -155,7 +155,7 @@ int TW_Block_getHash(TW_Block* block, unsigned char* hash_out) {
     SHA256(buffer, offset, hash_out);
 
     free(buffer);
-    return 1; // Return 1 to indicate success
+    return 0; // Return 0 to indicate success
 }
 
 /** Frees the memory allocated for the block. */

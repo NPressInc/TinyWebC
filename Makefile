@@ -628,66 +628,6 @@ src/packages/initialization/init_tool.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init_tool.c.s
 .PHONY : src/packages/initialization/init_tool.c.s
 
-src/packages/invitation/invitation.o: src/packages/invitation/invitation.c.o
-.PHONY : src/packages/invitation/invitation.o
-
-# target to build an object file
-src/packages/invitation/invitation.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitation.c.o
-.PHONY : src/packages/invitation/invitation.c.o
-
-src/packages/invitation/invitation.i: src/packages/invitation/invitation.c.i
-.PHONY : src/packages/invitation/invitation.i
-
-# target to preprocess a source file
-src/packages/invitation/invitation.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitation.c.i
-.PHONY : src/packages/invitation/invitation.c.i
-
-src/packages/invitation/invitation.s: src/packages/invitation/invitation.c.s
-.PHONY : src/packages/invitation/invitation.s
-
-# target to generate assembly for a file
-src/packages/invitation/invitation.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitation.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitation.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitation.c.s
-.PHONY : src/packages/invitation/invitation.c.s
-
-src/packages/invitation/invitationApi.o: src/packages/invitation/invitationApi.c.o
-.PHONY : src/packages/invitation/invitationApi.o
-
-# target to build an object file
-src/packages/invitation/invitationApi.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitationApi.c.o
-.PHONY : src/packages/invitation/invitationApi.c.o
-
-src/packages/invitation/invitationApi.i: src/packages/invitation/invitationApi.c.i
-.PHONY : src/packages/invitation/invitationApi.i
-
-# target to preprocess a source file
-src/packages/invitation/invitationApi.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitationApi.c.i
-.PHONY : src/packages/invitation/invitationApi.c.i
-
-src/packages/invitation/invitationApi.s: src/packages/invitation/invitationApi.c.s
-.PHONY : src/packages/invitation/invitationApi.s
-
-# target to generate assembly for a file
-src/packages/invitation/invitationApi.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/invitation/invitationApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/invitation/invitationApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_http_client_test.dir/build.make CMakeFiles/pbft_http_client_test.dir/src/packages/invitation/invitationApi.c.s
-.PHONY : src/packages/invitation/invitationApi.c.s
-
 src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.o
 
@@ -1444,30 +1384,6 @@ src/tests/init_network_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/init_network_test.c.s
 .PHONY : src/tests/init_network_test.c.s
 
-src/tests/invitation_test.o: src/tests/invitation_test.c.o
-.PHONY : src/tests/invitation_test.o
-
-# target to build an object file
-src/tests/invitation_test.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/invitation_test.c.o
-.PHONY : src/tests/invitation_test.c.o
-
-src/tests/invitation_test.i: src/tests/invitation_test.c.i
-.PHONY : src/tests/invitation_test.i
-
-# target to preprocess a source file
-src/tests/invitation_test.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/invitation_test.c.i
-.PHONY : src/tests/invitation_test.c.i
-
-src/tests/invitation_test.s: src/tests/invitation_test.c.s
-.PHONY : src/tests/invitation_test.s
-
-# target to generate assembly for a file
-src/tests/invitation_test.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/invitation_test.c.s
-.PHONY : src/tests/invitation_test.c.s
-
 src/tests/mongoose_test.o: src/tests/mongoose_test.c.o
 .PHONY : src/tests/mongoose_test.o
 
@@ -1646,12 +1562,6 @@ help:
 	@echo "... src/packages/initialization/init_tool.o"
 	@echo "... src/packages/initialization/init_tool.i"
 	@echo "... src/packages/initialization/init_tool.s"
-	@echo "... src/packages/invitation/invitation.o"
-	@echo "... src/packages/invitation/invitation.i"
-	@echo "... src/packages/invitation/invitation.s"
-	@echo "... src/packages/invitation/invitationApi.o"
-	@echo "... src/packages/invitation/invitationApi.i"
-	@echo "... src/packages/invitation/invitationApi.s"
 	@echo "... src/packages/keystore/keystore.o"
 	@echo "... src/packages/keystore/keystore.i"
 	@echo "... src/packages/keystore/keystore.s"
@@ -1727,9 +1637,6 @@ help:
 	@echo "... src/tests/init_network_test.o"
 	@echo "... src/tests/init_network_test.i"
 	@echo "... src/tests/init_network_test.s"
-	@echo "... src/tests/invitation_test.o"
-	@echo "... src/tests/invitation_test.i"
-	@echo "... src/tests/invitation_test.s"
 	@echo "... src/tests/mongoose_test.o"
 	@echo "... src/tests/mongoose_test.i"
 	@echo "... src/tests/mongoose_test.s"

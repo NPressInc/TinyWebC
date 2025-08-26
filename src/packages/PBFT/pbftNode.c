@@ -283,22 +283,12 @@ void* pbft_node_main_loop(void* arg) {
         
         // Every 10 iterations, check for new peers and sync
         if (node->counter % 10 == 0) {
-            // Load peers from blockchain
-            pbft_node_load_peers_from_blockchain(node);
             
             printf("Node %u: Blockchain length: %u, Peers: %zu, Proposer ID: %u\n", 
                    node->base.id, current_length, node->base.peer_count, 
                    pbft_node_calculate_proposer_id(node));
-            
-            // If we have no peers, create a block for self (singular node mode)
-            if (node->base.peer_count == 0) {
-                printf("Node %u: Creating block for singular node\n", node->base.id);
-                pbft_node_send_block_creation_signal(node);
-            }
-        }
         
-        // Every 10 iterations, check if we should propose a block (every 10 seconds)
-        if (node->counter % 10 == 0) {
+            // check if we should propose a block (every 10 seconds)
             if (!node->blockchain_has_progressed && pbft_node_is_proposer(node)) {
                 printf("Node %u: Proposing block (round %u)\n", node->base.id, node->counter);
                 
@@ -307,25 +297,12 @@ void* pbft_node_main_loop(void* arg) {
                 if (new_block) {
                     // For single node mode, commit directly
                     if (node->base.peer_count == 0) {
-                        printf("Node %u: Committing block directly (singular mode)\n", node->base.id);
-                        
-                        if (pbft_node_validate_block(node, new_block) && 
-                            pbft_node_commit_block(node, new_block)) {
-                            
-                            // Sync to database
-                            if (db_is_initialized()) {
-                                uint32_t block_index = node->base.blockchain->length - 1;
-                                if (db_add_block(new_block, block_index) == 0) {
-                                    printf("Block %u synced to database\n", block_index);
-                                }
-                            }
-                        } else {
-                            TW_Block_destroy(new_block);
-                        }
+                        printf("Node %u: Creating block for singular node\n", node->base.id);
+                        pbft_node_block_creation(node);
                     } else {
                         // Multi-node mode: broadcast to peers
                         unsigned char block_hash[HASH_SIZE];
-                        if (TW_Block_getHash(new_block, block_hash) == 1) {
+                        if (TW_Block_getHash(new_block, block_hash) == 0) {
                             char hash_hex[HASH_SIZE * 2 + 1];
                             pbft_node_bytes_to_hex(block_hash, HASH_SIZE, hash_hex);
                             
@@ -339,6 +316,9 @@ void* pbft_node_main_loop(void* arg) {
         
         // Every 21 iterations, check for sync and handle delinquent nodes
         if (node->counter % 21 == 0) {
+            // Load peers from blockchain and sync
+            pbft_node_load_peers_from_blockchain(node);
+            
             printf("Node %u: Checking blockchain sync and peer status\n", node->base.id);
             
             if (!node->blockchain_has_progressed && node->base.peer_count > 0) {
@@ -446,8 +426,6 @@ static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_dat
             handle_send_new_blockchain_endpoint(c, hm, node);
         } else if (mg_strcmp(hm->uri, mg_str("/RequestEntireBlockchain")) == 0) {
             handle_request_entire_blockchain_endpoint(c, hm, node);
-        } else if (mg_strcmp(hm->uri, mg_str("/AddNewBlockForSingularNode")) == 0) {
-            handle_add_new_block_singular_endpoint(c, hm, node);
         } else if (mg_strcmp(hm->uri, mg_str("/api/network/stats")) == 0) {
             handle_get_network_stats(c, hm);
         } else if (mg_strcmp(hm->uri, mg_str("/api/family/members")) == 0) {
@@ -533,7 +511,7 @@ static void handle_blockchain_last_hash_endpoint(struct mg_connection *c, struct
     unsigned char hash_bytes[HASH_SIZE];
     char hash_hex[HASH_SIZE * 2 + 1];
     
-    if (TW_Block_getHash(last_block, hash_bytes) != 1) {
+    if (TW_Block_getHash(last_block, hash_bytes) != 0) {
         mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
                      "{\"error\":\"Failed to get block hash\"}");
         return;
@@ -582,7 +560,7 @@ TW_Block* pbft_node_create_block(PBFTNode* node) {
     unsigned char previous_hash[HASH_SIZE];
     if (node->base.blockchain->length > 0) {
         TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
-        if (TW_Block_getHash(last_block, previous_hash) != 1) {
+        if (TW_Block_getHash(last_block, previous_hash) != 0) {
             printf("Failed to get hash of previous block\n");
             if (transactions) free(transactions);
             return NULL;
@@ -695,7 +673,7 @@ int pbft_node_validate_block(PBFTNode* node, TW_Block* block) {
         TW_Block* last_block = TW_BlockChain_get_last_block(node->base.blockchain);
         if (last_block) {
             unsigned char last_hash[HASH_SIZE];
-            if (TW_Block_getHash(last_block, last_hash) == 1) {
+            if (TW_Block_getHash(last_block, last_hash) == 0) {
                 if (memcmp(block->previous_hash, last_hash, HASH_SIZE) != 0) {
                     return false;
                 }
@@ -706,22 +684,22 @@ int pbft_node_validate_block(PBFTNode* node, TW_Block* block) {
     // TODO: Add more validation logic (transaction validation, etc.)
     
     printf("Block validation passed for block %d\n", block->index);
-    return 1;
+    return 0;
 }
 
 int pbft_node_commit_block(PBFTNode* node, TW_Block* block) {
     if (!node || !block || !node->base.blockchain) return 0;
     
     // Validate block before committing
-    if (!pbft_node_validate_block(node, block)) {
+    if (pbft_node_validate_block(node, block) != 0) {
         printf("Block validation failed, cannot commit\n");
-        return 0;
+        return -1;
     }
     
     // Add block to blockchain in memory
-    if (TW_BlockChain_add_block(node->base.blockchain, block) == 0) {
+    if (TW_BlockChain_add_block(node->base.blockchain, block) != 0) {
         printf("Failed to add block to blockchain\n");
-        return 0;
+        return -2;
     }
     
     printf("Successfully committed block %d to blockchain (in memory)\n", block->index);
@@ -749,7 +727,7 @@ int pbft_node_commit_block(PBFTNode* node, TW_Block* block) {
         message_queues.transaction_count = 0;
     }
     
-    return 1;
+    return 0;
 }
 
 int pbft_node_load_peers_from_blockchain(PBFTNode* node) { return 0; }
@@ -794,7 +772,7 @@ int pbft_node_is_proposer(PBFTNode* node) {
 }
 
 int pbft_node_calculate_min_approvals(PBFTNode* node) {
-    if (!node) return 1;
+    if (!node) return -1;
     
     // PBFT requires 2f + 1 nodes to tolerate f byzantine failures
     // So we need at least 2/3 + 1 approvals for consensus
@@ -1429,7 +1407,7 @@ int pbft_node_request_missing_blocks_from_peer(PBFTNode* node, const char* peer_
     if (node->base.blockchain->length > 0) {
         TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
         unsigned char hash_bytes[HASH_SIZE];
-        if (TW_Block_getHash(last_block, hash_bytes) == 1) {
+        if (TW_Block_getHash(last_block, hash_bytes) == 0) {
             our_last_hash = malloc(HASH_SIZE * 2 + 1);
             if (our_last_hash) {
                 pbft_node_bytes_to_hex(hash_bytes, HASH_SIZE, our_last_hash);
@@ -1537,7 +1515,7 @@ int pbft_node_get_pending_transactions_from_peer(PBFTNode* node, const char* pee
     pbft_node_free_http_response(response);
     return transaction_count;
 }
-int pbft_node_send_block_creation_signal(PBFTNode* node) {
+int pbft_node_block_creation(PBFTNode* node) {
     if (!node) return 0;
     
     printf("Node %u: Creating block for singular node mode\n", node->base.id);
@@ -1550,17 +1528,17 @@ int pbft_node_send_block_creation_signal(PBFTNode* node) {
     }
     
     // Validate the block
-    if (!pbft_node_validate_block(node, new_block)) {
+    if (pbft_node_validate_block(node, new_block) != 0) {
         printf("Block validation failed for singular node\n");
         TW_Block_destroy(new_block);
-        return 0;
+        return -1;
     }
     
     // Commit the block directly (no consensus needed for single node)
-    if (!pbft_node_commit_block(node, new_block)) {
+    if (pbft_node_commit_block(node, new_block) != 0) {
         printf("Failed to commit block for singular node\n");
         TW_Block_destroy(new_block);
-        return 0;
+        return -1;
     }
     
     // Sync to database if available
@@ -1576,7 +1554,7 @@ int pbft_node_send_block_creation_signal(PBFTNode* node) {
     printf("Node %u: Successfully created and committed block %d in singular mode\n", 
            node->base.id, new_block->index);
     
-    return 1;
+    return 0;
 }
 void pbft_node_shuffle_peers(PBFTNode* node) {
     if (!node || node->base.peer_count <= 1) return;
@@ -1607,7 +1585,7 @@ int pbft_node_sign_data(PBFTNode* node, const char* data, char* signature_hex) {
     // Convert signature to hex string
     pbft_node_bytes_to_hex(signature, SIGNATURE_SIZE, signature_hex);
     
-    return 1;
+    return 0;
 }
 
 int pbft_node_verify_signature(const char* pubkey_hex, const char* signature_hex, const char* data) {
@@ -1685,7 +1663,7 @@ int pbft_node_save_blockchain_periodically(PBFTNode* node) {
     }
     
     printf("Node %u: Successfully saved blockchain to file\n", node->base.id);
-    return 1;
+    return 0;
 }
 
 // Endpoint handler implementations
@@ -1781,7 +1759,7 @@ static void handle_transaction_endpoint(struct mg_connection *c, struct mg_http_
         user_verified = is_user_verified(transaction->sender, node->base.blockchain);
     }
     
-    if (!user_verified) {
+    if (user_verified != 0) {
         printf("[WARNING] handle_transaction_endpoint: User not verified, public key: ");
         for (int i = 0; i < PUBKEY_SIZE; i++) {
             printf("%02x", transaction->sender[i]);
@@ -1840,7 +1818,7 @@ static void handle_transaction_endpoint(struct mg_connection *c, struct mg_http_
         permissions_valid = validate_transaction_permissions_for_node(transaction, node);
     }
     
-    if (!permissions_valid) {
+    if (permissions_valid != 0) {
         printf("[ERROR] handle_transaction_endpoint: Transaction permissions validation failed\n");
         TW_Transaction_destroy(transaction);
         mg_http_reply(c, 403, "Content-Type: application/json\r\n", 
@@ -2145,25 +2123,6 @@ static void handle_request_entire_blockchain_endpoint(struct mg_connection *c, s
                  "{\"error\":\"RequestEntireBlockchain endpoint not implemented yet\"}");
 }
 
-static void handle_add_new_block_singular_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
-    if (!node) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
-                     "{\"error\":\"Node not initialized\"}");
-        return;
-    }
-    
-    printf("Node %u: Received singular node block creation request\n", node->base.id);
-    
-    // Create and commit a block for singular node
-    if (pbft_node_send_block_creation_signal(node)) {
-        mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Block created successfully for singular node\"}");
-    } else {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
-                     "{\"error\":\"Failed to create block for singular node\"}");
-    }
-}
-
 // Supporting functions for transaction processing
 int parse_json_transaction(struct mg_str json_body, TW_Transaction** transaction) {
     if (!transaction) {
@@ -2215,6 +2174,7 @@ int parse_json_transaction(struct mg_str json_body, TW_Transaction** transaction
     cJSON *recipients_json = cJSON_GetObjectItem(json, "recipients");
     cJSON *signature_json = cJSON_GetObjectItem(json, "signature");
     cJSON *payload_json = cJSON_GetObjectItem(json, "payload");
+    cJSON *resource_id_json = cJSON_GetObjectItem(json, "resource_id");
     
     // Check for required fields
     if (!sender_json || !type_json || !timestamp_json || !recipients_json || !signature_json) {
@@ -2236,6 +2196,16 @@ int parse_json_transaction(struct mg_str json_body, TW_Transaction** transaction
         printf("[ERROR] parse_json_transaction: Invalid field types\n");
         cJSON_Delete(json);
         return -1;
+    }
+    // Parse optional resource_id (plaintext metadata)
+    char resource_id_buf[64] = {0};
+    if (resource_id_json && cJSON_IsString(resource_id_json)) {
+        const char* rid = cJSON_GetStringValue(resource_id_json);
+        if (rid) {
+            // Truncate safely to 63 chars and ensure NUL
+            strncpy(resource_id_buf, rid, sizeof(resource_id_buf) - 1);
+            resource_id_buf[sizeof(resource_id_buf) - 1] = '\0';
+        }
     }
     
     // Validate and convert sender hex string to bytes
@@ -2485,6 +2455,11 @@ int parse_json_transaction(struct mg_str json_body, TW_Transaction** transaction
         encrypted_payload, 
         NULL  // signature will be set below
     );
+    // Set resource_id if provided
+    if (resource_id_buf[0] != '\0') {
+        strncpy((*transaction)->resource_id, resource_id_buf, sizeof((*transaction)->resource_id) - 1);
+        (*transaction)->resource_id[sizeof((*transaction)->resource_id) - 1] = '\0';
+    }
     
     if (!*transaction) {
         printf("[ERROR] parse_json_transaction: Failed to create transaction\n");
@@ -2534,7 +2509,7 @@ int is_transaction_queued(const char* hash_hex) {
     // Check if transaction is already in the queue
     for (int i = 0; i < message_queues.transaction_count; i++) {
         if (strcmp(message_queues.transaction_queue[i].hash, hash_hex) == 0) {
-            return 1;  // Already queued
+            return 0;  // Already queued (success - found)
         }
     }
     return 0;  // Not queued
@@ -2575,7 +2550,7 @@ int is_user_verified(const unsigned char* public_key, TW_BlockChain* blockchain)
     
     if (result == TXN_VALIDATION_SUCCESS && is_registered) {
         printf("User verification: SUCCESS (registered at timestamp %lu)\n", registration_timestamp);
-        return 1;
+        return 0;
     } else {
         printf("User verification failed: %s\n", 
                result == TXN_VALIDATION_SUCCESS ? "Not registered" : txn_validation_error_string(result));
@@ -2626,7 +2601,7 @@ int validate_transaction_permissions_for_node(TW_Transaction* transaction, PBFTN
     
     if (result == TXN_VALIDATION_SUCCESS) {
         printf("Transaction permission validation: SUCCESS\n");
-        return 1;
+        return 0;
     } else {
         printf("Transaction permission validation failed: %s\n", 
                txn_validation_error_string(result));
@@ -2693,7 +2668,7 @@ int verify_blockchain_sync(PBFTNode* node, TW_Block* block) {
         TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
         unsigned char expected_prev_hash[HASH_SIZE];
         
-        if (TW_Block_getHash(last_block, expected_prev_hash) != 1) {
+        if (TW_Block_getHash(last_block, expected_prev_hash) != 0) {
             return 0;  // Failed to get hash
         }
         
@@ -2703,5 +2678,5 @@ int verify_blockchain_sync(PBFTNode* node, TW_Block* block) {
         }
     }
     
-    return 1;  // Chains are in sync
+    return 0;  // Chains are in sync
 } 

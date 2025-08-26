@@ -18,6 +18,7 @@ TW_Transaction* TW_Transaction_create(TW_TransactionType type, const unsigned ch
     tx->type = type;
     memcpy(tx->sender, sender, PUBKEY_SIZE);
     tx->timestamp = time(NULL);
+    memset(tx->resource_id, 0, sizeof(tx->resource_id));
     tx->recipient_count = (recipient_count > MAX_RECIPIENTS) ? MAX_RECIPIENTS : recipient_count;
     tx->payload = (EncryptedPayload*)payload;
     if (payload) {
@@ -87,6 +88,7 @@ size_t TW_Transaction_get_size(const TW_Transaction* tx) {
     size += PUBKEY_SIZE * tx->recipient_count;     // Recipients
     size += sizeof(tx->recipient_count);           // Recipient count (uint8_t)
     size += GROUP_ID_SIZE;                         // Group ID
+    size += sizeof(tx->resource_id);               // Resource ID (unencrypted)
     
     size_t payload_size = encrypted_payload_get_size(tx->payload);
     
@@ -119,6 +121,7 @@ void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
         buffer_alloc_size += PUBKEY_SIZE * tx->recipient_count;
     }
     buffer_alloc_size += GROUP_ID_SIZE;
+    buffer_alloc_size += sizeof(tx->resource_id);
 
     // Add size for payload if it exists
     if (tx->payload && tx->payload_size > 0) {
@@ -155,6 +158,9 @@ void TW_Transaction_hash(TW_Transaction* tx, unsigned char* hash_out) {
 
     memcpy(ptr, tx->group_id, GROUP_ID_SIZE);
     ptr += GROUP_ID_SIZE;
+
+    memcpy(ptr, tx->resource_id, sizeof(tx->resource_id));
+    ptr += sizeof(tx->resource_id);
 
     // Serialize the EncryptedPayload if it exists
     if (tx->payload && tx->payload_size > 0) {
@@ -214,6 +220,10 @@ int TW_Transaction_serialize(TW_Transaction* txn, unsigned char** out_buffer) {
     // Serialize the group ID
     memcpy(ptr, txn->group_id, GROUP_ID_SIZE);
     ptr += GROUP_ID_SIZE;
+
+    // Serialize resource_id (plaintext metadata)
+    memcpy(ptr, txn->resource_id, sizeof(txn->resource_id));
+    ptr += sizeof(txn->resource_id);
 
     // Serialize the length of the payload (Convert to network byte order using htonl)
     size_t payload_size_net = htonll(txn->payload_size);  // Convert size to network byte order
@@ -290,6 +300,12 @@ TW_Transaction* TW_Transaction_deserialize(const unsigned char* buffer, size_t b
     // Deserialize the group ID
     memcpy(txn->group_id, ptr, GROUP_ID_SIZE);
     ptr += GROUP_ID_SIZE;
+
+    // Deserialize resource_id (plaintext metadata)
+    memcpy(txn->resource_id, ptr, sizeof(txn->resource_id));
+    // Ensure null-termination just in case the serialized bytes weren't
+    txn->resource_id[sizeof(txn->resource_id) - 1] = '\0';
+    ptr += sizeof(txn->resource_id);
 
     // Deserialize the length of the payload (Convert from network byte order using ntohl)
     size_t payload_size_net;

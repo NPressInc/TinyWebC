@@ -28,6 +28,7 @@ void handle_access_request_submit_pbft(struct mg_connection* c, struct mg_http_m
     cJSON* recipients_json = cJSON_GetObjectItem(json, "recipients");
     cJSON* group_id_json = cJSON_GetObjectItem(json, "groupId");
     cJSON* payload_json = cJSON_GetObjectItem(json, "payload");
+    cJSON* resource_id_json = cJSON_GetObjectItem(json, "resource_id");
     cJSON* signature_json = cJSON_GetObjectItem(json, "signature");
     
     if (!type_json || !sender_json || !timestamp_json || !recipients_json || 
@@ -189,6 +190,15 @@ void handle_access_request_submit_pbft(struct mg_connection* c, struct mg_http_m
         return;
     }
     
+    // Set optional resource_id on transaction (plaintext metadata for validation)
+    if (resource_id_json && cJSON_IsString(resource_id_json)) {
+        const char* resource_id_str = cJSON_GetStringValue(resource_id_json);
+        if (resource_id_str) {
+            strncpy(transaction->resource_id, resource_id_str, sizeof(transaction->resource_id) - 1);
+            transaction->resource_id[sizeof(transaction->resource_id) - 1] = '\0';
+        }
+    }
+
     // Calculate transaction hash for response
     unsigned char tx_hash[HASH_SIZE];
     TW_Transaction_hash(transaction, tx_hash);
@@ -286,7 +296,7 @@ void handle_access_request_poll(struct mg_connection* c, struct mg_http_message*
     // Check for valid access request transactions in the last 1 hour
     const char* sql = 
         "SELECT timestamp, content_hash FROM transactions "
-        "WHERE type = ? AND sender = ? AND timestamp > (strftime('%s', 'now') - 3600) "
+        "WHERE type = ? AND sender = ? AND resource_id = ? AND timestamp > (strftime('%s', 'now') - 3600) "
         "AND NOT EXISTS ("
         "  SELECT 1 FROM transactions revoke "
         "  WHERE revoke.sender = transactions.sender "
@@ -306,9 +316,10 @@ void handle_access_request_poll(struct mg_connection* c, struct mg_http_message*
     
     sqlite3_bind_int(stmt, 1, TW_TXN_ACCESS_REQUEST);
     sqlite3_bind_text(stmt, 2, public_key_hex, -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 3, -1); // Placeholder for revocation type (not implemented yet)
+    sqlite3_bind_text(stmt, 3, resource_id, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 4, -1); // Placeholder for revocation type (not implemented yet)
     
-    printf("[DEBUG] Executing SQL query with TXN_TYPE=%d, PUBKEY=%s\n", TW_TXN_ACCESS_REQUEST, public_key_hex);
+    printf("[DEBUG] Executing SQL query with TXN_TYPE=%d, PUBKEY=%s, RESOURCE=%s\n", TW_TXN_ACCESS_REQUEST, public_key_hex, resource_id);
     
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW) {

@@ -36,6 +36,7 @@ const char* SQL_CREATE_TRANSACTIONS =
     "    recipient_count INTEGER NOT NULL,"
     "    group_id TEXT,"
     "    signature TEXT NOT NULL,"
+    "    resource_id TEXT,"
     "    encrypted_payload BLOB,"
     "    payload_size INTEGER DEFAULT 0,"
     "    decrypted_content TEXT,"
@@ -162,6 +163,9 @@ const char* SQL_CREATE_INDEX_RECIPIENTS_PUBKEY =
 const char* SQL_CREATE_INDEX_TRANSACTIONS_GROUP_ID = 
     "CREATE INDEX IF NOT EXISTS idx_transactions_group_id ON transactions(group_id);";
 
+const char* SQL_CREATE_INDEX_TRANSACTIONS_RESOURCE_ID = 
+    "CREATE INDEX IF NOT EXISTS idx_transactions_resource_id ON transactions(resource_id);";
+
 const char* SQL_CREATE_INDEX_BLOCKS_HASH = 
     "CREATE INDEX IF NOT EXISTS idx_blocks_hash ON blocks(block_hash);";
 
@@ -199,8 +203,8 @@ const char* SQL_INSERT_BLOCK =
 
 const char* SQL_INSERT_TRANSACTION = 
     "INSERT INTO transactions "
-    "(block_index, transaction_index, type, sender, timestamp, recipient_count, group_id, signature, encrypted_payload, payload_size) "
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    "(block_index, transaction_index, type, sender, timestamp, recipient_count, group_id, signature, resource_id, encrypted_payload, payload_size) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
 const char* SQL_INSERT_RECIPIENT = 
     "INSERT INTO transaction_recipients (transaction_id, recipient_pubkey, recipient_order) "
@@ -218,29 +222,29 @@ const char* SQL_SELECT_BLOCK_COUNT_WITH_TRANSACTIONS =
 
 const char* SQL_SELECT_TRANSACTIONS_BY_SENDER = 
     "SELECT id, block_index, transaction_index, type, sender, timestamp, recipient_count, "
-    "group_id, signature, payload_size, encrypted_payload, decrypted_content, is_decrypted "
+    "group_id, signature, resource_id, payload_size, encrypted_payload, decrypted_content, is_decrypted "
     "FROM transactions WHERE sender = ? ORDER BY timestamp DESC;";
 
 const char* SQL_SELECT_TRANSACTIONS_BY_RECIPIENT = 
     "SELECT t.id, t.block_index, t.transaction_index, t.type, t.sender, t.timestamp, t.recipient_count, "
-    "t.group_id, t.signature, t.payload_size, t.encrypted_payload, t.decrypted_content, t.is_decrypted "
+    "t.group_id, t.signature, t.resource_id, t.payload_size, t.encrypted_payload, t.decrypted_content, t.is_decrypted "
     "FROM transactions t "
     "JOIN transaction_recipients tr ON t.id = tr.transaction_id "
     "WHERE tr.recipient_pubkey = ? ORDER BY t.timestamp DESC;";
 
 const char* SQL_SELECT_TRANSACTIONS_BY_TYPE = 
     "SELECT id, block_index, transaction_index, type, sender, timestamp, recipient_count, "
-    "group_id, signature, payload_size, encrypted_payload, decrypted_content, is_decrypted "
+    "group_id, signature, resource_id, payload_size, encrypted_payload, decrypted_content, is_decrypted "
     "FROM transactions WHERE type = ? ORDER BY timestamp DESC;";
 
 const char* SQL_SELECT_TRANSACTIONS_BY_BLOCK = 
     "SELECT id, block_index, transaction_index, type, sender, timestamp, recipient_count, "
-    "group_id, signature, payload_size, encrypted_payload, decrypted_content, is_decrypted "
+    "group_id, signature, resource_id, payload_size, encrypted_payload, decrypted_content, is_decrypted "
     "FROM transactions WHERE block_index = ? ORDER BY transaction_index;";
 
 const char* SQL_SELECT_RECENT_TRANSACTIONS = 
     "SELECT id, block_index, transaction_index, type, sender, timestamp, recipient_count, "
-    "group_id, signature, payload_size, encrypted_payload, decrypted_content, is_decrypted "
+    "group_id, signature, resource_id, payload_size, encrypted_payload, decrypted_content, is_decrypted "
     "FROM transactions ORDER BY timestamp DESC LIMIT ?;";
 
 const char* SQL_SELECT_BLOCK_INFO = 
@@ -435,6 +439,7 @@ int schema_create_all_indexes(sqlite3* db) {
         SQL_CREATE_INDEX_TRANSACTIONS_BLOCK,
         SQL_CREATE_INDEX_RECIPIENTS_PUBKEY,
         SQL_CREATE_INDEX_TRANSACTIONS_GROUP_ID,
+        SQL_CREATE_INDEX_TRANSACTIONS_RESOURCE_ID,
         SQL_CREATE_INDEX_BLOCKS_HASH,
         SQL_CREATE_INDEX_USERS_PUBKEY,
         SQL_CREATE_INDEX_USERS_USERNAME,
@@ -602,6 +607,53 @@ int schema_migrate(sqlite3* db, int from_version, int to_version) {
         }
 
         if (schema_set_version(db, 2) != 0) {
+            return -1;
+        }
+        return 0;
+    }
+
+    if (from_version == 2 && to_version == 3) {
+        // Add resource_id column and index
+        char* error_msg = NULL;
+        int rc;
+
+        rc = sqlite3_exec(db, "ALTER TABLE transactions ADD COLUMN resource_id TEXT;", NULL, NULL, &error_msg);
+        if (rc != SQLITE_OK) {
+            // If column exists already, ignore error
+            printf("Warning: Adding resource_id column may have failed (possibly exists): %s\n", error_msg ? error_msg : "");
+            sqlite3_free(error_msg);
+        }
+
+        rc = sqlite3_exec(db, SQL_CREATE_INDEX_TRANSACTIONS_RESOURCE_ID, NULL, NULL, &error_msg);
+        if (rc != SQLITE_OK) {
+            printf("Warning: Failed to create resource_id index: %s\n", error_msg);
+            sqlite3_free(error_msg);
+        }
+
+        if (schema_set_version(db, 3) != 0) {
+            return -1;
+        }
+        return 0;
+    }
+
+    if (from_version == 0 && to_version == 3) {
+        // Fresh create all tables, then set to 3
+        if (schema_create_all_tables(db) != 0) {
+            return -1;
+        }
+        if (schema_create_all_indexes(db) != 0) {
+            return -1;
+        }
+
+        // Ensure resource_id index exists
+        char* error_msg = NULL;
+        int rc = sqlite3_exec(db, SQL_CREATE_INDEX_TRANSACTIONS_RESOURCE_ID, NULL, NULL, &error_msg);
+        if (rc != SQLITE_OK) {
+            printf("Warning: Failed to create resource_id index (0->3 path): %s\n", error_msg);
+            sqlite3_free(error_msg);
+        }
+
+        if (schema_set_version(db, 3) != 0) {
             return -1;
         }
         return 0;

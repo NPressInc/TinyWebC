@@ -285,7 +285,7 @@ int db_add_block(TW_Block* block, uint32_t block_index) {
 
     // Calculate block hash
     unsigned char block_hash[HASH_SIZE];
-    if (TW_Block_getHash(block, block_hash) != 1) {
+    if (TW_Block_getHash(block, block_hash) != 0) {
         return -1;
     }
     if (db_hex_encode(block_hash, HASH_SIZE, block_hash_hex, sizeof(block_hash_hex)) != 0) {
@@ -374,13 +374,14 @@ int db_add_transaction(TW_Transaction* tx, uint32_t block_index, uint32_t tx_ind
     sqlite3_bind_int(stmt, 6, tx->recipient_count);
     sqlite3_bind_text(stmt, 7, group_hex, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 8, signature_hex, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 9, (tx->resource_id[0] ? tx->resource_id : NULL), -1, SQLITE_STATIC);
     
     if (payload_data && payload_size > 0) {
-        sqlite3_bind_blob(stmt, 9, payload_data, payload_size, SQLITE_TRANSIENT);
-        sqlite3_bind_int(stmt, 10, payload_size);
+        sqlite3_bind_blob(stmt, 10, payload_data, payload_size, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 11, payload_size);
     } else {
-        sqlite3_bind_null(stmt, 9);
-        sqlite3_bind_int(stmt, 10, 0);
+        sqlite3_bind_null(stmt, 10);
+        sqlite3_bind_int(stmt, 11, 0);
     }
 
     rc = sqlite3_step(stmt);
@@ -778,11 +779,13 @@ int db_get_transactions_by_block(uint32_t block_index, TransactionRecord** resul
             record->signature[sizeof(record->signature) - 1] = '\0';
         }
         
-        record->payload_size = sqlite3_column_int(stmt, 9);
+        // Column 9 is resource_id (ignored for now in record)
+        
+        record->payload_size = sqlite3_column_int(stmt, 10);
         
         // Handle encrypted payload blob
-        const void* payload_blob = sqlite3_column_blob(stmt, 10);
-        int payload_blob_size = sqlite3_column_bytes(stmt, 10);
+        const void* payload_blob = sqlite3_column_blob(stmt, 11);
+        int payload_blob_size = sqlite3_column_bytes(stmt, 11);
         if (payload_blob && payload_blob_size > 0) {
             record->encrypted_payload = malloc(payload_blob_size);
             if (record->encrypted_payload) {
@@ -793,7 +796,7 @@ int db_get_transactions_by_block(uint32_t block_index, TransactionRecord** resul
         }
         
         // Handle decrypted content
-        const char* decrypted = (const char*)sqlite3_column_text(stmt, 11);
+        const char* decrypted = (const char*)sqlite3_column_text(stmt, 12);
         if (decrypted) {
             record->decrypted_content = malloc(strlen(decrypted) + 1);
             if (record->decrypted_content) {
@@ -803,7 +806,7 @@ int db_get_transactions_by_block(uint32_t block_index, TransactionRecord** resul
             record->decrypted_content = NULL;
         }
         
-        record->is_decrypted = sqlite3_column_int(stmt, 12) != 0;
+        record->is_decrypted = sqlite3_column_int(stmt, 13) != 0;
         
         index++;
     }
@@ -843,7 +846,6 @@ const char* get_transaction_type_name(TW_TransactionType type) {
         case TW_TXN_LOCATION_UPDATE:        return "LOCATION_UPDATE";
         case TW_TXN_EMERGENCY_ALERT:        return "EMERGENCY_ALERT";
         case TW_TXN_SYSTEM_CONFIG:          return "SYSTEM_CONFIG";
-        case TW_TXN_PROXIMITY_VALIDATION:   return "PROXIMITY_VALIDATION";
         case TW_TXN_VOICE_CALL_REQ:         return "VOICE_CALL_REQ";
         case TW_TXN_VIDEO_CALL_REQ:         return "VIDEO_CALL_REQ";
         case TW_TXN_MEDIA_DOWNLOAD:         return "MEDIA_DOWNLOAD";
@@ -1308,11 +1310,12 @@ int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** res
             record->signature[sizeof(record->signature) - 1] = '\0';
         }
         
-        record->payload_size = sqlite3_column_int(stmt, 9);
+        // Column 9 is resource_id (ignored for now in record)
+        record->payload_size = sqlite3_column_int(stmt, 10);
         
         // Handle encrypted payload blob
-        const void* payload_blob = sqlite3_column_blob(stmt, 10);
-        int payload_blob_size = sqlite3_column_bytes(stmt, 10);
+        const void* payload_blob = sqlite3_column_blob(stmt, 11);
+        int payload_blob_size = sqlite3_column_bytes(stmt, 11);
         if (payload_blob && payload_blob_size > 0) {
             record->encrypted_payload = malloc(payload_blob_size);
             if (record->encrypted_payload) {
@@ -1323,7 +1326,7 @@ int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** res
         }
         
         // Handle decrypted content
-        const char* decrypted = (const char*)sqlite3_column_text(stmt, 11);
+        const char* decrypted = (const char*)sqlite3_column_text(stmt, 12);
         if (decrypted) {
             record->decrypted_content = malloc(strlen(decrypted) + 1);
             if (record->decrypted_content) {
@@ -1333,7 +1336,7 @@ int db_get_transactions_by_type(TW_TransactionType type, TransactionRecord** res
             record->decrypted_content = NULL;
         }
         
-        record->is_decrypted = sqlite3_column_int(stmt, 12) != 0;
+        record->is_decrypted = sqlite3_column_int(stmt, 13) != 0;
         
         index++;
     }
