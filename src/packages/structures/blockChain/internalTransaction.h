@@ -117,8 +117,7 @@ int TW_InternalTransaction_verify_signature(TW_InternalTransaction* txn);
 
 // PBFT-specific helper functions
 TW_InternalTransaction* tw_create_block_proposal(const unsigned char* sender, uint32_t proposer_id, 
-                                                uint32_t round_number, TW_Block* block, 
-                                                const unsigned char* block_hash);
+                                                uint32_t round_number, TW_Block* block);
 
 TW_InternalTransaction* tw_create_vote_message(const unsigned char* sender, uint32_t proposer_id,
                                               uint32_t round_number, const unsigned char* block_hash,

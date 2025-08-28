@@ -301,14 +301,7 @@ void* pbft_node_main_loop(void* arg) {
                         pbft_node_block_creation(node);
                     } else {
                         // Multi-node mode: broadcast to peers
-                        unsigned char block_hash[HASH_SIZE];
-                        if (TW_Block_getHash(new_block, block_hash) == 0) {
-                            char hash_hex[HASH_SIZE * 2 + 1];
-                            pbft_node_bytes_to_hex(block_hash, HASH_SIZE, hash_hex);
-                            
-                            // Broadcast block to peers
-                            pbft_node_broadcast_block(node, new_block, hash_hex);
-                        }
+                        pbft_node_broadcast_block(node, new_block);
                     }
                 }
             }
@@ -606,18 +599,12 @@ TW_Block* pbft_node_create_block(PBFTNode* node) {
 int pbft_node_propose_block(PBFTNode* node, TW_Block* block) {
     if (!node || !block) return 0;
     
-    // Create block hash
-    unsigned char block_hash[HASH_SIZE];
-    // TODO: Calculate actual block hash
-    memset(block_hash, 0, HASH_SIZE);
-    
     // Create block proposal using internal transaction
     TW_InternalTransaction* proposal = tw_create_block_proposal(
         node->base.public_key,
         node->base.id,
         node->counter,  // Use counter as round number
-        block,
-        block_hash
+        block
     );
     
     if (!proposal) return 0;
@@ -971,13 +958,8 @@ void pbft_node_free_http_response(HttpResponse* response) {
     // Note: http_response_free already handles NULL responses safely
 }
 // Broadcasting functions using internal transactions
-int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block, const char* block_hash) { 
+int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block) { 
     if (!node || !block) return 0;
-    
-    // Convert hex string to bytes
-    unsigned char hash_bytes[HASH_SIZE];
-    // TODO: Implement hex to bytes conversion
-    memset(hash_bytes, 0, HASH_SIZE);
     
     // Create and broadcast block proposal
     return pbft_node_propose_block(node, block);
@@ -1168,8 +1150,7 @@ int pbft_node_send_block_to_peer(PBFTNode* node, const char* peer_url, TW_Block*
         node->base.public_key,
         node->base.id,
         node->counter,  // Use counter as round number
-        block,
-        block_hash_bytes
+        block
     );
     
     if (!proposal) {

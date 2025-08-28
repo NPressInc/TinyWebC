@@ -97,7 +97,7 @@ HttpResponse* pbft_node_http_request(const char* url, const char* method, const 
 void pbft_node_free_http_response(HttpResponse* response);
 
 // Peer communication functions
-int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block, const char* block_hash);
+int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block);
 int pbft_node_broadcast_verification_vote(PBFTNode* node, const char* block_hash, const char* block_data);
 int pbft_node_broadcast_commit_vote(PBFTNode* node, const char* block_hash, const char* block_data);
 int pbft_node_broadcast_new_round_vote(PBFTNode* node, const char* block_hash, const char* block_data);

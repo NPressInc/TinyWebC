@@ -281,6 +281,26 @@ size_t TW_Block_serialize(TW_Block* block, unsigned char** buffer) {
 }
 
 /** Deserializes a block from a byte array. */
+// Deep copy function for blocks (creates independent copy with own memory allocations)
+TW_Block* TW_Block_copy(const TW_Block* source) {
+    if (!source) return NULL;
+
+    // Create a new block with the same properties
+    TW_Block* copy = TW_Block_create(source->index, source->txns, source->txn_count,
+                                     source->timestamp, source->previous_hash, source->proposer_id);
+    if (!copy) return NULL;
+
+    // Copy the merkle root hash
+    memcpy(copy->merkle_root_hash, source->merkle_root_hash, HASH_SIZE);
+
+    // Copy transaction sizes
+    if (source->txn_sizes && copy->txn_sizes) {
+        memcpy(copy->txn_sizes, source->txn_sizes, source->txn_count * sizeof(size_t));
+    }
+
+    return copy;
+}
+
 TW_Block* TW_Block_deserialize(const unsigned char* buffer, size_t buffer_size) {
     if (!buffer || buffer_size < sizeof(int32_t) * 2 + sizeof(time_t) + HASH_SIZE*2 + PROP_ID_SIZE) {
         return NULL;

@@ -266,23 +266,24 @@ int TW_InternalTransaction_verify_signature(TW_InternalTransaction* txn)
 
 // PBFT-specific helper functions
 TW_InternalTransaction* tw_create_block_proposal(const unsigned char* sender, uint32_t proposer_id, 
-                                                uint32_t round_number, TW_Block* block, 
-                                                const unsigned char* block_hash)
+                                                uint32_t round_number, TW_Block* block)
 {
     TW_InternalTransaction* txn = tw_create_internal_transaction(TW_INT_TXN_PROPOSE_BLOCK, sender, proposer_id, round_number);
     if (!txn) return NULL;
     
-    if (block_hash) {
-        memcpy(txn->block_hash, block_hash, HASH_SIZE);
-    }
+    // Copy the block hash to the transaction
+    unsigned char block_hash [HASH_SIZE];
+    TW_Block_getHash(block, block_hash);
+    memcpy(txn->block_hash, block_hash, HASH_SIZE);
     
+    // Copy the block data to the transaction
     if (block) {
-        txn->block_data = malloc(sizeof(TW_Block));
+        // Create a proper deep copy of the block
+        txn->block_data = TW_Block_copy(block);
         if (!txn->block_data) {
             tw_destroy_internal_transaction(txn);
             return NULL;
         }
-        memcpy(txn->block_data, block, sizeof(TW_Block));
     }
     
     // Auto-sign the transaction

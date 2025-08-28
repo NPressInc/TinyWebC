@@ -75,29 +75,25 @@ size_t TW_Transaction_get_size(const TW_Transaction* tx) {
     if (!tx) {
         return 0;
     }
-    
-    if (!tx->payload) {
-        return 0;
-    }
 
     size_t size = 0;
 
-    size += sizeof(tx->type);                      // Transaction type
-    size += PUBKEY_SIZE;                           // Sender
-    size += sizeof(tx->timestamp);                 // Timestamp
-    size += PUBKEY_SIZE * tx->recipient_count;     // Recipients
-    size += sizeof(tx->recipient_count);           // Recipient count (uint8_t)
+    // Fixed-size fields (match serialization order)
+    size += sizeof(tx->type);                      // Transaction type (4 bytes)
+    size += PUBKEY_SIZE;                           // Sender public key
+    size += sizeof(tx->timestamp);                 // Timestamp (8 bytes)
+    size += sizeof(tx->recipient_count);           // Recipient count (1 byte)
+    size += PUBKEY_SIZE * tx->recipient_count;     // Recipients array
     size += GROUP_ID_SIZE;                         // Group ID
-    size += sizeof(tx->resource_id);               // Resource ID (unencrypted)
-    
-    size_t payload_size = encrypted_payload_get_size(tx->payload);
-    
-    if (payload_size == 0) {
-        return 0;
+    size += sizeof(tx->resource_id);               // Resource ID (64 bytes)
+    size += sizeof(tx->payload_size);              // Payload size metadata (8 bytes)
+
+    // Add payload content if it exists and has size
+    // Trust tx->payload_size since that's what serialization uses
+    if (tx->payload && tx->payload_size > 0) {
+        size += tx->payload_size;                  // Encrypted payload content
     }
-    
-    size += payload_size;                          // EncryptedPayload content
-    size += sizeof(tx->payload_size);              // Payload size metadata
+
     size += SIGNATURE_SIZE;                        // Signature
 
     return size;
