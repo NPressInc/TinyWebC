@@ -118,7 +118,7 @@ int pbft_node_request_entire_blockchain_from_peer(PBFTNode* node, const char* pe
 
 // Transaction management
 int pbft_node_get_pending_transactions_from_peer(PBFTNode* node, const char* peer_url, char* transactions_json);
-int pbft_node_send_block_creation_signal(PBFTNode* node);
+int pbft_node_block_creation(PBFTNode* node);
 
 // Utility functions
 void pbft_node_shuffle_peers(PBFTNode* node);
