@@ -97,7 +97,6 @@ HttpResponse* pbft_node_http_request(const char* url, const char* method, const 
 void pbft_node_free_http_response(HttpResponse* response);
 
 // Peer communication functions
-int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block);
 int pbft_node_broadcast_verification_vote(PBFTNode* node, const char* block_hash, const char* block_data);
 int pbft_node_broadcast_commit_vote(PBFTNode* node, const char* block_hash, const char* block_data);
 int pbft_node_broadcast_new_round_vote(PBFTNode* node, const char* block_hash, const char* block_data);
@@ -118,7 +117,7 @@ int pbft_node_request_entire_blockchain_from_peer(PBFTNode* node, const char* pe
 
 // Transaction management
 int pbft_node_get_pending_transactions_from_peer(PBFTNode* node, const char* peer_url, char* transactions_json);
-int pbft_node_block_creation(PBFTNode* node);
+int pbft_node_block_creation(PBFTNode* node, TW_Block* new_block);
 
 // Utility functions
 void pbft_node_shuffle_peers(PBFTNode* node);

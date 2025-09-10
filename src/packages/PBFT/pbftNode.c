@@ -298,10 +298,10 @@ void* pbft_node_main_loop(void* arg) {
                     // For single node mode, commit directly
                     if (node->base.peer_count == 0) {
                         printf("Node %u: Creating block for singular node\n", node->base.id);
-                        pbft_node_block_creation(node);
+                        pbft_node_block_creation(node, new_block);
                     } else {
                         // Multi-node mode: broadcast to peers
-                        pbft_node_broadcast_block(node, new_block);
+                        pbft_node_propose_block(node, new_block);
                     }
                 }
             }
@@ -722,6 +722,7 @@ int pbft_node_add_peer(PBFTNode* node, const unsigned char* public_key, const ch
 int pbft_node_remove_peer(PBFTNode* node, uint32_t peer_id) { return 0; }
 int pbft_node_mark_peer_delinquent(PBFTNode* node, uint32_t peer_id) { return 0; }
 int pbft_node_is_peer_active(PBFTNode* node, uint32_t peer_id) { return 0; }
+
 uint32_t pbft_node_calculate_proposer_id(PBFTNode* node) {
     if (!node || !node->base.blockchain) {
         return 0;
@@ -729,24 +730,33 @@ uint32_t pbft_node_calculate_proposer_id(PBFTNode* node) {
     
     uint32_t num_peers = node->base.peer_count;
     
-    // Special case for single node (no peers): always return the node's ID
+    // Special case for single node
     if (num_peers == 0) {
         return node->base.id;
     }
     
-    // If blockchain is empty, return 0 for genesis block
+    // Genesis block case
     if (node->base.blockchain->length == 0) {
         return 0;
     }
     
-    // Get the last block's proposer ID
+    // Get last block's cryptographic hash
     TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
-    if (!last_block) {
-        return 0;
+    unsigned char block_hash[HASH_SIZE];
+    if (TW_Block_getHash(last_block, block_hash) != 0) {
+        return 0; // Fallback on hash failure
     }
     
-    // Calculate next proposer: (last_proposer_id + 1 + offset) % num_peers
-    uint32_t next_proposer = (last_block->index + 1 + node->base.proposer_offset) % (num_peers + 1);
+    // Use block hash as seed for proposer selection
+    // Take first 4 bytes of hash and convert to uint32_t
+    uint32_t hash_seed;
+    memcpy(&hash_seed, block_hash, sizeof(uint32_t));
+    
+    // Add some entropy from proposer_offset (for view changes)
+    hash_seed ^= node->base.proposer_offset;
+    
+    // Calculate proposer: cryptographically secure but deterministic
+    uint32_t next_proposer = hash_seed % (num_peers + 1);
     
     return next_proposer;
 }
@@ -957,13 +967,7 @@ void pbft_node_free_http_response(HttpResponse* response) {
     http_response_free(response);
     // Note: http_response_free already handles NULL responses safely
 }
-// Broadcasting functions using internal transactions
-int pbft_node_broadcast_block(PBFTNode* node, TW_Block* block) { 
-    if (!node || !block) return 0;
-    
-    // Create and broadcast block proposal
-    return pbft_node_propose_block(node, block);
-}
+
 
 int pbft_node_broadcast_verification_vote(PBFTNode* node, const char* block_hash, const char* block_data) {
     if (!node || !block_hash) return 0;
@@ -1496,13 +1500,11 @@ int pbft_node_get_pending_transactions_from_peer(PBFTNode* node, const char* pee
     pbft_node_free_http_response(response);
     return transaction_count;
 }
-int pbft_node_block_creation(PBFTNode* node) {
+int pbft_node_block_creation(PBFTNode* node, TW_Block* new_block) {
     if (!node) return 0;
     
     printf("Node %u: Creating block for singular node mode\n", node->base.id);
-    
-    // Create a new block
-    TW_Block* new_block = pbft_node_create_block(node);
+        
     if (!new_block) {
         printf("Failed to create block for singular node\n");
         return 0;
@@ -1882,54 +1884,105 @@ static void handle_transaction_internal_endpoint(struct mg_connection *c, struct
 }
 
 static void handle_propose_block_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
-    if (!node) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
-                     "{\"error\":\"Node not initialized\"}");
-        return;
-    }
-    
-    // Parse JSON body to extract block proposal
-    cJSON *json = cJSON_ParseWithLength(hm->body.buf, hm->body.len);
-    if (!json) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Invalid JSON\"}");
-        return;
-    }
-    
-    cJSON *block_data_json = cJSON_GetObjectItem(json, "blockData");
-    cJSON *block_hash_json = cJSON_GetObjectItem(json, "blockHash");
-    cJSON *sender_json = cJSON_GetObjectItem(json, "sender");
-    cJSON *signature_json = cJSON_GetObjectItem(json, "signature");
-    
-    if (!block_data_json || !block_hash_json || !sender_json || !signature_json) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Missing required fields\"}");
-        cJSON_Delete(json);
-        return;
-    }
-    
-    const char* block_data = cJSON_GetStringValue(block_data_json);
-    const char* block_hash = cJSON_GetStringValue(block_hash_json);
-    const char* sender = cJSON_GetStringValue(sender_json);
-    const char* signature = cJSON_GetStringValue(signature_json);
-    
-    // Verify signature
-    if (!pbft_node_verify_signature(sender, signature, block_hash)) {
-        mg_http_reply(c, 401, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Invalid signature\"}");
-        cJSON_Delete(json);
-        return;
-    }
-    
-    printf("Node %u received block proposal from %s\n", node->base.id, sender);
-    
-    // For now, automatically send verification vote (simplified PBFT)
-    pbft_node_broadcast_verification_vote(node, block_hash, block_data);
-    
-    mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
-                 "{\"response\":\"Block proposal received and verification vote sent\"}");
-    
-    cJSON_Delete(json);
+	if (!node) {
+		mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Node not initialized\"}");
+		return;
+	}
+
+	// Expect binary internal transaction payload
+	TW_InternalTransaction* proposal = TW_InternalTransaction_deserialize(
+		(const unsigned char*)hm->body.buf, hm->body.len);
+	if (!proposal) {
+		mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Invalid binary proposal\"}");
+		return;
+	}
+
+	// Ensure message type is a block proposal
+	if (proposal->type != TW_INT_TXN_PROPOSE_BLOCK) {
+		mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Unexpected message type\"}");
+		tw_destroy_internal_transaction(proposal);
+		return;
+	}
+
+	// Verify signature on the internal transaction
+	if (!TW_InternalTransaction_verify_signature(proposal)) {
+		mg_http_reply(c, 401, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Invalid signature\"}");
+		tw_destroy_internal_transaction(proposal);
+		return;
+	}
+
+	// Basic proposer and round checks
+	uint32_t expected_proposer = pbft_node_calculate_proposer_id(node);
+	if (proposal->proposer_id != expected_proposer) {
+		mg_http_reply(c, 409, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Unexpected proposer id\"}");
+		tw_destroy_internal_transaction(proposal);
+		return;
+	}
+
+	if (proposal->round_number != node->counter) {
+		mg_http_reply(c, 409, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Unexpected round number\"}");
+		tw_destroy_internal_transaction(proposal);
+		return;
+	}
+
+	// Ensure block data is present
+	if (!proposal->block_data) {
+		mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Missing block data in proposal\"}");
+		tw_destroy_internal_transaction(proposal);
+		return;
+	}
+
+	// Recompute block hash and compare with provided hash
+	unsigned char recomputed_hash[HASH_SIZE];
+	if (TW_Block_getHash(proposal->block_data, recomputed_hash) != 0) {
+		mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Failed to compute block hash\"}");
+		tw_destroy_internal_transaction(proposal);
+		return;
+	}
+	if (memcmp(recomputed_hash, proposal->block_hash, HASH_SIZE) != 0) {
+		mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Block hash mismatch\"}");
+		tw_destroy_internal_transaction(proposal);
+		return;
+	}
+
+	// Validate block linkage and index locally (do not rely on pbft_node_validate_block yet)
+	int32_t expected_index = node->base.blockchain ? (int32_t)node->base.blockchain->length : 0;
+	if (proposal->block_data->index != expected_index) {
+		mg_http_reply(c, 409, "Content-Type: application/json\r\n", 
+				 "{\"error\":\"Invalid block index\"}");
+		tw_destroy_internal_transaction(proposal);
+		return;
+	}
+	if (proposal->block_data->index > 0 && node->base.blockchain && node->base.blockchain->length > 0) {
+		TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
+		unsigned char last_hash[HASH_SIZE];
+		if (TW_Block_getHash(last_block, last_hash) != 0 ||
+			memcmp(proposal->block_data->previous_hash, last_hash, HASH_SIZE) != 0) {
+			mg_http_reply(c, 409, "Content-Type: application/json\r\n", 
+					 "{\"error\":\"Previous hash mismatch\"}");
+			tw_destroy_internal_transaction(proposal);
+			return;
+		}
+	}
+
+	printf("Node %u: Accepted block proposal from proposer %u (round %u, index %d)\n",
+		node->base.id, proposal->proposer_id, proposal->round_number, proposal->block_data->index);
+
+	// Acknowledge proposal reception (no voting here yet)
+	mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
+			 "{\"status\":\"Proposal accepted\"}");
+
+	// Clean up (we're not retaining the proposal in this step)
+	tw_destroy_internal_transaction(proposal);
 }
 
 static void handle_verification_vote_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
