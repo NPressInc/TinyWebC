@@ -13,6 +13,7 @@ blockchain.json
 test_state/blockchain/test_blockchain.db
 *db-shm
 *.db-wal
+*.log
 
 # Build artifacts and executables
 tinyweb_tests
