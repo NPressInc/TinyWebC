@@ -66,7 +66,18 @@ PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port) {
     node->base.id = node_id;
     node->api_port = api_port;
     node->running = 1;
-    
+
+    // Initialize view change state
+    node->current_view = 0;
+    node->last_consensus_activity = time(NULL);
+    node->view_change_pending = false;
+    node->proposed_new_view = 0;
+    node->failed_rounds_count = 0;
+
+    // Initialize view change vote tracking
+    node->view_change_votes_count = 0;
+    memset(node->view_change_voters, 0, sizeof(node->view_change_voters));
+
     // Set global node ID for path resolution
     g_current_node_id = node_id;
     
@@ -197,7 +208,7 @@ int pbft_node_load_or_create_blockchain(PBFTNode* node) {
         // Create new blockchain if none exists
         unsigned char node_pubkey[PUBKEY_SIZE];
         snprintf((char*)node_pubkey, PUBKEY_SIZE, "node_%u", node->base.id);
-        
+
         node->base.blockchain = TW_BlockChain_create(node_pubkey, NULL, 0);
         if (!node->base.blockchain) {
             printf("❌ Failed to create new blockchain\n");
@@ -282,14 +293,42 @@ void* pbft_node_main_loop(void* arg) {
         node->last_blockchain_length = current_length;
         
         // Every 10 iterations, check for new peers and sync
-        if (node->counter % 10 == 0) {
-            
-            printf("Node %u: Blockchain length: %u, Peers: %zu, Proposer ID: %u\n", 
-                   node->base.id, current_length, node->base.peer_count, 
+        if (node->counter % 3 == 0) {
+
+            printf("Node %u: Blockchain length: %u, Peers: %zu, Proposer ID: %u\n",
+                   node->base.id, current_length, node->base.peer_count,
                    pbft_node_calculate_proposer_id(node));
-        
+
+            // Check for consensus timeout (30 seconds without progress)
+            time_t now = time(NULL);
+            if (node->current_proposal_block && (now - node->last_consensus_activity) > 30) {
+                printf("Node %u: Consensus timeout detected (%ld seconds), initiating view change\n",
+                       node->base.id, now - node->last_consensus_activity);
+
+                // Increment failed rounds counter
+                node->failed_rounds_count++;
+
+                // Clear current proposal state
+                pthread_mutex_lock(&node->state_mutex);
+                if (node->current_proposal_block) {
+                    TW_Block_destroy(node->current_proposal_block);
+                    node->current_proposal_block = NULL;
+                }
+                node->verification_votes_count = 0;
+                memset(node->verification_voters, 0, sizeof(node->verification_voters));
+                node->commit_votes_count = 0;
+                memset(node->commit_voters, 0, sizeof(node->commit_voters));
+                node->view_change_pending = true;
+                node->proposed_new_view = node->current_view + 1;
+                pthread_mutex_unlock(&node->state_mutex);
+
+                // Broadcast view change vote
+                pbft_node_broadcast_new_round_vote(node);
+                continue; // Skip normal proposal logic
+            }
+
             // check if we should propose a block (every 10 seconds)
-            if (!node->blockchain_has_progressed && pbft_node_is_proposer(node)) {
+            if (!node->blockchain_has_progressed && pbft_node_is_proposer(node) && !node->view_change_pending) {
                 printf("Node %u: Proposing block (round %u)\n", node->base.id, node->counter);
                 
                 // Create and propose a block
@@ -969,20 +1008,27 @@ void pbft_node_free_http_response(HttpResponse* response) {
 }
 
 
-int pbft_node_broadcast_verification_vote(PBFTNode* node, const char* block_hash, const char* block_data) {
-    if (!node || !block_hash) return 0;
-    
-    // Convert hex string to bytes
-    unsigned char hash_bytes[HASH_SIZE];
-    // TODO: Implement hex to bytes conversion
-    memset(hash_bytes, 0, HASH_SIZE);
-    
-    // Create verification vote using internal transaction
+int pbft_node_broadcast_verification_vote(PBFTNode* node) {
+    if (!node) return 0;
+
+    // Ensure we have a retained proposal
+    if (!node->current_proposal_block) return 0;
+
+    // Mark self as having cast verification vote (idempotent)
+    pthread_mutex_lock(&node->state_mutex);
+    uint32_t self_id = node->base.id;
+    if (self_id <= MAX_PEERS && node->verification_voters[self_id] == 0) {
+        node->verification_voters[self_id] = 1;
+        node->verification_votes_count++;
+    }
+    pthread_mutex_unlock(&node->state_mutex);
+
+    // Create verification vote using stored round and binary hash
     TW_InternalTransaction* vote = tw_create_vote_message(
         node->base.public_key,
         node->base.id,
-        node->counter,
-        hash_bytes,
+        node->current_proposal_round,
+        node->current_proposal_hash,
         1  // Phase 1: verification
     );
     
@@ -1024,20 +1070,24 @@ int pbft_node_broadcast_verification_vote(PBFTNode* node, const char* block_hash
     return success_count > 0 ? 1 : 0;
 }
 
-int pbft_node_broadcast_commit_vote(PBFTNode* node, const char* block_hash, const char* block_data) {
-    if (!node || !block_hash) return 0;
-    
-    // Convert hex string to bytes
-    unsigned char hash_bytes[HASH_SIZE];
-    // TODO: Implement hex to bytes conversion
-    memset(hash_bytes, 0, HASH_SIZE);
-    
-    // Create commit vote using internal transaction
+int pbft_node_broadcast_commit_vote(PBFTNode* node) {
+    if (!node) return 0;
+
+    if (!node->current_proposal_block) return 0;
+
+    // Mark self as having cast commit vote (idempotent)
+    uint32_t self_id = node->base.id;
+    if (self_id <= MAX_PEERS && node->commit_voters[self_id] == 0) {
+        node->commit_voters[self_id] = 1;
+        node->commit_votes_count++;
+    }
+
+    // Create commit vote using stored round and binary hash
     TW_InternalTransaction* vote = tw_create_vote_message(
         node->base.public_key,
         node->base.id,
-        node->counter,
-        hash_bytes,
+        node->current_proposal_round,
+        node->current_proposal_hash,
         2  // Phase 2: commit
     );
     
@@ -1079,20 +1129,24 @@ int pbft_node_broadcast_commit_vote(PBFTNode* node, const char* block_hash, cons
     return success_count > 0 ? 1 : 0;
 }
 
-int pbft_node_broadcast_new_round_vote(PBFTNode* node, const char* block_hash, const char* block_data) {
-    if (!node || !block_hash) return 0;
-    
-    // Convert hex string to bytes
-    unsigned char hash_bytes[HASH_SIZE];
-    // TODO: Implement hex to bytes conversion
-    memset(hash_bytes, 0, HASH_SIZE);
-    
+int pbft_node_broadcast_new_round_vote(PBFTNode* node) {
+    if (!node) return 0;
+
+    // Mark self as having cast view change vote (idempotent)
+    pthread_mutex_lock(&node->state_mutex);
+    uint32_t self_id = node->base.id;
+    if (self_id <= MAX_PEERS && node->view_change_voters[self_id] == 0) {
+        node->view_change_voters[self_id] = 1;
+        node->view_change_votes_count++;
+    }
+    pthread_mutex_unlock(&node->state_mutex);
+
     // Create new round vote using internal transaction
     TW_InternalTransaction* vote = tw_create_vote_message(
         node->base.public_key,
         node->base.id,
         node->counter,
-        hash_bytes,
+        node->current_proposal_hash,  // Use current proposal hash (binary)
         3  // Phase 3: new round
     );
     
@@ -1977,11 +2031,38 @@ static void handle_propose_block_endpoint(struct mg_connection *c, struct mg_htt
 	printf("Node %u: Accepted block proposal from proposer %u (round %u, index %d)\n",
 		node->base.id, proposal->proposer_id, proposal->round_number, proposal->block_data->index);
 
-	// Acknowledge proposal reception (no voting here yet)
-	mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
+	// Retain the accepted proposal for consensus
+	pthread_mutex_lock(&node->state_mutex);
+
+	// Clean up any previously stored proposal
+	if (node->current_proposal_block) {
+		TW_Block_destroy(node->current_proposal_block);
+		node->current_proposal_block = NULL;
+	}
+
+	// Store the new proposal details
+	node->current_proposal_round = proposal->round_number;
+	node->current_proposer_id = proposal->proposer_id;
+	memcpy(node->current_proposal_hash, proposal->block_hash, HASH_SIZE);
+	node->last_consensus_activity = time(NULL); // Update consensus activity timestamp
+
+	// Take ownership of the block (create a copy)
+	node->current_proposal_block = TW_Block_copy(proposal->block_data);
+	if (!node->current_proposal_block) {
+		printf("Node %u: Warning - Failed to copy proposed block for retention\n", node->base.id);
+		// Continue anyway - we still have the hash and metadata
+	}
+
+	pthread_mutex_unlock(&node->state_mutex);
+
+	// Kick off verification voting based on retained proposal
+	pbft_node_broadcast_verification_vote(node);
+
+	// Acknowledge proposal reception
+	mg_http_reply(c, 200, "Content-Type: application/json\r\n",
 			 "{\"status\":\"Proposal accepted\"}");
 
-	// Clean up (we're not retaining the proposal in this step)
+	// Clean up the internal transaction (block ownership transferred)
 	tw_destroy_internal_transaction(proposal);
 }
 
@@ -1991,51 +2072,53 @@ static void handle_verification_vote_endpoint(struct mg_connection *c, struct mg
                      "{\"error\":\"Node not initialized\"}");
         return;
     }
-    
-    // Parse JSON body to extract verification vote
-    cJSON *json = cJSON_ParseWithLength(hm->body.buf, hm->body.len);
-    if (!json) {
+
+    // Expect binary internal transaction payload
+    TW_InternalTransaction* vote = TW_InternalTransaction_deserialize((const unsigned char*)hm->body.buf, hm->body.len);
+    if (!vote) {
         mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Invalid JSON\"}");
+                     "{\"error\":\"Invalid binary vote\"}");
         return;
     }
-    
-    cJSON *block_data_json = cJSON_GetObjectItem(json, "blockData");
-    cJSON *block_hash_json = cJSON_GetObjectItem(json, "blockHash");
-    cJSON *sender_json = cJSON_GetObjectItem(json, "sender");
-    cJSON *signature_json = cJSON_GetObjectItem(json, "signature");
-    
-    if (!block_data_json || !block_hash_json || !sender_json || !signature_json) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Missing required fields\"}");
-        cJSON_Delete(json);
-        return;
-    }
-    
-    const char* block_data = cJSON_GetStringValue(block_data_json);
-    const char* block_hash = cJSON_GetStringValue(block_hash_json);
-    const char* sender = cJSON_GetStringValue(sender_json);
-    const char* signature = cJSON_GetStringValue(signature_json);
-    
-    // Verify signature
-    if (!pbft_node_verify_signature(sender, signature, block_hash)) {
+
+    // Validate type and signature
+    if (vote->type != TW_INT_TXN_VOTE_VERIFY || !TW_InternalTransaction_verify_signature(vote)) {
         mg_http_reply(c, 401, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Invalid signature\"}");
-        cJSON_Delete(json);
+                     "{\"error\":\"Invalid verification vote\"}");
+        tw_destroy_internal_transaction(vote);
         return;
     }
-    
-    printf("Node %u received verification vote from %s for block %s\n", 
-           node->base.id, sender, block_hash);
-    
-    // Count verification votes (simplified - in full implementation, would track votes)
-    // For now, automatically proceed to commit phase
-    pbft_node_broadcast_commit_vote(node, block_hash, block_data);
-    
+
+    // Check the vote matches current proposal round and hash
+    pthread_mutex_lock(&node->state_mutex);
+    int matches_round = (vote->round_number == node->current_proposal_round);
+    int matches_hash = (memcmp(vote->block_hash, node->current_proposal_hash, HASH_SIZE) == 0);
+    if (matches_round && matches_hash) {
+        uint32_t voter_id = node_get_id_by_pubkey(vote->sender); // Get voter ID from sender public key
+        if (voter_id != 0 && voter_id <= MAX_PEERS && node->verification_voters[voter_id] == 0) {
+            node->verification_voters[voter_id] = 1;
+            node->verification_votes_count++;
+        }
+    }
+
+    // Compute f from N using PBFT relation N = 3f + 1 → f = (N - 1)/3
+    uint32_t total_nodes = node->base.peer_count + 1; // include self
+    uint32_t f = (total_nodes > 1) ? (total_nodes - 1) / 3 : 0;
+    uint32_t threshold = (2 * f) + 1; // need 2f + 1 verification votes
+    int reached_threshold = (node->verification_votes_count >= threshold);
+    pthread_mutex_unlock(&node->state_mutex);
+
+    printf("Node %u: Verification votes %u / %u (threshold %u)\n", node->base.id,
+           node->verification_votes_count, total_nodes, threshold);
+
+    if (reached_threshold) {
+        pbft_node_broadcast_commit_vote(node);
+    }
+
     mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
-                 "{\"response\":\"Verification vote received and commit vote sent\"}");
-    
-    cJSON_Delete(json);
+                 "{\"status\":\"Verification vote processed\"}");
+
+    tw_destroy_internal_transaction(vote);
 }
 
 static void handle_commit_vote_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
@@ -2044,56 +2127,149 @@ static void handle_commit_vote_endpoint(struct mg_connection *c, struct mg_http_
                      "{\"error\":\"Node not initialized\"}");
         return;
     }
-    
-    // Parse JSON body to extract commit vote
-    cJSON *json = cJSON_ParseWithLength(hm->body.buf, hm->body.len);
-    if (!json) {
+
+    // Expect binary internal transaction payload
+    TW_InternalTransaction* vote = TW_InternalTransaction_deserialize((const unsigned char*)hm->body.buf, hm->body.len);
+    if (!vote) {
         mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Invalid JSON\"}");
+                     "{\"error\":\"Invalid binary vote\"}");
         return;
     }
-    
-    cJSON *block_data_json = cJSON_GetObjectItem(json, "blockData");
-    cJSON *block_hash_json = cJSON_GetObjectItem(json, "blockHash");
-    cJSON *sender_json = cJSON_GetObjectItem(json, "sender");
-    cJSON *signature_json = cJSON_GetObjectItem(json, "signature");
-    
-    if (!block_data_json || !block_hash_json || !sender_json || !signature_json) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Missing required fields\"}");
-        cJSON_Delete(json);
-        return;
-    }
-    
-    const char* block_data = cJSON_GetStringValue(block_data_json);
-    const char* block_hash = cJSON_GetStringValue(block_hash_json);
-    const char* sender = cJSON_GetStringValue(sender_json);
-    const char* signature = cJSON_GetStringValue(signature_json);
-    
-    // Verify signature
-    if (!pbft_node_verify_signature(sender, signature, block_hash)) {
+
+    // Validate type and signature
+    if (vote->type != TW_INT_TXN_VOTE_COMMIT || !TW_InternalTransaction_verify_signature(vote)) {
         mg_http_reply(c, 401, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Invalid signature\"}");
-        cJSON_Delete(json);
+                     "{\"error\":\"Invalid commit vote\"}");
+        tw_destroy_internal_transaction(vote);
         return;
     }
-    
-    printf("Node %u received commit vote from %s for block %s\n", 
-           node->base.id, sender, block_hash);
-    
-    // Count commit votes (simplified - in full implementation, would track votes)
-    // For now, just acknowledge the commit vote
-    
+
+    // Check the vote matches current proposal round and hash
+    pthread_mutex_lock(&node->state_mutex);
+    int matches_round = (vote->round_number == node->current_proposal_round);
+    int matches_hash = (memcmp(vote->block_hash, node->current_proposal_hash, HASH_SIZE) == 0);
+    if (matches_round && matches_hash) {
+        uint32_t voter_id = node_get_id_by_pubkey(vote->sender); // Get voter ID from sender public key
+        if (voter_id != 0 && voter_id <= MAX_PEERS && node->commit_voters[voter_id] == 0) {
+            node->commit_voters[voter_id] = 1;
+            node->commit_votes_count++;
+        }
+    }
+
+    // Compute PBFT thresholds
+    uint32_t total_nodes = node->base.peer_count + 1; // include self
+    uint32_t f = (total_nodes > 1) ? (total_nodes - 1) / 3 : 0; // N = 3f + 1
+    uint32_t threshold = (2 * f) + 1; // need 2f + 1 commit votes
+    int reached_threshold = (node->commit_votes_count >= threshold);
+    pthread_mutex_unlock(&node->state_mutex);
+
+    printf("Node %u: Commit votes %u / %u (threshold %u)\n", node->base.id,
+           node->commit_votes_count, total_nodes, threshold);
+
+    if (reached_threshold && node->current_proposal_block) {
+        // Commit the block
+        if (pbft_node_commit_block(node, node->current_proposal_block) == 0) {
+            printf("Node %u: Block committed (index %d)\n", node->base.id, node->current_proposal_block->index);
+
+            // Clear retained proposal state after commit
+            pthread_mutex_lock(&node->state_mutex);
+            TW_Block_destroy(node->current_proposal_block);
+            node->current_proposal_block = NULL;
+            node->verification_votes_count = 0;
+            memset(node->verification_voters, 0, sizeof(node->verification_voters));
+            node->commit_votes_count = 0;
+            memset(node->commit_voters, 0, sizeof(node->commit_voters));
+            node->view_change_pending = false; // Clear view change state on successful commit
+            node->failed_rounds_count = 0;     // Reset failure counter
+            node->last_consensus_activity = time(NULL); // Update consensus activity
+            node->current_view++; // Increment view on successful consensus
+            pthread_mutex_unlock(&node->state_mutex);
+        } else {
+            printf("Node %u: Failed to commit block\n", node->base.id);
+        }
+    }
+
     mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
-                 "{\"response\":\"Commit vote received\"}");
-    
-    cJSON_Delete(json);
+                 "{\"status\":\"Commit vote processed\"}");
+
+    tw_destroy_internal_transaction(vote);
 }
 
 static void handle_new_round_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
-    // TODO: Implement new round handling
-    mg_http_reply(c, 501, "Content-Type: application/json\r\n", 
-                 "{\"error\":\"NewRound endpoint not implemented yet\"}");
+    if (!node) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Node not initialized\"}");
+        return;
+    }
+
+    // Expect binary internal transaction payload
+    TW_InternalTransaction* vote = TW_InternalTransaction_deserialize((const unsigned char*)hm->body.buf, hm->body.len);
+    if (!vote) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid binary vote\"}");
+        return;
+    }
+
+    // Validate type and signature
+    if (vote->type != TW_INT_TXN_VOTE_NEW_ROUND || !TW_InternalTransaction_verify_signature(vote)) {
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid new round vote\"}");
+        tw_destroy_internal_transaction(vote);
+        return;
+    }
+
+    // Check if this vote matches our pending view change
+    pthread_mutex_lock(&node->state_mutex);
+    bool matches_proposed_view = (vote->round_number == node->proposed_new_view);
+    if (node->view_change_pending && matches_proposed_view) {
+        uint32_t voter_id = node_get_id_by_pubkey(vote->sender);
+        if (voter_id != 0 && voter_id <= MAX_PEERS && node->view_change_voters[voter_id] == 0) {
+            node->view_change_voters[voter_id] = 1;
+            node->view_change_votes_count++;
+        }
+    }
+
+    // Compute PBFT thresholds
+    uint32_t total_nodes = node->base.peer_count + 1; // include self
+    uint32_t f = (total_nodes > 1) ? (total_nodes - 1) / 3 : 0; // N = 3f + 1
+    uint32_t threshold = (2 * f) + 1; // need 2f + 1 view change votes
+    bool reached_threshold = (node->view_change_votes_count >= threshold);
+    pthread_mutex_unlock(&node->state_mutex);
+
+    printf("Node %u: View change votes %u / %u (threshold %u, proposed view %u)\n",
+           node->base.id, node->view_change_votes_count, total_nodes, threshold, node->proposed_new_view);
+
+    if (reached_threshold) {
+        // View change consensus achieved - transition to new view
+        printf("Node %u: View change consensus reached, transitioning to view %u\n",
+               node->base.id, node->proposed_new_view);
+
+        pthread_mutex_lock(&node->state_mutex);
+        node->current_view = node->proposed_new_view;
+        node->view_change_pending = false;
+        node->last_consensus_activity = time(NULL);
+
+        // Clear all vote state for the new view
+        node->verification_votes_count = 0;
+        memset(node->verification_voters, 0, sizeof(node->verification_voters));
+        node->commit_votes_count = 0;
+        memset(node->commit_voters, 0, sizeof(node->commit_voters));
+        node->view_change_votes_count = 0;
+        memset(node->view_change_voters, 0, sizeof(node->view_change_voters));
+        node->failed_rounds_count = 0;
+
+        // Clear any pending proposal
+        if (node->current_proposal_block) {
+            TW_Block_destroy(node->current_proposal_block);
+            node->current_proposal_block = NULL;
+        }
+        pthread_mutex_unlock(&node->state_mutex);
+    }
+
+    mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+                 "{\"status\":\"New round vote processed\"}");
+
+    tw_destroy_internal_transaction(vote);
 }
 
 static void handle_missing_block_request_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {

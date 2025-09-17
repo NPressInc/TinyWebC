@@ -53,12 +53,25 @@ static void test_server_event_handler(struct mg_connection *c, int ev, void *ev_
             mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
                          "{\"status\":\"ok\",\"message\":\"Binary received\",\"size\":%zu}", hm->body.len);
         } else if (mg_strcmp(hm->uri, mg_str("/ProposeBlock")) == 0) {
-            // Simulate PBFT endpoint
-            mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
-                         "{\"response\":\"Block proposal received\"}");
+            // Simulate PBFT endpoint - handle binary data
+            printf("Server: Received ProposeBlock with %zu bytes of binary data\n", hm->body.len);
+            mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+                         "{\"status\":\"Proposal accepted\"}");
         } else if (mg_strcmp(hm->uri, mg_str("/VerificationVote")) == 0) {
-            mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
-                         "{\"response\":\"Verification vote received\"}");
+            // Simulate PBFT endpoint - handle binary data
+            printf("Server: Received VerificationVote with %zu bytes of binary data\n", hm->body.len);
+            mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+                         "{\"status\":\"Verification vote processed\"}");
+        } else if (mg_strcmp(hm->uri, mg_str("/CommitVote")) == 0) {
+            // Simulate PBFT endpoint - handle binary data
+            printf("Server: Received CommitVote with %zu bytes of binary data\n", hm->body.len);
+            mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+                         "{\"status\":\"Commit vote processed\"}");
+        } else if (mg_strcmp(hm->uri, mg_str("/NewRound")) == 0) {
+            // Simulate PBFT endpoint - handle binary data
+            printf("Server: Received NewRound with %zu bytes of binary data\n", hm->body.len);
+            mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+                         "{\"status\":\"New round vote processed\"}");
         } else if (mg_strcmp(hm->uri, mg_str("/test/timeout")) == 0) {
             // Don't respond to test timeout handling
             return;

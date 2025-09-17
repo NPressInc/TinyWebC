@@ -57,6 +57,27 @@ typedef struct {
     // Transaction queue management
     char pending_transaction_hashes[MAX_TRANSACTION_QUEUE][HASH_HEX_SIZE];
     int pending_transaction_count;
+
+    // Current proposal state for consensus
+    uint32_t current_proposal_round;
+    uint32_t current_proposer_id;
+    unsigned char current_proposal_hash[HASH_SIZE];
+    TW_Block* current_proposal_block;  // Owned copy of the proposed block
+
+    // Vote tracking for current proposal (by node id index)
+    uint32_t verification_votes_count;
+    uint8_t verification_voters[MAX_PEERS + 1];
+    uint32_t commit_votes_count;
+    uint8_t commit_voters[MAX_PEERS + 1];
+
+    // View change state for Byzantine fault tolerance
+    uint32_t current_view;
+    time_t last_consensus_activity;
+    bool view_change_pending;
+    uint32_t view_change_votes_count;
+    uint8_t view_change_voters[MAX_PEERS + 1];
+    uint32_t proposed_new_view;
+    uint32_t failed_rounds_count;
 } PBFTNode;
 
 // Global PBFT node instance
@@ -97,9 +118,9 @@ HttpResponse* pbft_node_http_request(const char* url, const char* method, const 
 void pbft_node_free_http_response(HttpResponse* response);
 
 // Peer communication functions
-int pbft_node_broadcast_verification_vote(PBFTNode* node, const char* block_hash, const char* block_data);
-int pbft_node_broadcast_commit_vote(PBFTNode* node, const char* block_hash, const char* block_data);
-int pbft_node_broadcast_new_round_vote(PBFTNode* node, const char* block_hash, const char* block_data);
+int pbft_node_broadcast_verification_vote(PBFTNode* node);
+int pbft_node_broadcast_commit_vote(PBFTNode* node);
+int pbft_node_broadcast_new_round_vote(PBFTNode* node);
 int pbft_node_broadcast_blockchain_to_new_node(PBFTNode* node, const char* peer_url);
 int pbft_node_rebroadcast_message(PBFTNode* node, const char* json_data, const char* route);
 

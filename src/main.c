@@ -35,9 +35,11 @@ void print_usage(const char* program_name) {
     printf("Options:\n");
     printf("  -i, --id <node_id>      Node ID (default: 0)\n");
     printf("  -p, --port <port>       API server port (default: 8000)\n");
+    printf("  -d, --debug             Enable debug mode with verbose logging\n");
     printf("  -h, --help              Show this help message\n");
-    printf("\nExample:\n");
-    printf("  %s --id 1 --port 5001\n", program_name);
+    printf("\nExamples:\n");
+    printf("  %s --id 1 --port 8001\n", program_name);
+    printf("  %s --debug --id 0 --port 8000\n", program_name);
 }
 
 // Parse command line arguments
@@ -62,6 +64,10 @@ int parse_arguments(int argc, char* argv[], uint32_t* node_id, uint16_t* port) {
                 fprintf(stderr, "Error: Port must be between 1024 and 65535\n");
                 return -1;
             }
+        } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--debug") == 0) {
+            // Enable debug mode (for now just print that it's enabled)
+            printf("🐛 Debug mode enabled\n");
+            // TODO: Set a global debug flag for more verbose logging
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             exit(0);

@@ -139,6 +139,32 @@ target_link_libraries(init_tool
     SQLite::SQLite3
 )
 
+# Multi-node PBFT integration test
+add_executable(pbft_integration_test
+    src/tests/pbft_integration_test.c
+    ${LIB_SOURCES}
+)
+
+target_link_libraries(pbft_integration_test PRIVATE
+    ${MICROHTTPD_LIBRARIES}
+    cjson
+    ${SODIUM_LIBRARIES}
+    OpenSSL::Crypto
+    ${LZ4_LIBRARIES}
+    SQLite::SQLite3
+    pthread
+    m
+)
+
+target_include_directories(pbft_integration_test PRIVATE
+    ${MICROHTTPD_INCLUDE_DIRS}
+    ${SODIUM_INCLUDE_DIRS}
+    /usr/include/cjson
+    ${LZ4_INCLUDE_DIRS}
+    src
+    src/external/mongoose
+)
+
 # Multi-node PBFT test is built separately in the root directory
 
 # Add standalone test executables that have their own main() functions
@@ -149,10 +175,10 @@ add_executable(pbft_http_client_test
     ${LIB_SOURCES}
 )
 
-target_link_libraries(pbft_http_client_test PRIVATE 
-    ${MICROHTTPD_LIBRARIES} 
-    cjson 
-    ${SODIUM_LIBRARIES} 
+target_link_libraries(pbft_http_client_test PRIVATE
+    ${MICROHTTPD_LIBRARIES}
+    cjson
+    ${SODIUM_LIBRARIES}
     OpenSSL::Crypto
     ${LZ4_LIBRARIES}
     SQLite::SQLite3
@@ -160,10 +186,10 @@ target_link_libraries(pbft_http_client_test PRIVATE
     m
 )
 
-target_include_directories(pbft_http_client_test PRIVATE 
-    ${MICROHTTPD_INCLUDE_DIRS} 
-    ${SODIUM_INCLUDE_DIRS} 
-    /usr/include/cjson 
+target_include_directories(pbft_http_client_test PRIVATE
+    ${MICROHTTPD_INCLUDE_DIRS}
+    ${SODIUM_INCLUDE_DIRS}
+    /usr/include/cjson
     ${LZ4_INCLUDE_DIRS}
     src
     src/external/mongoose
