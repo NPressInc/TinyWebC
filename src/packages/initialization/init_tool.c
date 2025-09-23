@@ -60,10 +60,10 @@ void print_usage(const char* program_name) {
     printf("Options:\n");
     printf("  -h, --help          Show this help message\n");
     printf("  -v, --verbose       Enable verbose output\n");
-    printf("  -d, --debug-nodes   Create node-specific directories (state/node_X/)\n");
+    printf("  -d, --debug         Create isolated test directories (test_state/node_X/)\n");
     printf("\nExample:\n");
     printf("  %s src/packages/initialization/configs/network_config.json\n", program_name);
-    printf("  %s -d config.json  # Create node-specific directories for multi-node testing\n", program_name);
+    printf("  %s --debug config.json  # Create isolated test directories for multi-node testing\n", program_name);
 }
 
 int parse_json_config(const char* config_file, JsonConfig* config) {
@@ -461,7 +461,7 @@ int main(int argc, char* argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"verbose", no_argument, 0, 'v'},
-        {"debug-nodes", no_argument, 0, 'd'},
+        {"debug", no_argument, 0, 'd'},
         {0, 0, 0, 0}
     };
 
@@ -534,11 +534,15 @@ int main(int argc, char* argv[]) {
     printf("  Mode: %s\n", debug_nodes ? "Node-specific directories (debug)" : "Global directories");
     printf("\n");
     
-    // Check for existing state and prompt user for cleanup
-    int cleanup_result = check_and_clean_existing_state(config.keystore_path, config.blockchain_path);
-    if (cleanup_result != 0) {
-        free_json_config(&json_config);
-        return cleanup_result == -1 ? 0 : 1; // Return 0 if user cancelled, 1 if cleanup failed
+    // Check for existing state and prompt user for cleanup (skip in debug mode)
+    if (!debug_nodes) {
+        int cleanup_result = check_and_clean_existing_state(config.keystore_path, config.blockchain_path);
+        if (cleanup_result != 0) {
+            free_json_config(&json_config);
+            return cleanup_result == -1 ? 0 : 1; // Return 0 if user cancelled, 1 if cleanup failed
+        }
+    } else {
+        printf("Debug mode: Skipping production directory cleanup check\n");
     }
 
     int result = initialize_network(&config);

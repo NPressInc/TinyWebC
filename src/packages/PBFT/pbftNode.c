@@ -15,6 +15,7 @@
 #include "../comm/pbftApi.h"
 #include "../comm/httpClient.h"
 #include "../sql/database.h"
+#include "../sql/queries.h"
 #include "../fileIO/blockchainIO.h"
 #include "../utils/statePaths.h"
 #include "../comm/blockChainQueryApi.h"
@@ -24,17 +25,26 @@ static uint32_t g_current_node_id = 0;
 
 // Helper function to get current node's database path
 static bool get_current_node_db_path(char* buffer, size_t buffer_size) {
-    if (g_current_node_id == 0) {
-        // Fallback to default path if node ID not set
+    if (!pbft_node) {
+        // Fallback to default path if node not initialized
         snprintf(buffer, buffer_size, "state/blockchain/blockchain.db");
         return true;
     }
-    return state_paths_get_database_file(g_current_node_id, buffer, buffer_size);
+
+    // Create a temporary paths structure to get the correct path
+    NodeStatePaths paths;
+    if (!state_paths_init(pbft_node->base.id, pbft_node->debug_mode, &paths)) {
+        // Fallback if path initialization fails
+        snprintf(buffer, buffer_size, "state/blockchain/blockchain.db");
+        return true;
+    }
+
+    return state_paths_get_database_file(&paths, buffer, buffer_size);
 }
 #include "../comm/accessApi.h"
-#include "../comm/nodeApi.h"
 #include "mongoose.h"
 #include "packages/fileIO/blockchainPersistence.h"
+#include "packages/utils/byteorder.h"
 
 // Forward declarations for endpoint handlers
 static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_data);
@@ -59,12 +69,13 @@ PBFTNode* pbft_node = NULL;
 // External message queues from pbftApi
 extern MessageQueues message_queues;
 
-PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port) {
+PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port, bool debug_mode) {
     PBFTNode* node = calloc(1, sizeof(PBFTNode));
     if (!node) return NULL;
-    
+
     node->base.id = node_id;
     node->api_port = api_port;
+    node->debug_mode = debug_mode;
     node->running = 1;
 
     // Initialize view change state
@@ -116,18 +127,18 @@ void pbft_node_destroy(PBFTNode* node) {
 
 int pbft_node_initialize_keys(PBFTNode* node) {
     if (!node) return -1;
-    
+
     printf("Initializing keys for node %u\n", node->base.id);
-    
+
     // Initialize keystore
     if (keystore_init() != 1) {
         printf("Failed to initialize keystore for node %u\n", node->base.id);
         return -1;
     }
-    
+
     // Initialize node-specific paths
     NodeStatePaths paths;
-    if (!state_paths_init(node->base.id, &paths)) {
+    if (!state_paths_init(node->base.id, node->debug_mode, &paths)) {
         printf("Failed to initialize state paths for node %u\n", node->base.id);
         return -1;
     }
@@ -167,12 +178,12 @@ int pbft_node_initialize_keys(PBFTNode* node) {
 
 int pbft_node_load_or_create_blockchain(PBFTNode* node) {
     if (!node) return -1;
-    
+
     printf("Loading/creating blockchain for node %u\n", node->base.id);
-    
+
     // Initialize node-specific paths
     NodeStatePaths paths;
-    if (!state_paths_init(node->base.id, &paths)) {
+    if (!state_paths_init(node->base.id, node->debug_mode, &paths)) {
         printf("Failed to initialize state paths for node %u\n", node->base.id);
         return -1;
     }
@@ -360,11 +371,12 @@ void* pbft_node_main_loop(void* arg) {
                 printf("Node %u: Sync result: %d, Proposer ID: %u\n", 
                        node->base.id, sync_result, proposer_id);
                 
-                // If sync failed and we're not the proposer, increment proposer offset
+                // Only increment proposer offset if we're sure we don't need more blocks
+                // and we're not the current proposer
                 if (sync_result < 0 && node->base.id != proposer_id) {
+                    printf("Node %u: No new blocks available from peers, incrementing proposer offset to %u\n", 
+                           node->base.id, node->base.proposer_offset + 1);
                     node->base.proposer_offset++;
-                    printf("Node %u: Incrementing proposer offset to %u\n", 
-                           node->base.id, node->base.proposer_offset);
                 }
             }
         }
@@ -430,7 +442,7 @@ static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_dat
     
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-        
+
         // Route HTTP requests to appropriate handlers using string comparison
         if (mg_strcmp(hm->uri, mg_str("/")) == 0) {
             handle_root_endpoint(c, hm, node);
@@ -499,63 +511,275 @@ static void handle_root_endpoint(struct mg_connection *c, struct mg_http_message
 
 static void handle_get_blockchain_length_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
     if (!node || !node->base.blockchain) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
                      "{\"error\":\"Blockchain not initialized\"}");
         return;
     }
-    
-    // TODO: Verify signature from request
+
+    // For internal PBFT communication, skip authentication
+    // (In production, you might want to add node-to-node authentication)
     
     char response[256];
-    snprintf(response, sizeof(response), 
-             "{\"chainLength\":%u}", 
+    snprintf(response, sizeof(response),
+             "{\"chainLength\":%u}",
              node->base.blockchain->length);
-    
+
     mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", response);
 }
 
 static void handle_get_pending_transactions_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
     if (!node) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
                      "{\"error\":\"Node not initialized\"}");
         return;
     }
-    
-    // TODO: Verify signature from request
-    // TODO: Get actual pending transactions from queue
-    
-    // For now, return empty transaction list
-    mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
-                 "{\"pendingTransactions\":{}}");
+
+    // Parse binary internal transaction request
+    TW_InternalTransaction* req = TW_InternalTransaction_deserialize(
+        (const unsigned char*)hm->body.buf, hm->body.len);
+
+    if (!req) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid binary transaction format\"}");
+        return;
+    }
+
+    // Verify signature
+    if (!TW_InternalTransaction_verify_signature(req)) {
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid signature\"}");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Validate transaction type
+    if (req->type != TW_INT_TXN_GET_PENDING_TXNS) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid transaction type\"}");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    printf("Node %u: Received binary request for pending transactions\n", node->base.id);
+
+    // Check if we have pending transactions in our queue
+    int pending_count = message_queues.transaction_count;
+
+    if (pending_count == 0) {
+        // No pending transactions, return empty response
+        TW_InternalTransaction* resp = tw_create_internal_transaction(TW_INT_TXN_GET_PENDING_TXNS, node->base.public_key, 0, 0);
+        if (!resp) {
+            mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Allocation failure\"}");
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        // Empty payload for no transactions
+        resp->payload_size = 0;
+
+        // Sign and serialize response
+        TW_Internal_Transaction_add_signature(resp);
+        unsigned char* out = NULL;
+        size_t out_size = TW_InternalTransaction_serialize(resp, &out);
+        if (!out || out_size == 0) {
+            mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Response serialization failed\"}");
+            if (out) free(out);
+            tw_destroy_internal_transaction(resp);
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        mg_http_reply(c, 200, "Content-Type: application/octet-stream\r\n", "%.*s", (int)out_size, out);
+
+        free(out);
+        tw_destroy_internal_transaction(resp);
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // We have pending transactions - prepare multi-transaction response
+    printf("Node %u: Sending %d pending transactions in binary format\n", node->base.id, pending_count);
+
+    // Calculate actual sizes for all transactions
+    size_t* txn_sizes = (size_t*)malloc(pending_count * sizeof(size_t));
+    if (!txn_sizes) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Memory allocation failed\"}");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    size_t total_txns_size = 0;
+    for (int i = 0; i < pending_count; i++) {
+        TW_Transaction* txn = message_queues.transaction_queue[i].transaction;
+        if (!txn) {
+            txn_sizes[i] = 0;
+            continue;
+        }
+
+        txn_sizes[i] = TW_Transaction_get_size(txn);
+        total_txns_size += txn_sizes[i];
+    }
+
+    // Check if total size fits in payload
+    size_t header_size = sizeof(uint32_t) + (pending_count * sizeof(size_t));
+    size_t total_payload_size = header_size + total_txns_size;
+
+    if (total_payload_size > MAX_PAYLOAD_SIZE_INTERNAL) {
+        free(txn_sizes);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+                "{\"error\":\"Too many pending transactions (%d, %zu bytes) for response\"}",
+                pending_count, total_payload_size);
+        mg_http_reply(c, 413, "Content-Type: application/json\r\n", "%s", error_msg);
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Create response with multi-transaction payload
+    TW_InternalTransaction* resp = tw_create_internal_transaction(TW_INT_TXN_GET_PENDING_TXNS, node->base.public_key, 0, 0);
+    if (!resp) {
+        free(txn_sizes);
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Allocation failure\"}");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Serialize multi-transaction data into raw_payload
+    unsigned char* payload_ptr = resp->payload.raw_payload;
+
+    // Write transaction count
+    uint32_t txn_count_net = htonl(pending_count);
+    memcpy(payload_ptr, &txn_count_net, sizeof(uint32_t));
+    payload_ptr += sizeof(uint32_t);
+
+    // Write transaction sizes (estimated)
+    for (int i = 0; i < pending_count; i++) {
+        size_t size_net = htonll(txn_sizes[i]);
+        memcpy(payload_ptr, &size_net, sizeof(size_t));
+        payload_ptr += sizeof(size_t);
+    }
+
+    // Serialize each transaction
+    for (int i = 0; i < pending_count; i++) {
+        TW_Transaction* txn = message_queues.transaction_queue[i].transaction;
+        if (!txn || txn_sizes[i] == 0) {
+            printf("Node %u: Warning: NULL or empty transaction at index %d\n", node->base.id, i);
+            // Write zero bytes as placeholder
+            memset(payload_ptr, 0, txn_sizes[i]);
+            payload_ptr += txn_sizes[i];
+            continue;
+        }
+
+        // Serialize transaction (this will advance payload_ptr)
+        unsigned char* start_ptr = payload_ptr;
+        int serialize_result = TW_Transaction_serialize(txn, &payload_ptr);
+        if (serialize_result != 0) {
+            printf("Node %u: Failed to serialize transaction at index %d\n", node->base.id, i);
+            // Write zero bytes as placeholder
+            memset(payload_ptr, 0, txn_sizes[i]);
+            payload_ptr += txn_sizes[i];
+            continue;
+        }
+
+        // Verify the serialized size matches our expectation
+        size_t actual_size = payload_ptr - start_ptr;
+        if (actual_size != txn_sizes[i]) {
+            printf("Node %u: Warning: Serialized size mismatch for transaction %d (%zu vs %zu)\n",
+                   node->base.id, i, actual_size, txn_sizes[i]);
+        }
+    }
+
+    resp->payload_size = total_payload_size;
+
+    // Sign and serialize response
+    TW_Internal_Transaction_add_signature(resp);
+    unsigned char* out = NULL;
+    size_t out_size = TW_InternalTransaction_serialize(resp, &out);
+    if (!out || out_size == 0) {
+        free(txn_sizes);
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Response serialization failed\"}");
+        if (out) free(out);
+        tw_destroy_internal_transaction(resp);
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Send binary response
+    mg_http_reply(c, 200, "Content-Type: application/octet-stream\r\n", "%.*s", (int)out_size, out);
+
+    printf("Node %u: Sent %d pending transactions (%zu bytes total)\n",
+           node->base.id, pending_count, out_size);
+
+    free(txn_sizes);
+    free(out);
+    tw_destroy_internal_transaction(resp);
+    tw_destroy_internal_transaction(req);
 }
 
 static void handle_blockchain_last_hash_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
     if (!node || !node->base.blockchain || node->base.blockchain->length == 0) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
                      "{\"error\":\"Blockchain not initialized or empty\"}");
         return;
     }
-    
-    // TODO: Verify signature from request
-    
+
+    // Verify signature from request headers
+    struct mg_str* pubkey_header = mg_http_get_header(hm, "X-Public-Key");
+    struct mg_str* signature_header = mg_http_get_header(hm, "X-Signature");
+    struct mg_str* timestamp_header = mg_http_get_header(hm, "X-Timestamp");
+
+    if (!pubkey_header || !signature_header || !timestamp_header) {
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Missing authentication headers (X-Public-Key, X-Signature, X-Timestamp)\"}");
+        return;
+    }
+
+    // Convert mg_str to C strings
+    char pubkey_hex[256], signature_hex[256], timestamp_str[64];
+    snprintf(pubkey_hex, sizeof(pubkey_hex), "%.*s", (int)pubkey_header->len, pubkey_header->buf);
+    snprintf(signature_hex, sizeof(signature_hex), "%.*s", (int)signature_header->len, signature_header->buf);
+    snprintf(timestamp_str, sizeof(timestamp_str), "%.*s", (int)timestamp_header->len, timestamp_header->buf);
+
+    // Create data to verify: request path + timestamp
+    char data_to_verify[512];
+    snprintf(data_to_verify, sizeof(data_to_verify), "/GetBlockchainLastHash%s", timestamp_str);
+
+    // Check timestamp to prevent replay attacks (within 5 minutes)
+    time_t request_timestamp = (time_t)atol(timestamp_str);
+    time_t current_time = time(NULL);
+    if (abs((int)(current_time - request_timestamp)) > 300) { // 5 minutes
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Request timestamp expired\"}");
+        return;
+    }
+
+    // Verify signature
+    if (pbft_node_verify_signature(pubkey_hex, signature_hex, data_to_verify) != 1) {
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid signature\"}");
+        return;
+    }
+
+    printf("Node %u: Verified signature for blockchain last hash request from %s\n", node->base.id, pubkey_hex);
+
     // Get last block hash
     TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
     unsigned char hash_bytes[HASH_SIZE];
     char hash_hex[HASH_SIZE * 2 + 1];
-    
+
     if (TW_Block_getHash(last_block, hash_bytes) != 0) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
                      "{\"error\":\"Failed to get block hash\"}");
         return;
     }
-    
+
     pbft_node_bytes_to_hex(hash_bytes, HASH_SIZE, hash_hex);
-    
+
     char response[256];
-    snprintf(response, sizeof(response), 
-             "{\"lastHash\":\"%s\"}", 
+    snprintf(response, sizeof(response),
+             "{\"lastHash\":\"%s\"}",
              hash_hex);
-    
+
     mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", response);
 }
 
@@ -756,11 +980,269 @@ int pbft_node_commit_block(PBFTNode* node, TW_Block* block) {
     return 0;
 }
 
-int pbft_node_load_peers_from_blockchain(PBFTNode* node) { return 0; }
-int pbft_node_add_peer(PBFTNode* node, const unsigned char* public_key, const char* ip, uint32_t id) { return 0; }
+int pbft_node_validate_blockchain(PBFTNode* node, TW_BlockChain* blockchain) {
+    if (!node || !blockchain || blockchain->length == 0) {
+        return -1;
+    }
+
+    // Validate genesis block
+    TW_Block* genesis = blockchain->blocks[0];
+    if (!genesis || genesis->index != 0) {
+        printf("Invalid genesis block in received blockchain\n");
+        return -2;
+    }
+
+    // Validate each block in sequence
+    for (uint32_t i = 0; i < blockchain->length; i++) {
+        TW_Block* block = blockchain->blocks[i];
+        if (!block) {
+            printf("Null block at index %u in received blockchain\n", i);
+            return -3;
+        }
+
+        // Check block index
+        if (block->index != i) {
+            printf("Block index mismatch at position %u: expected %u, got %d\n", i, i, block->index);
+            return -4;
+        }
+
+        // Check previous hash linkage (for non-genesis blocks)
+        if (i > 0) {
+            TW_Block* prev_block = blockchain->blocks[i-1];
+            unsigned char prev_hash[HASH_SIZE];
+            if (TW_Block_getHash(prev_block, prev_hash) != 0) {
+                printf("Failed to get hash for block %u\n", i-1);
+                return -5;
+            }
+            if (memcmp(block->previous_hash, prev_hash, HASH_SIZE) != 0) {
+                printf("Hash linkage broken between blocks %u and %u\n", i-1, i);
+                return -6;
+            }
+        }
+
+        // TODO: Add more comprehensive validation (transactions, signatures, etc.)
+    }
+
+    printf("Blockchain validation passed (%u blocks)\n", blockchain->length);
+    return 0;
+}
+
+int pbft_node_replace_blockchain(PBFTNode* node, TW_BlockChain* new_blockchain) {
+    if (!node || !new_blockchain) {
+        return -1;
+    }
+
+    // Store reference to old blockchain for cleanup
+    TW_BlockChain* old_blockchain = node->base.blockchain;
+
+    // Replace the blockchain reference
+    node->base.blockchain = new_blockchain;
+
+    printf("Node %u: Replaced blockchain (%u blocks -> %u blocks)\n",
+           node->base.id, old_blockchain ? old_blockchain->length : 0, new_blockchain->length);
+
+    // Persist the new blockchain to disk
+    printf("Persisting new blockchain to disk...\n");
+    PersistenceResult persist_result = blockchain_persistence_commit_full_blockchain(new_blockchain);
+
+    if (persist_result == PERSISTENCE_SUCCESS) {
+        printf("✅ New blockchain persisted successfully\n");
+
+        // Clean up old blockchain
+        if (old_blockchain) {
+            TW_BlockChain_destroy(old_blockchain);
+        }
+
+        // Reset any cached state that depends on the old blockchain
+        node->last_blockchain_length = new_blockchain->length;
+        node->blockchain_has_progressed = 1; // Force progression detection
+
+        return 0;
+    } else {
+        printf("❌ Failed to persist new blockchain: %s\n",
+               blockchain_persistence_error_string(persist_result));
+
+        // Restore old blockchain on persistence failure
+        node->base.blockchain = old_blockchain;
+        TW_BlockChain_destroy(new_blockchain);
+
+        return -2;
+    }
+}
+
+int pbft_node_load_peers_from_blockchain(PBFTNode* node) {
+    if (!node) return -1;
+
+    printf("Node %u: Loading peers from database...\n", node->base.id);
+
+    // Clear existing peers
+    node->base.peer_count = 0;
+
+    // Query all nodes from database
+    NodeStatusRecord* node_records = NULL;
+    size_t node_count = 0;
+
+    if (db_get_all_nodes(&node_records, &node_count) != 0) {
+        printf("Node %u: Failed to query nodes from database\n", node->base.id);
+        return -1;
+    }
+
+    if (node_count == 0) {
+        printf("Node %u: No nodes found in database\n", node->base.id);
+        return 0;
+    }
+
+    // Create current node ID string for comparison
+    char current_node_id[32];
+    snprintf(current_node_id, sizeof(current_node_id), "node_%03u", node->base.id);
+
+    printf("Node %u: Found %zu total nodes in database\n", node->base.id, node_count);
+
+    // Add peers for all nodes except ourselves
+    size_t peers_added = 0;
+    for (size_t i = 0; i < node_count; i++) {
+        NodeStatusRecord* record = &node_records[i];
+
+        // Skip ourselves
+        if (strcmp(record->node_id, current_node_id) == 0) {
+            continue;
+        }
+
+        // Skip non-validator nodes
+        if (!record->is_validator) {
+            printf("Node %u: Skipping non-validator node %s\n", node->base.id, record->node_id);
+            continue;
+        }
+
+        // Parse peer ID from node_id string (e.g., "node_003" -> 3)
+        uint32_t peer_id;
+        if (sscanf(record->node_id, "node_%u", &peer_id) != 1) {
+            printf("Node %u: Failed to parse peer ID from %s\n", node->base.id, record->node_id);
+            continue;
+        }
+
+        // Create a public key for this peer (in a real implementation,
+        // this would come from the blockchain or keystore)
+        unsigned char dummy_pubkey[PUBKEY_SIZE];
+        memset(dummy_pubkey, 0, PUBKEY_SIZE);
+        // Set a unique identifier in the public key based on peer ID
+        dummy_pubkey[0] = (unsigned char)peer_id;
+
+        // Create IP:port string
+        char ip_port[100];
+        snprintf(ip_port, sizeof(ip_port), "%s:%u", record->ip_address, record->port);
+
+        printf("Node %u: Adding peer %s (%s) at %s\n",
+               node->base.id, record->node_id, record->node_name, ip_port);
+
+        if (pbft_node_add_peer(node, dummy_pubkey, ip_port, peer_id) != 0) {
+            printf("Node %u: Failed to add peer %s\n", node->base.id, record->node_id);
+        } else {
+            peers_added++;
+        }
+    }
+
+    // Free the node records
+    db_free_node_records(node_records, node_count);
+
+    printf("Node %u: Successfully loaded %zu peers from database\n", node->base.id, peers_added);
+    return 0;
+}
+int pbft_node_add_peer(PBFTNode* node, const unsigned char* public_key, const char* ip, uint32_t id) {
+    if (!node || !public_key || !ip) return -1;
+
+    if (node->base.peer_count >= MAX_PEERS) {
+        printf("Node %u: Cannot add peer %u, maximum peers reached\n", node->base.id, id);
+        return -1;
+    }
+
+    // Check if peer already exists
+    for (size_t i = 0; i < node->base.peer_count; i++) {
+        if (node->base.peers[i].id == id) {
+            printf("Node %u: Peer %u already exists\n", node->base.id, id);
+            return -1;
+        }
+    }
+
+    // Add the peer
+    PeerInfo* peer = &node->base.peers[node->base.peer_count];
+    memcpy(peer->public_key, public_key, PUBKEY_SIZE);
+    strncpy(peer->ip, ip, sizeof(peer->ip) - 1);
+    peer->ip[sizeof(peer->ip) - 1] = '\0';
+    peer->id = id;
+    peer->is_delinquent = 0;
+    peer->delinquent_count = 0;
+    peer->last_seen = time(NULL);
+
+    node->base.peer_count++;
+
+    printf("Node %u: Added peer %u at %s\n", node->base.id, id, ip);
+    return 0;
+}
 int pbft_node_remove_peer(PBFTNode* node, uint32_t peer_id) { return 0; }
-int pbft_node_mark_peer_delinquent(PBFTNode* node, uint32_t peer_id) { return 0; }
-int pbft_node_is_peer_active(PBFTNode* node, uint32_t peer_id) { return 0; }
+
+int pbft_node_mark_peer_delinquent(PBFTNode* node, uint32_t peer_id) {
+    if (!node) {
+        return -1;
+    }
+
+    // Find peer by ID in the peers array
+    for (size_t i = 0; i < node->base.peer_count; i++) {
+        if (node->base.peers[i].id == peer_id) {
+            // Mark peer as delinquent
+            node->base.peers[i].is_delinquent = 1;
+            node->base.peers[i].delinquent_count++;
+
+            // Update last seen timestamp
+            node->base.peers[i].last_seen = time(NULL);
+
+            // Log delinquent behavior
+            printf("Node %u: Marked peer %u as delinquent (count: %u)\n",
+                   node->base.id, peer_id, node->base.peers[i].delinquent_count);
+
+            // Check if delinquent count exceeds threshold
+            if (node->base.peers[i].delinquent_count >= DELINQUENT_THRESHOLD) {
+                printf("Node %u: Peer %u exceeded delinquent threshold (%d), would remove peer\n",
+                       node->base.id, peer_id, DELINQUENT_THRESHOLD);
+                // Note: pbft_node_remove_peer() is kept as stub per task requirements
+                // pbft_node_remove_peer(node, peer_id);
+            }
+
+            return 0; // Success
+        }
+    }
+
+    // Peer not found
+    printf("Node %u: Peer %u not found for delinquent marking\n", node->base.id, peer_id);
+    return -1;
+}
+
+int pbft_node_is_peer_active(PBFTNode* node, uint32_t peer_id) {
+    if (!node) {
+        return 0;
+    }
+
+    // Find peer by ID in the peers array
+    for (size_t i = 0; i < node->base.peer_count; i++) {
+        if (node->base.peers[i].id == peer_id) {
+            // Check if peer is marked as delinquent
+            if (node->base.peers[i].is_delinquent) {
+                return 0; // Inactive - delinquent
+            }
+
+            // Check if peer was seen recently (within 60 seconds)
+            time_t current_time = time(NULL);
+            if (current_time - node->base.peers[i].last_seen >= 60) {
+                return 0; // Inactive - too old
+            }
+
+            return 1; // Active
+        }
+    }
+
+    // Peer not found
+    return 0; // Inactive
+}
 
 uint32_t pbft_node_calculate_proposer_id(PBFTNode* node) {
     if (!node || !node->base.blockchain) {
@@ -830,10 +1312,13 @@ int pbft_node_sync_with_longest_chain(PBFTNode* node) {
         return -1;  // No peers to sync with
     }
     
-    printf("Node %u resyncing blockchains with peers\n", node->base.id);
+    printf("Node %u resyncing blockchains with peers (current length: %u)\n", 
+           node->base.id, node->base.blockchain->length);
     
-    uint32_t longest_chain = 0;
+    uint32_t longest_chain = node->base.blockchain->length;  // Start with our own length
     uint32_t peer_with_longest_chain = 0;
+    int peers_queried = 0;
+    int successful_queries = 0;
     
     // Find the peer with the longest blockchain
     for (uint32_t i = 0; i < node->base.peer_count; i++) {
@@ -841,6 +1326,8 @@ int pbft_node_sync_with_longest_chain(PBFTNode* node) {
         if (node->base.peers[i].id == node->base.id) {
             continue;
         }
+        
+        peers_queried++;
         
         // Make HTTP request to get chain length from peer
         char peer_url[256];
@@ -852,6 +1339,7 @@ int pbft_node_sync_with_longest_chain(PBFTNode* node) {
                    node->base.peers[i].id, peer_url);
             peer_chain_length = 0;  // Default to 0 if request fails
         } else {
+            successful_queries++;
             printf("Peer %u at %s has blockchain length: %d\n", 
                    node->base.peers[i].id, peer_url, peer_chain_length);
         }
@@ -862,14 +1350,26 @@ int pbft_node_sync_with_longest_chain(PBFTNode* node) {
         }
     }
     
+    printf("Node %u: Queried %d peers, %d successful responses. Longest chain: %u (our length: %u)\n",
+           node->base.id, peers_queried, successful_queries, longest_chain, node->base.blockchain->length);
+    
     if (longest_chain > node->base.blockchain->length) {
-        printf("Node %u found longer chain (length %u vs %u), requesting missing blocks\n", 
+        printf("Node %u found longer chain (length %u vs %u), requesting missing blocks\n",
                node->base.id, longest_chain, node->base.blockchain->length);
-        
-        // In full implementation, would request missing blocks from peer
-        return 0;  // Successfully synced
+
+        // Request missing blocks from the peer with longest chain
+        char peer_url[256];
+        snprintf(peer_url, sizeof(peer_url), "http://%s", node->base.peers[peer_with_longest_chain].ip);
+        int sync_result = pbft_node_request_missing_blocks_from_peer(node, peer_url);
+        if (sync_result == 0) {
+            printf("Node %u: Successfully initiated missing block sync\n", node->base.id);
+        } else {
+            printf("Node %u: Failed to initiate missing block sync\n", node->base.id);
+        }
+
+        return sync_result;  // Return actual sync result
     } else {
-        printf("Node %u blockchain is already in sync (length %u)\n", 
+        printf("Node %u blockchain is already in sync (length %u)\n",
                node->base.id, node->base.blockchain->length);
         return -1;  // No sync needed, but no new blocks proposed
     }
@@ -1187,8 +1687,229 @@ int pbft_node_broadcast_new_round_vote(PBFTNode* node) {
     tw_destroy_internal_transaction(vote);
     return success_count > 0 ? 1 : 0;
 }
-int pbft_node_broadcast_blockchain_to_new_node(PBFTNode* node, const char* peer_url) { return 0; }
-int pbft_node_rebroadcast_message(PBFTNode* node, const char* json_data, const char* route) { return 0; }
+int pbft_node_broadcast_blockchain_to_new_node(PBFTNode* node, const char* peer_url) {
+    if (!node || !peer_url || !node->base.blockchain) {
+        printf("pbft_node_broadcast_blockchain_to_new_node: Invalid parameters\n");
+        return -1;
+    }
+
+    printf("Node %u: Broadcasting blockchain to new peer %s\n", node->base.id, peer_url);
+
+    // Get the serialized size of the entire blockchain
+    size_t blockchain_size = TW_BlockChain_get_size(node->base.blockchain);
+    if (blockchain_size == 0 || blockchain_size > MAX_PAYLOAD_SIZE_INTERNAL) {
+        printf("Node %u: Blockchain too large to broadcast (%zu bytes)\n", node->base.id, blockchain_size);
+        return -2;
+    }
+
+    // Allocate buffer for blockchain serialization
+    unsigned char* blockchain_data = (unsigned char*)malloc(blockchain_size);
+    if (!blockchain_data) {
+        printf("Node %u: Memory allocation failed for blockchain broadcast\n", node->base.id);
+        return -3;
+    }
+
+    // Serialize the entire blockchain
+    unsigned char* temp_ptr = blockchain_data;
+    int serialize_result = TW_BlockChain_serialize(node->base.blockchain, &temp_ptr);
+    if (serialize_result != 0) {
+        printf("Node %u: Blockchain serialization failed for broadcast\n", node->base.id);
+        free(blockchain_data);
+        return -4;
+    }
+
+    // Create TW_InternalTransaction with blockchain data
+    TW_InternalTransaction* broadcast_txn = tw_create_internal_transaction(TW_INT_TXN_BROADCAST_CHAIN, node->base.public_key, 0, 0);
+    if (!broadcast_txn) {
+        printf("Node %u: Failed to create broadcast transaction\n", node->base.id);
+        free(blockchain_data);
+        return -5;
+    }
+
+    // Store the serialized blockchain in the raw payload
+    memcpy(broadcast_txn->payload.raw_payload, blockchain_data, blockchain_size);
+    broadcast_txn->payload_size = blockchain_size;
+
+    // Set chain hash for reference
+    unsigned char chain_hash[HASH_SIZE];
+    TW_BlockChain_get_hash(node->base.blockchain, chain_hash);
+    memcpy(broadcast_txn->chain_hash, chain_hash, HASH_SIZE);
+
+    free(blockchain_data);
+
+    // Sign the transaction
+    TW_Internal_Transaction_add_signature(broadcast_txn);
+
+    // Serialize the internal transaction for transmission
+    unsigned char* txn_data = NULL;
+    size_t txn_size = TW_InternalTransaction_serialize(broadcast_txn, &txn_data);
+    if (!txn_data || txn_size == 0) {
+        printf("Node %u: Failed to serialize broadcast transaction\n", node->base.id);
+        tw_destroy_internal_transaction(broadcast_txn);
+        return -6;
+    }
+
+    // Send with exponential backoff retry logic
+    int max_retries = 3;
+    int retry_delay_ms = 1000; // Start with 1 second
+    int success = 0;
+
+    for (int attempt = 0; attempt < max_retries; attempt++) {
+        if (attempt > 0) {
+            printf("Node %u: Retrying blockchain broadcast to %s (attempt %d/%d)\n",
+                   node->base.id, peer_url, attempt + 1, max_retries);
+            // Simple sleep - in production this should be more sophisticated
+            usleep(retry_delay_ms * 1000);
+            retry_delay_ms *= 2; // Exponential backoff
+        }
+
+        // Send binary data via HTTP POST
+        const char* headers[] = {"Content-Type: application/octet-stream", NULL};
+        HttpResponse* response = http_client_post(peer_url, (const char*)txn_data, txn_size, headers, NULL);
+
+        if (response && http_client_is_success_status(response->status_code)) {
+            printf("Node %u: Successfully broadcast blockchain to new peer %s\n", node->base.id, peer_url);
+            success = 1;
+            pbft_node_free_http_response(response);
+            break;
+        } else {
+            printf("Node %u: Failed to broadcast blockchain to %s (attempt %d/%d, status: %d)\n",
+                   node->base.id, peer_url, attempt + 1, max_retries,
+                   response ? response->status_code : 0);
+
+            if (response) {
+                pbft_node_free_http_response(response);
+            }
+        }
+    }
+
+    free(txn_data);
+    tw_destroy_internal_transaction(broadcast_txn);
+
+    if (!success) {
+        printf("Node %u: Failed to broadcast blockchain to new peer %s after %d attempts\n",
+               node->base.id, peer_url, max_retries);
+        return -7;
+    }
+
+    return 0;
+}
+int pbft_node_rebroadcast_message(PBFTNode* node, TW_InternalTransaction* message, const char* exclude_peer_url) {
+    if (!node || !message) {
+        printf("pbft_node_rebroadcast_message: Invalid parameters\n");
+        return -1;
+    }
+
+    // Generate a transaction ID for duplicate prevention
+    // Use a combination of transaction type, timestamp, and sender for uniqueness
+    char txn_id[256];
+    snprintf(txn_id, sizeof(txn_id), "%d_%llu_%u",
+             message->type, (unsigned long long)message->timestamp, message->sender[0]);
+
+    // Check if we've already broadcast this message (simple duplicate prevention)
+    static char last_broadcast_ids[10][256] = {0}; // Simple ring buffer for recent broadcasts
+    static int last_broadcast_index = 0;
+
+    for (int i = 0; i < 10; i++) {
+        if (strcmp(last_broadcast_ids[i], txn_id) == 0) {
+            printf("Node %u: Skipping duplicate rebroadcast of transaction %s\n", node->base.id, txn_id);
+            return 0; // Not an error, just already broadcast
+        }
+    }
+
+    // Store this transaction ID
+    strncpy(last_broadcast_ids[last_broadcast_index], txn_id, sizeof(last_broadcast_ids[0]) - 1);
+    last_broadcast_index = (last_broadcast_index + 1) % 10;
+
+    printf("Node %u: Rebroadcasting message (type: %d) to %d peers\n",
+           node->base.id, message->type, (int)node->base.peer_count);
+
+    // Serialize the message once for all peers
+    unsigned char* message_data = NULL;
+    size_t message_size = TW_InternalTransaction_serialize(message, &message_data);
+    if (!message_data || message_size == 0) {
+        printf("Node %u: Failed to serialize message for rebroadcast\n", node->base.id);
+        return -2;
+    }
+
+    int success_count = 0;
+    int failure_count = 0;
+
+    // Send to all peers except the excluded one (skip delinquent peers)
+    for (int i = 0; i < node->base.peer_count; i++) {
+        PeerInfo* peer = &node->base.peers[i];
+
+        // Skip delinquent peers (treat as inactive)
+        if (peer->is_delinquent) {
+            continue;
+        }
+
+        // Skip excluded peer if specified
+        if (exclude_peer_url && strstr(peer->ip, exclude_peer_url)) {
+            printf("Node %u: Skipping excluded peer %s\n", node->base.id, peer->ip);
+            continue;
+        }
+
+        char peer_url[512];
+        snprintf(peer_url, sizeof(peer_url), "http://%s/ProposeBlock", peer->ip);
+
+        printf("Node %u: Rebroadcasting to peer %s\n", node->base.id, peer->ip);
+
+        // Send with exponential backoff retry logic
+        int max_retries = 2; // Fewer retries for broadcasts
+        int retry_delay_ms = 500; // Start with 500ms
+        int peer_success = 0;
+
+        for (int attempt = 0; attempt < max_retries; attempt++) {
+            if (attempt > 0) {
+                usleep(retry_delay_ms * 1000);
+                retry_delay_ms *= 2; // Exponential backoff
+            }
+
+            // Use the appropriate endpoint based on message type
+            const char* endpoint = "ProposeBlock"; // Default
+            if (message->type == TW_INT_TXN_VOTE_VERIFY || message->type == TW_INT_TXN_VOTE_COMMIT ||
+                message->type == TW_INT_TXN_VOTE_NEW_ROUND) {
+                endpoint = "Vote";
+            }
+
+            char full_url[512];
+            snprintf(full_url, sizeof(full_url), "http://%s/%s", peer->ip, endpoint);
+
+            const char* headers[] = {"Content-Type: application/octet-stream", NULL};
+            HttpResponse* response = http_client_post(full_url, (const char*)message_data, message_size, headers, NULL);
+
+            if (response && http_client_is_success_status(response->status_code)) {
+                printf("Node %u: Successfully rebroadcast to peer %s\n", node->base.id, peer->ip);
+                peer_success = 1;
+                success_count++;
+                pbft_node_free_http_response(response);
+                break;
+            } else {
+                printf("Node %u: Failed to rebroadcast to peer %s (attempt %d/%d, status: %d)\n",
+                       node->base.id, peer->ip, attempt + 1, max_retries,
+                       response ? response->status_code : 0);
+
+                if (response) {
+                    pbft_node_free_http_response(response);
+                }
+            }
+        }
+
+        if (!peer_success) {
+            printf("Node %u: Failed to rebroadcast to peer %s after retries\n", node->base.id, peer->ip);
+            failure_count++;
+        }
+    }
+
+    free(message_data);
+
+    printf("Node %u: Rebroadcast complete - %d successes, %d failures\n",
+           node->base.id, success_count, failure_count);
+
+    // Return success if at least one peer received the message
+    return (success_count > 0) ? 0 : -3;
+}
 // Individual peer communication functions using HTTP client
 int pbft_node_send_block_to_peer(PBFTNode* node, const char* peer_url, TW_Block* block, const char* block_hash) {
     if (!node || !peer_url || !block || !block_hash) {
@@ -1440,48 +2161,170 @@ int pbft_node_request_missing_blocks_from_peer(PBFTNode* node, const char* peer_
         printf("pbft_node_request_missing_blocks_from_peer: Invalid parameters\n");
         return -1;
     }
-    
-    // Get our last block hash
-    char* our_last_hash = NULL;
+
+    // Prepare last known state
+    unsigned char last_known_hash[HASH_SIZE] = {0};
+    uint32_t last_known_height = 0;
     if (node->base.blockchain->length > 0) {
         TW_Block* last_block = node->base.blockchain->blocks[node->base.blockchain->length - 1];
-        unsigned char hash_bytes[HASH_SIZE];
-        if (TW_Block_getHash(last_block, hash_bytes) == 0) {
-            our_last_hash = malloc(HASH_SIZE * 2 + 1);
-            if (our_last_hash) {
-                pbft_node_bytes_to_hex(hash_bytes, HASH_SIZE, our_last_hash);
-            }
+        if (TW_Block_getHash(last_block, last_known_hash) == 0) {
+            last_known_height = node->base.blockchain->length - 1;
         }
     }
-    
+
+    // Create binary internal transaction for sync request
+    TW_InternalTransaction* sync_request = tw_create_sync_request(
+        node->base.public_key,
+        last_known_hash,
+        last_known_height,
+        100  // request up to 100 blocks
+    );
+    if (!sync_request) {
+        printf("pbft_node_request_missing_blocks_from_peer: Failed to create sync request\n");
+        return -1;
+    }
+
+    // Serialize to binary
+    unsigned char* binary_data = NULL;
+    size_t data_size = TW_InternalTransaction_serialize(sync_request, &binary_data);
+    if (!binary_data || data_size == 0) {
+        printf("pbft_node_request_missing_blocks_from_peer: Failed to serialize sync request\n");
+        tw_destroy_internal_transaction(sync_request);
+        return -1;
+    }
+
     // Construct full URL for missing blocks endpoint
     char full_url[512];
     snprintf(full_url, sizeof(full_url), "%s/MissingBlockRequeset", peer_url);
-    
-    // Create JSON request with our last hash
-    char json_request[1024];
-    snprintf(json_request, sizeof(json_request), 
-             "{\"lastHash\":\"%s\",\"sender\":\"%s\",\"signature\":\"%s\",\"requestType\":\"missing_blocks\"}", 
-             our_last_hash ? our_last_hash : "0", 
-             "node_pubkey_placeholder",  // TODO: Use actual public key hex
-             "signature_placeholder");   // TODO: Sign the request
-    
-    // Make HTTP POST request
-    HttpResponse* response = pbft_node_http_request(full_url, "POST", json_request);
-    
+
+    // Send binary request and parse response
+    const char* headers[] = {"Content-Type: application/octet-stream", NULL};
+    HttpResponse* response = http_client_post(full_url, (const char*)binary_data, data_size, headers, NULL);
+
     int blocks_received = 0;
-    if (response && http_client_is_success_status(response->status_code)) {
-        printf("pbft_node_request_missing_blocks_from_peer: Received missing blocks response from %s\n", peer_url);
-        // TODO: Parse and process missing blocks from response
-        blocks_received = 1;  // Placeholder
+    if (response && http_client_is_success_status(response->status_code) && response->data && response->size > 0) {
+        TW_InternalTransaction* resp_txn = TW_InternalTransaction_deserialize((const unsigned char*)response->data, response->size);
+        if (resp_txn) {
+            // Handle different response types
+            if (resp_txn->type == TW_INT_TXN_BROADCAST_BLOCK && resp_txn->block_data) {
+                // Single block response (backward compatibility)
+                printf("pbft_node_request_missing_blocks_from_peer: Received single block response\n");
+
+                int validation_result = pbft_node_validate_block(node, resp_txn->block_data);
+                if (validation_result == 0) {
+                    printf("pbft_node_request_missing_blocks_from_peer: Block validation passed, committing...\n");
+
+                    int commit_result = pbft_node_commit_block(node, resp_txn->block_data);
+                    if (commit_result == 0) {
+                        blocks_received++;
+                        printf("pbft_node_request_missing_blocks_from_peer: Successfully committed block, total received: %d\n", blocks_received);
+                    } else {
+                        printf("pbft_node_request_missing_blocks_from_peer: Failed to commit block (error: %d)\n", commit_result);
+                    }
+                } else {
+                    printf("pbft_node_request_missing_blocks_from_peer: Block validation failed (error: %d)\n", validation_result);
+                }
+            } else if (resp_txn->type == TW_INT_TXN_BROADCAST_CHAIN && resp_txn->payload_size > 0) {
+                // Multi-block response (Task 6 implementation)
+                printf("pbft_node_request_missing_blocks_from_peer: Received multi-block response (%zu bytes)\n", resp_txn->payload_size);
+
+                // Parse multi-block payload
+                // Format: [block_count:4] [block_sizes:block_count*8] [block_data...]
+                const unsigned char* payload_ptr = resp_txn->payload.raw_payload;
+
+                if (resp_txn->payload_size < sizeof(uint32_t)) {
+                    printf("pbft_node_request_missing_blocks_from_peer: Payload too small for block count\n");
+                    tw_destroy_internal_transaction(resp_txn);
+                } else {
+                    // Read block count
+                    uint32_t block_count = ntohl(*(uint32_t*)payload_ptr);
+                    payload_ptr += sizeof(uint32_t);
+
+                    printf("pbft_node_request_missing_blocks_from_peer: Processing %u blocks from multi-block response\n", block_count);
+
+                    if (block_count > 10) {
+                        printf("pbft_node_request_missing_blocks_from_peer: Too many blocks in response (%u > 10)\n", block_count);
+                        tw_destroy_internal_transaction(resp_txn);
+                    } else {
+                        // Read block sizes
+                        size_t* block_sizes = (size_t*)malloc(block_count * sizeof(size_t));
+                        if (!block_sizes) {
+                            printf("pbft_node_request_missing_blocks_from_peer: Memory allocation failed for block sizes\n");
+                            tw_destroy_internal_transaction(resp_txn);
+                        } else {
+                            bool size_read_failed = false;
+                            for (uint32_t i = 0; i < block_count; i++) {
+                                if (payload_ptr - resp_txn->payload.raw_payload + sizeof(size_t) > resp_txn->payload_size) {
+                                    printf("pbft_node_request_missing_blocks_from_peer: Payload too small for block sizes\n");
+                                    size_read_failed = true;
+                                    break;
+                                }
+                                block_sizes[i] = ntohll(*(size_t*)payload_ptr);
+                                payload_ptr += sizeof(size_t);
+                            }
+
+                            if (!size_read_failed) {
+                                // Process each block
+                                for (uint32_t i = 0; i < block_count; i++) {
+                                    if (payload_ptr - resp_txn->payload.raw_payload + block_sizes[i] > resp_txn->payload_size) {
+                                        printf("pbft_node_request_missing_blocks_from_peer: Payload too small for block %u data\n", i);
+                                        break;
+                                    }
+
+                                    // Deserialize block
+                                    TW_Block* block = TW_Block_deserialize(payload_ptr, block_sizes[i]);
+                                    if (!block) {
+                                        printf("pbft_node_request_missing_blocks_from_peer: Failed to deserialize block %u\n", i);
+                                        payload_ptr += block_sizes[i];
+                                        continue;
+                                    }
+
+                                    // Validate and commit block
+                                    int validation_result = pbft_node_validate_block(node, block);
+                                    if (validation_result == 0) {
+                                        printf("pbft_node_request_missing_blocks_from_peer: Block %u validation passed, committing...\n", i);
+
+                                        int commit_result = pbft_node_commit_block(node, block);
+                                        if (commit_result == 0) {
+                                            blocks_received++;
+                                            printf("pbft_node_request_missing_blocks_from_peer: Successfully committed block %u, total received: %d\n", i, blocks_received);
+                                        } else {
+                                            printf("pbft_node_request_missing_blocks_from_peer: Failed to commit block %u (error: %d)\n", i, commit_result);
+                                        }
+                                    } else {
+                                        printf("pbft_node_request_missing_blocks_from_peer: Block %u validation failed (error: %d)\n", i, validation_result);
+                                    }
+
+                                    TW_Block_destroy(block);
+                                    payload_ptr += block_sizes[i];
+                                }
+                            }
+
+                            free(block_sizes);
+                        }
+                    }
+                }
+                tw_destroy_internal_transaction(resp_txn);
+            } else {
+                printf("pbft_node_request_missing_blocks_from_peer: Unexpected response type (%d) or missing data\n", resp_txn->type);
+                tw_destroy_internal_transaction(resp_txn);
+            }
+        } else {
+            printf("pbft_node_request_missing_blocks_from_peer: Failed to deserialize response\n");
+        }
+    } else if (response && response->status_code == 204) {
+        printf("pbft_node_request_missing_blocks_from_peer: No missing blocks available (204 No Content)\n");
     } else {
-        printf("pbft_node_request_missing_blocks_from_peer: Failed to get missing blocks from %s (status: %d)\n", 
-               peer_url, response ? response->status_code : 0);
+        printf("pbft_node_request_missing_blocks_from_peer: HTTP error from %s (status: %d)\n", full_url, response ? response->status_code : 0);
     }
-    
-    if (our_last_hash) free(our_last_hash);
-    pbft_node_free_http_response(response);
-    return blocks_received;
+
+    if (response) {
+        http_response_free(response);
+    }
+    free(binary_data);
+    tw_destroy_internal_transaction(sync_request);
+
+    return (blocks_received > 0) ? 0 : -1;
 }
 
 int pbft_node_request_entire_blockchain_from_peer(PBFTNode* node, const char* peer_url) {
@@ -1489,33 +2332,103 @@ int pbft_node_request_entire_blockchain_from_peer(PBFTNode* node, const char* pe
         printf("pbft_node_request_entire_blockchain_from_peer: Invalid parameters\n");
         return -1;
     }
-    
+
+    // Create binary internal transaction for full chain request
+    TW_InternalTransaction* req = tw_create_internal_transaction(
+        TW_INT_TXN_REQ_FULL_CHAIN,
+        node->base.public_key,
+        0,
+        0
+    );
+    if (!req) {
+        printf("pbft_node_request_entire_blockchain_from_peer: Failed to create request txn\n");
+        return -1;
+    }
+
+    // Sign and serialize
+    TW_Internal_Transaction_add_signature(req);
+    unsigned char* binary_data = NULL;
+    size_t data_size = TW_InternalTransaction_serialize(req, &binary_data);
+    if (!binary_data || data_size == 0) {
+        printf("pbft_node_request_entire_blockchain_from_peer: Failed to serialize request txn\n");
+        tw_destroy_internal_transaction(req);
+        return -1;
+    }
+
     // Construct full URL for entire blockchain endpoint
     char full_url[512];
     snprintf(full_url, sizeof(full_url), "%s/RequestEntireBlockchain", peer_url);
-    
-    // Create JSON request
-    char json_request[512];
-    snprintf(json_request, sizeof(json_request), 
-             "{\"sender\":\"%s\",\"signature\":\"%s\",\"requestType\":\"entire_blockchain\"}", 
-             "node_pubkey_placeholder",  // TODO: Use actual public key hex
-             "signature_placeholder");   // TODO: Sign the request
-    
-    // Make HTTP POST request
-    HttpResponse* response = pbft_node_http_request(full_url, "POST", json_request);
-    
+
+    // Send binary request and parse response
+    const char* headers[] = {"Content-Type: application/octet-stream", NULL};
+    HttpResponse* response = http_client_post(full_url, (const char*)binary_data, data_size, headers, NULL);
+
     int success = 0;
-    if (response && http_client_is_success_status(response->status_code)) {
-        printf("pbft_node_request_entire_blockchain_from_peer: Received entire blockchain from %s\n", peer_url);
-        // TODO: Parse and process entire blockchain from response
-        success = 1;  // Placeholder
+    if (response && http_client_is_success_status(response->status_code) && response->data && response->size > 0) {
+        TW_InternalTransaction* resp_txn = TW_InternalTransaction_deserialize((const unsigned char*)response->data, response->size);
+        if (resp_txn) {
+            // Process the received blockchain - now expects full blockchain in payload
+            if (resp_txn->type == TW_INT_TXN_BROADCAST_CHAIN && resp_txn->payload_size > 0) {
+                printf("pbft_node_request_entire_blockchain_from_peer: Processing full blockchain response from %s (%zu bytes)\n",
+                       peer_url, resp_txn->payload_size);
+
+                // Deserialize the entire blockchain from the payload
+                TW_BlockChain* received_chain = TW_BlockChain_deserialize(resp_txn->payload.raw_payload, resp_txn->payload_size);
+                if (received_chain) {
+                    printf("pbft_node_request_entire_blockchain_from_peer: Deserialized blockchain with %u blocks\n",
+                           received_chain->length);
+
+                    // Validate the entire received blockchain
+                    int validation_result = pbft_node_validate_blockchain(node, received_chain);
+                    if (validation_result == 0) {
+                        printf("pbft_node_request_entire_blockchain_from_peer: Blockchain validation passed, checking if longer...\n");
+
+                        // Check if received blockchain is longer than current one
+                        if (received_chain->length > node->base.blockchain->length) {
+                            printf("pbft_node_request_entire_blockchain_from_peer: Received blockchain is longer (%u vs %u), replacing...\n",
+                                   received_chain->length, node->base.blockchain->length);
+
+                            // Replace current blockchain with the received one
+                            int replace_result = pbft_node_replace_blockchain(node, received_chain);
+                            if (replace_result == 0) {
+                                success = 1;
+                                printf("pbft_node_request_entire_blockchain_from_peer: Successfully replaced blockchain from %s\n", peer_url);
+                            } else {
+                                printf("pbft_node_request_entire_blockchain_from_peer: Failed to replace blockchain (error: %d)\n", replace_result);
+                                TW_BlockChain_destroy(received_chain);
+                            }
+                        } else {
+                            printf("pbft_node_request_entire_blockchain_from_peer: Received blockchain is not longer (%u vs %u), keeping current\n",
+                                   received_chain->length, node->base.blockchain->length);
+                            TW_BlockChain_destroy(received_chain);
+                        }
+                    } else {
+                        printf("pbft_node_request_entire_blockchain_from_peer: Blockchain validation failed (error: %d)\n", validation_result);
+                        TW_BlockChain_destroy(received_chain);
+                    }
+                } else {
+                    printf("pbft_node_request_entire_blockchain_from_peer: Failed to deserialize blockchain from payload\n");
+                }
+            } else {
+                printf("pbft_node_request_entire_blockchain_from_peer: Unexpected response type or missing blockchain data\n");
+            }
+            tw_destroy_internal_transaction(resp_txn);
+        } else {
+            printf("pbft_node_request_entire_blockchain_from_peer: Failed to deserialize response\n");
+        }
+    } else if (response && response->status_code == 204) {
+        printf("pbft_node_request_entire_blockchain_from_peer: No blockchain available (204 No Content)\n");
     } else {
-        printf("pbft_node_request_entire_blockchain_from_peer: Failed to get entire blockchain from %s (status: %d)\n", 
-               peer_url, response ? response->status_code : 0);
+        printf("pbft_node_request_entire_blockchain_from_peer: HTTP error from %s (status: %d)\n", full_url, response ? response->status_code : 0);
     }
-    
-    pbft_node_free_http_response(response);
-    return success;
+
+    if (response) {
+        http_response_free(response);
+    }
+    free(binary_data);
+    tw_destroy_internal_transaction(req);
+
+    return success ? 0 : -1;
 }
 
 int pbft_node_get_pending_transactions_from_peer(PBFTNode* node, const char* peer_url, char* transactions_json) {
@@ -1523,35 +2436,161 @@ int pbft_node_get_pending_transactions_from_peer(PBFTNode* node, const char* pee
         printf("pbft_node_get_pending_transactions_from_peer: Invalid parameters\n");
         return -1;
     }
-    
+
+    // Create binary internal transaction request
+    TW_InternalTransaction* req = tw_create_internal_transaction(TW_INT_TXN_GET_PENDING_TXNS, node->base.public_key, 0, 0);
+    if (!req) {
+        printf("pbft_node_get_pending_transactions_from_peer: Failed to create request\n");
+        return -1;
+    }
+
+    // Sign the request
+    TW_Internal_Transaction_add_signature(req);
+
+    // Serialize to binary
+    unsigned char* binary_data = NULL;
+    size_t data_size = TW_InternalTransaction_serialize(req, &binary_data);
+    if (!binary_data || data_size == 0) {
+        printf("pbft_node_get_pending_transactions_from_peer: Failed to serialize request\n");
+        tw_destroy_internal_transaction(req);
+        return -1;
+    }
+
     // Construct full URL for pending transactions endpoint
     char full_url[512];
     snprintf(full_url, sizeof(full_url), "%s/GetPendingTransactions", peer_url);
-    
-    // Make HTTP GET request
-    HttpResponse* response = pbft_node_http_request(full_url, "GET", NULL);
-    if (!response) {
-        printf("pbft_node_get_pending_transactions_from_peer: No response from %s\n", peer_url);
-        return -1;
-    }
-    
+
+    // Send binary request and parse response
+    const char* headers[] = {"Content-Type: application/octet-stream", NULL};
+    HttpResponse* response = http_client_post(full_url, (const char*)binary_data, data_size, headers, NULL);
+
     int transaction_count = 0;
-    if (http_client_is_success_status(response->status_code)) {
-        if (transactions_json && response->data) {
-            // Copy response data to output buffer (assuming caller allocated enough space)
-            strncpy(transactions_json, response->data, MAX_JSON_RESPONSE_SIZE - 1);
-            transactions_json[MAX_JSON_RESPONSE_SIZE - 1] = '\0';
-            
-            // TODO: Parse JSON and count actual transactions
-            transaction_count = 1;  // Placeholder
-            printf("pbft_node_get_pending_transactions_from_peer: Retrieved pending transactions from %s\n", peer_url);
+    if (response && http_client_is_success_status(response->status_code) && response->data && response->size > 0) {
+        TW_InternalTransaction* resp_txn = TW_InternalTransaction_deserialize((const unsigned char*)response->data, response->size);
+        if (resp_txn) {
+            // Validate response type
+            if (resp_txn->type == TW_INT_TXN_GET_PENDING_TXNS) {
+                if (resp_txn->payload_size == 0) {
+                    // Empty response - no pending transactions
+                    printf("pbft_node_get_pending_transactions_from_peer: No pending transactions from %s\n", peer_url);
+                    transaction_count = 0;
+                } else {
+                    // Parse multi-transaction response
+                    // Format: [txn_count:4] [txn_sizes:count*8] [txn_data...]
+                    const unsigned char* payload_ptr = resp_txn->payload.raw_payload;
+
+                    if (resp_txn->payload_size < sizeof(uint32_t)) {
+                        printf("pbft_node_get_pending_transactions_from_peer: Response payload too small\n");
+                        tw_destroy_internal_transaction(resp_txn);
+                        pbft_node_free_http_response(response);
+                        free(binary_data);
+                        tw_destroy_internal_transaction(req);
+                        return -1;
+                    }
+
+                    // Read transaction count
+                    uint32_t txn_count = ntohl(*(uint32_t*)payload_ptr);
+                    payload_ptr += sizeof(uint32_t);
+
+                    printf("pbft_node_get_pending_transactions_from_peer: Received %u pending transactions from %s\n",
+                           txn_count, peer_url);
+
+                    if (txn_count > 1000) { // Reasonable upper limit
+                        printf("pbft_node_get_pending_transactions_from_peer: Too many transactions (%u)\n", txn_count);
+                        tw_destroy_internal_transaction(resp_txn);
+                        pbft_node_free_http_response(response);
+                        free(binary_data);
+                        tw_destroy_internal_transaction(req);
+                        return -1;
+                    }
+
+                    // Read transaction sizes
+                    size_t* txn_sizes = (size_t*)malloc(txn_count * sizeof(size_t));
+                    if (!txn_sizes) {
+                        printf("pbft_node_get_pending_transactions_from_peer: Memory allocation failed\n");
+                        tw_destroy_internal_transaction(resp_txn);
+                        pbft_node_free_http_response(response);
+                        free(binary_data);
+                        tw_destroy_internal_transaction(req);
+                        return -1;
+                    }
+
+                    bool size_read_failed = false;
+                    for (uint32_t i = 0; i < txn_count; i++) {
+                        if (payload_ptr - resp_txn->payload.raw_payload + sizeof(size_t) > resp_txn->payload_size) {
+                            printf("pbft_node_get_pending_transactions_from_peer: Payload too small for transaction sizes\n");
+                            size_read_failed = true;
+                            break;
+                        }
+                        txn_sizes[i] = ntohll(*(size_t*)payload_ptr);
+                        payload_ptr += sizeof(size_t);
+                    }
+
+                    if (!size_read_failed) {
+                        // Process each transaction
+                        for (uint32_t i = 0; i < txn_count; i++) {
+                            if (payload_ptr - resp_txn->payload.raw_payload + txn_sizes[i] > resp_txn->payload_size) {
+                                printf("pbft_node_get_pending_transactions_from_peer: Payload too small for transaction %u\n", i);
+                                break;
+                            }
+
+                            // Deserialize transaction
+                            TW_Transaction* txn = TW_Transaction_deserialize(payload_ptr, txn_sizes[i]);
+                            if (!txn) {
+                                printf("pbft_node_get_pending_transactions_from_peer: Failed to deserialize transaction %u\n", i);
+                                payload_ptr += txn_sizes[i];
+                                continue;
+                            }
+
+                            // Validate transaction
+                            ValidationResult validation = validate_transaction(txn, NULL);
+                            if (validation == VALIDATION_SUCCESS) {
+                                // Optionally queue the transaction locally (as per task requirements)
+                                // For now, we'll queue it to demonstrate the functionality
+                                char txn_hash[65];
+                                // Generate a simple hash for the transaction (this is simplified)
+                                snprintf(txn_hash, sizeof(txn_hash), "txn_%u_%u", node->base.id, i);
+
+                                int queue_result = add_to_transaction_queue(txn_hash, txn);
+                                if (queue_result == 0) {
+                                    printf("pbft_node_get_pending_transactions_from_peer: Queued transaction %u from %s\n", i, peer_url);
+                                    transaction_count++;
+                                } else {
+                                    printf("pbft_node_get_pending_transactions_from_peer: Failed to queue transaction %u\n", i);
+                                    TW_Transaction_destroy(txn);
+                                }
+                            } else {
+                                printf("pbft_node_get_pending_transactions_from_peer: Transaction %u validation failed (%d)\n", i, validation);
+                                TW_Transaction_destroy(txn);
+                            }
+
+                            payload_ptr += txn_sizes[i];
+                        }
+                    }
+
+                    free(txn_sizes);
+                }
+
+                printf("pbft_node_get_pending_transactions_from_peer: Successfully processed %d pending transactions from %s\n",
+                       transaction_count, peer_url);
+            } else {
+                printf("pbft_node_get_pending_transactions_from_peer: Unexpected response type %d\n", resp_txn->type);
+            }
+            tw_destroy_internal_transaction(resp_txn);
+        } else {
+            printf("pbft_node_get_pending_transactions_from_peer: Failed to deserialize response\n");
         }
     } else {
-        printf("pbft_node_get_pending_transactions_from_peer: HTTP error %d from %s\n", 
-               response->status_code, peer_url);
+        printf("pbft_node_get_pending_transactions_from_peer: HTTP error %d from %s\n",
+               response ? response->status_code : 0, peer_url);
     }
-    
-    pbft_node_free_http_response(response);
+
+    if (response) {
+        pbft_node_free_http_response(response);
+    }
+    free(binary_data);
+    tw_destroy_internal_transaction(req);
+
     return transaction_count;
 }
 int pbft_node_block_creation(PBFTNode* node, TW_Block* new_block) {
@@ -1644,13 +2683,6 @@ int pbft_node_verify_signature(const char* pubkey_hex, const char* signature_hex
     return verify_signature(signature, (const unsigned char*)data, strlen(data), public_key);
 }
 
-void pbft_node_generate_self_url(PBFTNode* node) { }
-char* pbft_node_serialize_block_to_json(TW_Block* block) { return NULL; }
-char* pbft_node_serialize_transaction_to_json(TW_Transaction* transaction) { return NULL; }
-char* pbft_node_serialize_blockchain_to_json(TW_BlockChain* blockchain) { return NULL; }
-TW_Block* pbft_node_deserialize_block_from_json(const char* json_str) { return NULL; }
-TW_Transaction* pbft_node_deserialize_transaction_from_json(const char* json_str) { return NULL; }
-TW_BlockChain* pbft_node_deserialize_blockchain_from_json(const char* json_str) { return NULL; }
 void pbft_node_bytes_to_hex(const unsigned char* bytes, size_t byte_len, char* hex_str) {
     if (!bytes || !hex_str) return;
     
@@ -1680,26 +2712,32 @@ int pbft_node_hex_to_bytes(const char* hex_str, unsigned char* bytes, size_t max
     return byte_len;
 }
 
-int pbft_node_configure_blockchain_for_first_use(PBFTNode* node) { return 0; }
 int pbft_node_save_blockchain_periodically(PBFTNode* node) {
     if (!node || !node->base.blockchain) return 0;
-    
-    printf("Node %u: Saving blockchain (length: %u)\n", 
+
+    printf("Node %u: Saving blockchain (length: %u)\n",
            node->base.id, node->base.blockchain->length);
+
+    // Initialize node-specific paths
+    NodeStatePaths paths;
+    if (!state_paths_init(node->base.id, node->debug_mode, &paths)) {
+        printf("Error: Failed to initialize state paths for node %u\n", node->base.id);
+        return 0;
+    }
     
-    // Save blockchain to file using the blockchain I/O functions
-    if (!saveBlockChainToFile(node->base.blockchain)) {
+    // Save blockchain to file using node-specific path
+    if (!saveBlockChainToFileWithPath(node->base.blockchain, paths.blockchain_dir)) {
         printf("Error: Failed to save blockchain to file\n");
         return 0;
     }
     
-    // Also save as JSON for debugging
-    if (!writeBlockChainToJson(node->base.blockchain)) {
+    // Also save as JSON for debugging using node-specific path
+    if (!writeBlockChainToJsonWithPath(node->base.blockchain, paths.blockchain_dir)) {
         printf("Warning: Failed to save blockchain as JSON\n");
         // Don't return error since binary save succeeded
     }
     
-    printf("Node %u: Successfully saved blockchain to file\n", node->base.id);
+    printf("Node %u: Successfully saved blockchain to %s\n", node->base.id, paths.blockchain_dir);
     return 0;
 }
 
@@ -1813,10 +2851,9 @@ static void handle_transaction_endpoint(struct mg_connection *c, struct mg_http_
     printf("[DEBUG] handle_transaction_endpoint: Validating transaction signature\n");
     ValidationResult sig_result = VALIDATION_ERROR_NULL_POINTER;
     
-    // TEMPORARILY DISABLED FOR PERMISSION TESTING
-    // Try signature validation with error protection
-    // sig_result = validate_transaction_signature(transaction);
-    sig_result = VALIDATION_SUCCESS; // Skip signature validation for testing
+    // Validate transaction signature - CRITICAL SECURITY REQUIREMENT
+    // This ensures only authorized transactions are accepted
+    sig_result = validate_transaction_signature(transaction);
     
     if (sig_result != VALIDATION_SUCCESS) {
         printf("[ERROR] handle_transaction_endpoint: Transaction signature validation failed: %s\n", 
@@ -1847,7 +2884,10 @@ static void handle_transaction_endpoint(struct mg_connection *c, struct mg_http_
                      error_msg, sig_result);
         return;
     }
-    
+
+    // Log successful signature validation
+    printf("[INFO] handle_transaction_endpoint: Transaction signature validation successful\n");
+
     // Validate transaction permissions with error handling
     printf("[DEBUG] handle_transaction_endpoint: Validating transaction permissions\n");
     int permissions_valid = 0;
@@ -1944,14 +2984,22 @@ static void handle_propose_block_endpoint(struct mg_connection *c, struct mg_htt
 		return;
 	}
 
+	printf("Node %u: Received binary proposal request, body size: %zu bytes\n", 
+	       node->base.id, hm->body.len);
+
 	// Expect binary internal transaction payload
 	TW_InternalTransaction* proposal = TW_InternalTransaction_deserialize(
 		(const unsigned char*)hm->body.buf, hm->body.len);
 	if (!proposal) {
+		printf("Node %u: ERROR - Failed to deserialize binary proposal (body size: %zu)\n", 
+		       node->base.id, hm->body.len);
 		mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
 				 "{\"error\":\"Invalid binary proposal\"}");
 		return;
 	}
+	
+	printf("Node %u: Successfully deserialized proposal, type: %u\n", 
+	       node->base.id, proposal->type);
 
 	// Ensure message type is a block proposal
 	if (proposal->type != TW_INT_TXN_PROPOSE_BLOCK) {
@@ -1971,14 +3019,35 @@ static void handle_propose_block_endpoint(struct mg_connection *c, struct mg_htt
 
 	// Basic proposer and round checks
 	uint32_t expected_proposer = pbft_node_calculate_proposer_id(node);
+	printf("Node %u: Received proposal from %u, expected proposer: %u\n", 
+	       node->base.id, proposal->proposer_id, expected_proposer);
 	if (proposal->proposer_id != expected_proposer) {
+		printf("Node %u: REJECTING - Unexpected proposer id: got %u, expected %u. Triggering sync check...\n",
+		       node->base.id, proposal->proposer_id, expected_proposer);
+		
+		// Instead of just rejecting, check if we need to sync our blockchain
+		printf("Node %u: Checking if blockchain sync is needed due to proposer mismatch\n", node->base.id);
+		int sync_result = pbft_node_sync_with_longest_chain(node);
+		if (sync_result >= 0) {
+			printf("Node %u: Sync initiated successfully, may retry proposal later\n", node->base.id);
+		} else {
+			printf("Node %u: No sync needed, but proposer still mismatched. Checking proposer_offset...\n", node->base.id);
+			// Only increment offset if we're sure we don't need more blocks
+			node->base.proposer_offset++;
+			printf("Node %u: Incremented proposer offset to %u\n", node->base.id, node->base.proposer_offset);
+		}
+		
 		mg_http_reply(c, 409, "Content-Type: application/json\r\n", 
-				 "{\"error\":\"Unexpected proposer id\"}");
+				 "{\"error\":\"Unexpected proposer id - sync check initiated\"}");
 		tw_destroy_internal_transaction(proposal);
 		return;
 	}
 
+	printf("Node %u: Received proposal round %u, current counter: %u\n",
+	       node->base.id, proposal->round_number, node->counter);
 	if (proposal->round_number != node->counter) {
+		printf("Node %u: REJECTING - Unexpected round number: got %u, expected %u\n",
+		       node->base.id, proposal->round_number, node->counter);
 		mg_http_reply(c, 409, "Content-Type: application/json\r\n", 
 				 "{\"error\":\"Unexpected round number\"}");
 		tw_destroy_internal_transaction(proposal);
@@ -2274,51 +3343,228 @@ static void handle_new_round_endpoint(struct mg_connection *c, struct mg_http_me
 
 static void handle_missing_block_request_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
     if (!node) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n", 
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
                      "{\"error\":\"Node not initialized\"}");
         return;
     }
-    
-    // Parse JSON body to extract missing block request
-    cJSON *json = cJSON_ParseWithLength(hm->body.buf, hm->body.len);
-    if (!json) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Invalid JSON\"}");
+
+    // Parse binary internal transaction
+    TW_InternalTransaction* req = TW_InternalTransaction_deserialize(
+        (const unsigned char*)hm->body.buf, hm->body.len);
+
+    if (!req) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid binary transaction format\"}");
         return;
     }
-    
-    cJSON *last_hash_json = cJSON_GetObjectItem(json, "lastHash");
-    cJSON *sender_json = cJSON_GetObjectItem(json, "sender");
-    cJSON *signature_json = cJSON_GetObjectItem(json, "signature");
-    
-    if (!last_hash_json || !sender_json || !signature_json) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Missing required fields\"}");
-        cJSON_Delete(json);
-        return;
-    }
-    
-    const char* last_hash = cJSON_GetStringValue(last_hash_json);
-    const char* sender = cJSON_GetStringValue(sender_json);
-    const char* signature = cJSON_GetStringValue(signature_json);
-    
+
     // Verify signature
-    if (!pbft_node_verify_signature(sender, signature, last_hash)) {
-        mg_http_reply(c, 401, "Content-Type: application/json\r\n", 
-                     "{\"response\":\"Invalid signature\"}");
-        cJSON_Delete(json);
+    if (!TW_InternalTransaction_verify_signature(req)) {
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid signature\"}");
+        tw_destroy_internal_transaction(req);
         return;
     }
-    
-    printf("Node %u received missing block request from %s, last hash: %s\n", 
-           node->base.id, sender, last_hash);
-    
-    // For now, return a simple response indicating no missing blocks
-    // In full implementation, would find blocks after the given hash
-    mg_http_reply(c, 200, "Content-Type: application/json\r\n", 
-                 "{\"response\":{\"missingBlocks\":[]}}");
-    
-    cJSON_Delete(json);
+
+    // Extract sync parameters from binary transaction
+    unsigned char last_known_hash[HASH_SIZE];
+    memcpy(last_known_hash, req->payload.sync_request.last_known_hash, HASH_SIZE);
+    uint32_t last_known_height = req->payload.sync_request.last_known_height;
+
+    printf("Node %u: Received binary sync request, last height: %u\n",
+           node->base.id, last_known_height);
+
+    if (!node->base.blockchain) {
+        mg_http_reply(c, 204, "Content-Type: application/json\r\n", "");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Find blocks after the last known hash
+    uint32_t max_blocks = req->payload.sync_request.max_blocks_requested;
+    uint32_t start_index = 0;
+    uint32_t blocks_found = 0;
+
+    // If last_known_hash is not zero, find the starting index
+    if (memcmp(last_known_hash, (unsigned char[HASH_SIZE]){0}, HASH_SIZE) != 0) {
+        // Find the block with the given hash
+        for (uint32_t i = 0; i < node->base.blockchain->length; i++) {
+            unsigned char current_hash[HASH_SIZE];
+            if (TW_Block_getHash(node->base.blockchain->blocks[i], current_hash) == 0) {
+                if (memcmp(current_hash, last_known_hash, HASH_SIZE) == 0) {
+                    start_index = i + 1; // Start from the next block
+                    break;
+                }
+            }
+        }
+    }
+
+    // Count available blocks (limit to max_blocks or 10, whichever is smaller)
+    uint32_t available_blocks = node->base.blockchain->length > start_index ?
+                                node->base.blockchain->length - start_index : 0;
+    uint32_t max_response_blocks = 10; // Task 6 requirement: max 10 blocks per response
+    uint32_t effective_limit = max_blocks < max_response_blocks ? max_blocks : max_response_blocks;
+    uint32_t blocks_to_send = available_blocks > effective_limit ? effective_limit : available_blocks;
+
+    if (blocks_to_send == 0) {
+        mg_http_reply(c, 204, "Content-Type: application/json\r\n", "");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // For single block, use BROADCAST_BLOCK (backward compatibility)
+    if (blocks_to_send == 1) {
+        TW_Block* block_to_send = node->base.blockchain->blocks[start_index];
+
+        // Build a broadcast response with one block
+        TW_InternalTransaction* resp = tw_create_internal_transaction(TW_INT_TXN_BROADCAST_BLOCK, node->base.public_key, 0, 0);
+        if (!resp) {
+            mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Allocation failure\"}");
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        // Attach a deep copy of the block
+        resp->block_data = TW_Block_copy(block_to_send);
+        if (!resp->block_data) {
+            mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Block copy failed\"}");
+            tw_destroy_internal_transaction(resp);
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        // Fill block_hash for convenience
+        unsigned char block_hash[HASH_SIZE];
+        if (TW_Block_getHash(block_to_send, block_hash) == 0) {
+            memcpy(resp->block_hash, block_hash, HASH_SIZE);
+        }
+
+        // Sign and serialize
+        TW_Internal_Transaction_add_signature(resp);
+        unsigned char* out = NULL;
+        size_t out_size = TW_InternalTransaction_serialize(resp, &out);
+        if (!out || out_size == 0) {
+            mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Serialize failed\"}");
+            if (out) free(out);
+            tw_destroy_internal_transaction(resp);
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        // Send binary response
+        mg_http_reply(c, 200, "Content-Type: application/octet-stream\r\n", "%.*s", (int)out_size, out);
+
+        free(out);
+        tw_destroy_internal_transaction(resp);
+        blocks_found = 1;
+    } else {
+        // For multiple blocks, create a custom multi-block payload
+        printf("Node %u: Sending %u blocks in multi-block response\n", node->base.id, blocks_to_send);
+
+        // Calculate total size needed for all blocks
+        size_t total_blocks_size = 0;
+        size_t* block_sizes = (size_t*)malloc(blocks_to_send * sizeof(size_t));
+        if (!block_sizes) {
+            mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Memory allocation failed\"}");
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        for (uint32_t i = 0; i < blocks_to_send; i++) {
+            block_sizes[i] = TW_Block_get_size(node->base.blockchain->blocks[start_index + i]);
+            total_blocks_size += block_sizes[i];
+        }
+
+        // Check if total size fits in payload
+        if (total_blocks_size > MAX_PAYLOAD_SIZE_INTERNAL) {
+            free(block_sizes);
+            mg_http_reply(c, 413, "Content-Type: application/json\r\n", "{\"error\":\"Blocks too large for response\"}");
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        // Allocate buffer for multi-block data
+        // Format: [block_count:4] [block_sizes:block_count*8] [block_data...]
+        size_t header_size = sizeof(uint32_t) + (blocks_to_send * sizeof(size_t));
+        size_t total_payload_size = header_size + total_blocks_size;
+
+        if (total_payload_size > MAX_PAYLOAD_SIZE_INTERNAL) {
+            free(block_sizes);
+            mg_http_reply(c, 413, "Content-Type: application/json\r\n", "{\"error\":\"Payload too large\"}");
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        // Build response with TW_INT_TXN_BROADCAST_CHAIN type for multi-block data
+        TW_InternalTransaction* resp = tw_create_internal_transaction(TW_INT_TXN_BROADCAST_CHAIN, node->base.public_key, 0, 0);
+        if (!resp) {
+            free(block_sizes);
+            mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Allocation failure\"}");
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        // Serialize multi-block data into raw_payload
+        unsigned char* payload_ptr = resp->payload.raw_payload;
+
+        // Write block count
+        uint32_t block_count_net = htonl(blocks_to_send);
+        memcpy(payload_ptr, &block_count_net, sizeof(uint32_t));
+        payload_ptr += sizeof(uint32_t);
+
+        // Write block sizes
+        for (uint32_t i = 0; i < blocks_to_send; i++) {
+            size_t size_net = htonll(block_sizes[i]);
+            memcpy(payload_ptr, &size_net, sizeof(size_t));
+            payload_ptr += sizeof(size_t);
+        }
+
+        // Serialize each block
+        for (uint32_t i = 0; i < blocks_to_send; i++) {
+            TW_Block* block = node->base.blockchain->blocks[start_index + i];
+            size_t serialized_size = TW_Block_serialize(block, &payload_ptr);
+            if (serialized_size == 0) {
+                free(block_sizes);
+                tw_destroy_internal_transaction(resp);
+                mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Block serialization failed\"}");
+                tw_destroy_internal_transaction(req);
+                return;
+            }
+        }
+
+        resp->payload_size = total_payload_size;
+
+        // Set chain hash to the hash of the last block being sent
+        TW_Block* last_block = node->base.blockchain->blocks[start_index + blocks_to_send - 1];
+        unsigned char last_block_hash[HASH_SIZE];
+        if (TW_Block_getHash(last_block, last_block_hash) == 0) {
+            memcpy(resp->chain_hash, last_block_hash, HASH_SIZE);
+        }
+
+        // Sign and serialize response
+        TW_Internal_Transaction_add_signature(resp);
+        unsigned char* out = NULL;
+        size_t out_size = TW_InternalTransaction_serialize(resp, &out);
+        if (!out || out_size == 0) {
+            free(block_sizes);
+            mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Response serialization failed\"}");
+            if (out) free(out);
+            tw_destroy_internal_transaction(resp);
+            tw_destroy_internal_transaction(req);
+            return;
+        }
+
+        // Send binary response
+        mg_http_reply(c, 200, "Content-Type: application/octet-stream\r\n", "%.*s", (int)out_size, out);
+
+        free(block_sizes);
+        free(out);
+        tw_destroy_internal_transaction(resp);
+        blocks_found = blocks_to_send;
+    }
+
+    printf("Node %u: Sent %u blocks in response to sync request\n", node->base.id, blocks_found);
+    tw_destroy_internal_transaction(req);
 }
 
 static void handle_send_new_blockchain_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
@@ -2328,9 +3574,130 @@ static void handle_send_new_blockchain_endpoint(struct mg_connection *c, struct 
 }
 
 static void handle_request_entire_blockchain_endpoint(struct mg_connection *c, struct mg_http_message *hm, PBFTNode* node) {
-    // TODO: Implement request entire blockchain handling
-    mg_http_reply(c, 501, "Content-Type: application/json\r\n", 
-                 "{\"error\":\"RequestEntireBlockchain endpoint not implemented yet\"}");
+    if (!node) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Node not initialized\"}");
+        return;
+    }
+
+    // Parse binary internal transaction
+    TW_InternalTransaction* req = TW_InternalTransaction_deserialize(
+        (const unsigned char*)hm->body.buf, hm->body.len);
+
+    if (!req) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid binary transaction format\"}");
+        return;
+    }
+
+    // Verify signature
+    if (!TW_InternalTransaction_verify_signature(req)) {
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid signature\"}");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Validate transaction type
+    if (req->type != TW_INT_TXN_REQ_FULL_CHAIN) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Invalid transaction type\"}");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    printf("Node %u: Received binary full-chain request from peer\n", node->base.id);
+
+    if (!node->base.blockchain || node->base.blockchain->length == 0) {
+        mg_http_reply(c, 204, "Content-Type: application/json\r\n", "");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Check blockchain size and block count limits
+    uint32_t block_count = node->base.blockchain->length;
+    const uint32_t MAX_BLOCKS_IN_RESPONSE = 50; // Reasonable limit for single response
+
+    if (block_count > MAX_BLOCKS_IN_RESPONSE) {
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+                "{\"error\":\"Too many blocks in blockchain (%u blocks, max %u). Use bulk export for large blockchains.\"}",
+                block_count, MAX_BLOCKS_IN_RESPONSE);
+        mg_http_reply(c, 413, "Content-Type: application/json\r\n", "%s", error_msg);
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    size_t blockchain_size = TW_BlockChain_get_size(node->base.blockchain);
+    if (blockchain_size == 0 || blockchain_size > MAX_PAYLOAD_SIZE_INTERNAL) {
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+                "{\"error\":\"Blockchain too large for transfer (%zu bytes, max %d). Use bulk export for large blockchains.\"}",
+                blockchain_size, MAX_PAYLOAD_SIZE_INTERNAL);
+        mg_http_reply(c, 413, "Content-Type: application/json\r\n", "%s", error_msg);
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Allocate buffer for blockchain serialization
+    unsigned char* blockchain_data = (unsigned char*)malloc(blockchain_size);
+    if (!blockchain_data) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Memory allocation failed\"}");
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Serialize the entire blockchain
+    unsigned char* temp_ptr = blockchain_data;
+    int serialize_result = TW_BlockChain_serialize(node->base.blockchain, &temp_ptr);
+    if (serialize_result != 0) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Blockchain serialization failed\"}");
+        free(blockchain_data);
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Build a broadcast response with the full blockchain in payload
+    TW_InternalTransaction* resp = tw_create_internal_transaction(TW_INT_TXN_BROADCAST_CHAIN, node->base.public_key, 0, 0);
+    if (!resp) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Allocation failure\"}");
+        free(blockchain_data);
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Store the serialized blockchain in the raw payload
+    memcpy(resp->payload.raw_payload, blockchain_data, blockchain_size);
+    resp->payload_size = blockchain_size;
+
+    // Fill chain_hash with blockchain hash for reference
+    unsigned char chain_hash[HASH_SIZE];
+    TW_BlockChain_get_hash(node->base.blockchain, chain_hash);
+    memcpy(resp->chain_hash, chain_hash, HASH_SIZE);
+
+    free(blockchain_data);
+
+    // Sign and serialize
+    TW_Internal_Transaction_add_signature(resp);
+    unsigned char* out = NULL;
+    size_t out_size = TW_InternalTransaction_serialize(resp, &out);
+    if (!out || out_size == 0) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Serialize failed\"}");
+        if (out) free(out);
+        tw_destroy_internal_transaction(resp);
+        tw_destroy_internal_transaction(req);
+        return;
+    }
+
+    // Send binary response
+    mg_http_reply(c, 200, "Content-Type: application/octet-stream\r\n", "%.*s", (int)out_size, out);
+
+    printf("Node %u: Sent complete blockchain (%zu bytes, %u blocks) in response to full-chain request\n",
+           node->base.id, blockchain_size, node->base.blockchain->length);
+
+    free(out);
+    tw_destroy_internal_transaction(resp);
+    tw_destroy_internal_transaction(req);
 }
 
 // Supporting functions for transaction processing

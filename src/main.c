@@ -35,7 +35,7 @@ void print_usage(const char* program_name) {
     printf("Options:\n");
     printf("  -i, --id <node_id>      Node ID (default: 0)\n");
     printf("  -p, --port <port>       API server port (default: 8000)\n");
-    printf("  -d, --debug             Enable debug mode with verbose logging\n");
+    printf("  -d, --debug             Use isolated test directories (test_state/node_X/)\n");
     printf("  -h, --help              Show this help message\n");
     printf("\nExamples:\n");
     printf("  %s --id 1 --port 8001\n", program_name);
@@ -43,10 +43,11 @@ void print_usage(const char* program_name) {
 }
 
 // Parse command line arguments
-int parse_arguments(int argc, char* argv[], uint32_t* node_id, uint16_t* port) {
+int parse_arguments(int argc, char* argv[], uint32_t* node_id, uint16_t* port, bool* debug_mode) {
     *node_id = 0;     // Default node ID
     *port = 8000;     // Default port (keeping original port)
-    
+    *debug_mode = false;  // Default to normal mode
+
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--id") == 0) {
             if (i + 1 >= argc) {
@@ -65,9 +66,8 @@ int parse_arguments(int argc, char* argv[], uint32_t* node_id, uint16_t* port) {
                 return -1;
             }
         } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--debug") == 0) {
-            // Enable debug mode (for now just print that it's enabled)
-            printf("🐛 Debug mode enabled\n");
-            // TODO: Set a global debug flag for more verbose logging
+            *debug_mode = true;
+            printf("🐛 Debug mode enabled - using isolated test directories\n");
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             exit(0);
@@ -76,12 +76,12 @@ int parse_arguments(int argc, char* argv[], uint32_t* node_id, uint16_t* port) {
             return -1;
         }
     }
-    
+
     return 0;
 }
 
 // Initialize system components
-int initialize_system(uint32_t node_id) {
+int initialize_system(uint32_t node_id, bool debug_mode) {
     printf("Initializing TinyWeb system components for node %u...\n", node_id);
     
     // Initialize sodium for cryptography
@@ -92,7 +92,7 @@ int initialize_system(uint32_t node_id) {
     
     // Initialize node-specific state paths
     NodeStatePaths paths;
-    if (!state_paths_init(node_id, &paths)) {
+    if (!state_paths_init(node_id, debug_mode, &paths)) {
         printf("Failed to initialize node state paths\n");
         return -1;
     }
@@ -182,14 +182,15 @@ void* monitor_thread(void* arg) {
 int main(int argc, char* argv[]) {
     uint32_t node_id;
     uint16_t port;
+    bool debug_mode;
     pthread_t monitor_tid;
-    
+
     printf("=================================================================\n");
     printf("🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!\n");
     printf("=================================================================\n");
-    
+
     // Parse command line arguments
-    if (parse_arguments(argc, argv, &node_id, &port) != 0) {
+    if (parse_arguments(argc, argv, &node_id, &port, &debug_mode) != 0) {
         return 1;
     }
     
@@ -205,14 +206,14 @@ int main(int argc, char* argv[]) {
     signal(SIGTERM, signal_handler);
     
     // Initialize system components
-    if (initialize_system(node_id) != 0) {
+    if (initialize_system(node_id, debug_mode) != 0) {
         fprintf(stderr, "Failed to initialize system components\n");
         return 1;
     }
     
     // Create and initialize PBFT node
     printf("Creating PBFT node...\n");
-    g_pbft_node = pbft_node_create(node_id, port);
+    g_pbft_node = pbft_node_create(node_id, port, debug_mode);
     if (!g_pbft_node) {
         fprintf(stderr, "Failed to create PBFT node\n");
         cleanup_system();
@@ -237,6 +238,12 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Failed to load/create blockchain\n");
         cleanup_system();
         return 1;
+    }
+    
+    // Load peers from database immediately after blockchain initialization
+    printf("Loading peers from database...\n");
+    if (pbft_node_load_peers_from_blockchain(g_pbft_node) != 0) {
+        printf("⚠️ Warning: Failed to load peers from database, continuing...\n");
     }
     
     // Register this node in the database if it's available

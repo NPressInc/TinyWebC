@@ -1570,7 +1570,6 @@ src/tests/pbft_integration_test.o: src/tests/pbft_integration_test.c.o
 
 # target to build an object file
 src/tests/pbft_integration_test.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/pbft_integration_test.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_integration_test.dir/build.make CMakeFiles/pbft_integration_test.dir/src/tests/pbft_integration_test.c.o
 .PHONY : src/tests/pbft_integration_test.c.o
 
@@ -1579,7 +1578,6 @@ src/tests/pbft_integration_test.i: src/tests/pbft_integration_test.c.i
 
 # target to preprocess a source file
 src/tests/pbft_integration_test.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/pbft_integration_test.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_integration_test.dir/build.make CMakeFiles/pbft_integration_test.dir/src/tests/pbft_integration_test.c.i
 .PHONY : src/tests/pbft_integration_test.c.i
 
@@ -1588,7 +1586,6 @@ src/tests/pbft_integration_test.s: src/tests/pbft_integration_test.c.s
 
 # target to generate assembly for a file
 src/tests/pbft_integration_test.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/pbft_integration_test.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pbft_integration_test.dir/build.make CMakeFiles/pbft_integration_test.dir/src/tests/pbft_integration_test.c.s
 .PHONY : src/tests/pbft_integration_test.c.s
 

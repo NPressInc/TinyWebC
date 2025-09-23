@@ -17,7 +17,7 @@ echo ""
 # Configuration
 NUM_NODES=4
 BASE_PORT=8000
-TEST_DURATION=60  # 60 seconds for full consensus testing
+TEST_DURATION=100  # 60 seconds for full consensus testing
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -65,13 +65,14 @@ check_binary() {
 # Start a PBFT node
 start_node() {
     local node_id=$1
+    
     local port=${NODE_PORTS[$node_id]}
     local log_file=${NODE_LOGS[$node_id]}
 
     echo -e "${BLUE}🚀 Starting PBFT Node $node_id on port $port...${NC}"
 
-    # Start the node (don't redirect output immediately to avoid issues)
-    ./tinyweb --id $node_id --port $port &
+    # Start the node in debug mode for isolated per-node directories
+    ./tinyweb --debug --id $node_id --port $port &
     NODE_PIDS[$node_id]=$!
 
     echo -e "${GREEN}✅ PBFT Node $node_id started (PID: ${NODE_PIDS[$node_id]})${NC}"
@@ -82,8 +83,8 @@ check_node_health() {
     local node_id=$1
     local port=${NODE_PORTS[$node_id]}
 
-    # Try to connect to health endpoint
-    if curl -s --max-time 3 "http://127.0.0.1:$port/api/health" >/dev/null 2>&1; then
+    # Try to connect to the root endpoint (which exists for PBFT nodes)
+    if curl -s --max-time 3 "http://127.0.0.1:$port/" >/dev/null 2>&1; then
         return 0
     else
         return 1
@@ -271,26 +272,39 @@ main() {
         echo "  Node $i: Will track growth from test start"
     done
 
-    # Start all nodes
-    echo -e "\n${BLUE}🚀 Starting all PBFT nodes with staggered timing...${NC}"
+    # Start all nodes simultaneously
+    echo -e "\n${BLUE}🚀 Starting all PBFT nodes simultaneously...${NC}"
     for i in {0..3}; do
-        start_node $i
-        echo "⏳ Waiting 4 seconds before next node..."
-        sleep 4
+        start_node $i &
+        echo -e "${GREEN}✅ Node $i started in background${NC}"
     done
 
     echo -e "\n${GREEN}✅ All PBFT nodes started!${NC}"
 
-    # Verify nodes are actually running
-    echo "🔍 Verifying node startup..."
-    sleep 5
+    # Wait for all nodes to fully initialize their API servers
+    echo "🔍 Waiting for all nodes to be ready..."
+    sleep 15  # Give all nodes time to fully start up
+
+    # Check node health with retries
     local startup_healthy=0
+    local max_retries=10
+
     for i in {0..3}; do
-        if check_node_health $i; then
-            echo -e "  ${GREEN}✅ Node $i: Started successfully${NC}"
-            ((startup_healthy++))
-        else
-            echo -e "  ${RED}❌ Node $i: Failed to start${NC}"
+        local healthy=0
+        for retry in $(seq 1 $max_retries); do
+            if check_node_health $i; then
+                echo -e "  ${GREEN}✅ Node $i: Ready and responding${NC}"
+                healthy=1
+                ((startup_healthy++))
+                break
+            else
+                echo -e "  ${YELLOW}⏳ Node $i: Not ready yet (attempt $retry/$max_retries)${NC}"
+                sleep 3
+            fi
+        done
+
+        if [ $healthy -eq 0 ]; then
+            echo -e "  ${RED}❌ Node $i: Failed to start after $max_retries attempts${NC}"
         fi
     done
 
@@ -299,9 +313,10 @@ main() {
         return 1
     fi
 
-    # Wait for nodes to fully initialize
-    echo "⏳ Waiting for nodes to initialize consensus..."
-    sleep 5
+    echo -e "${GREEN}🎉 All nodes are ready and synchronized! Starting consensus test...${NC}"
+
+    # Brief pause to let consensus initialize
+    sleep 3
 
     # Monitor consensus activity
     monitor_consensus

@@ -69,7 +69,7 @@ int start_node(int node_index) {
 
     if (node->pid == 0) {
         // Child process - run the PBFT node
-        PBFTNode* pbft_node = pbft_node_create(node->node_id, node->port);
+        PBFTNode* pbft_node = pbft_node_create(node->node_id, node->port, true); // Debug mode for testing
         if (!pbft_node) {
             printf("❌ Failed to create PBFT node %u\n", node->node_id);
             exit(1);

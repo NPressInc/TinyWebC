@@ -1,0 +1,60 @@
+TinyWeb Development Tasks
+🎯 MISSION: Decentralized Family Communication Network
+Build a blockchain-based, PBFT-consensus network where families can communicate securely without centralized control. Nodes run in households, children can only access approved content/people.
+✅ COMPLETED TASKS
+Debug Mode Isolation: Fixed node-specific directories and database creation
+Blockchain Consistency: Ensured identical blockchain files across debug nodes
+Code Cleanup: Removed unused consensus accessor functions
+Consensus Test Setup: Added debug flags for multi-node testing
+🚧 NEXT PRIORITY TASKS
+1. Implement Node Registration System
+Why: Current nodes can't discover peers - each runs in isolated "singular" mode. Need blockchain-based node registration for true decentralization.
+Tasks:
+Add TW_TXN_NODE_REGISTRATION transaction type with admin permissions
+Create TW_TXN_NodeRegistration payload structure (node_id, dns_name, stable_id, admin_authorized)
+Implement serialization/deserialization in transaction_types.c
+Update transaction permission mappings for admin-only node registration
+Add blockchain parser db_parse_and_sync_node_registration() to populate node_status table
+2. Dynamic Address Management System
+Why: IPs change frequently (ISP rotation, DHCP reassignment). Static blockchain IPs won't work.
+Tasks:
+Add TW_INT_TXN_ADDRESS_ANNOUNCE internal transaction type
+Implement AddressAnnouncement payload (node_id, current_ip, port, timestamp, sequence)
+Add staggered announcement timing (node_id * 60s offset) to prevent congestion
+Create address cache system with TTL (last_updated timestamps)
+Integrate with existing heartbeat system in monitor thread
+Update peer lookup to use DNS → Cache → Blockchain fallback
+3. Blockchain-Based Peer Discovery
+Why: Current peer loading only queries local database. Need to bootstrap from blockchain history.
+Tasks:
+Modify pbft_node_load_peers_from_blockchain() to scan blockchain for node registrations
+Update peer discovery to prioritize blockchain data over local DB
+Add node verification during join (check blockchain authorization)
+Implement gradual peer discovery (don't overwhelm new nodes)
+Test multi-node consensus with proper peer discovery
+4. Security & Authorization Controls
+Why: Family network needs strict controls - only authorized nodes can join.
+Tasks:
+Ensure node registration requires admin permissions (SCOPE_GLOBAL)
+Add node revocation transaction type for removing compromised nodes
+Implement cryptographic verification of node identities
+Add audit logging for all network topology changes
+Create admin dashboard for network management
+🎯 IMMEDIATE NEXT STEPS (Start Here)
+Add Node Registration Transaction - Foundation for decentralized network
+Implement Address Announcements - Handle dynamic IPs
+Fix Peer Discovery - Enable multi-node consensus
+Test Full Consensus - Verify 4-node network works
+📋 TESTING CHECKLIST
+[ ] 4 nodes start in debug mode with isolated directories
+[ ] Each node discovers peers from blockchain
+[ ] IP changes are handled via announcements
+[ ] Consensus reaches 2f+1 threshold (3/4 nodes)
+[ ] Blocks are proposed, verified, committed
+[ ] Network survives individual node failures
+🎯 SUCCESS CRITERIA
+Multi-node consensus working (blocks committed with votes)
+Dynamic IP handling (address announcements)
+True decentralization (blockchain as source of truth)
+Family-appropriate security (admin-controlled network access)
+Start with Task 1 - Node Registration System. This is the foundation for everything else.

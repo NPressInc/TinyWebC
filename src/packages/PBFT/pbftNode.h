@@ -34,7 +34,10 @@ struct HttpResponse;
 // PBFT Node structure (extends base NodeState)
 typedef struct {
     NodeState base;  // Inherits from base node state
-    
+
+    // Configuration
+    bool debug_mode;  // true for debug mode, false for production mode
+
     // Network configuration
     char self_url[MAX_URL_LENGTH];
     uint16_t api_port;
@@ -84,7 +87,7 @@ typedef struct {
 extern PBFTNode* pbft_node;
 
 // Core PBFT node functions
-PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port);
+PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port, bool debug_mode);
 void pbft_node_destroy(PBFTNode* node);
 int pbft_node_initialize_keys(PBFTNode* node);
 int pbft_node_load_or_create_blockchain(PBFTNode* node);
@@ -122,7 +125,7 @@ int pbft_node_broadcast_verification_vote(PBFTNode* node);
 int pbft_node_broadcast_commit_vote(PBFTNode* node);
 int pbft_node_broadcast_new_round_vote(PBFTNode* node);
 int pbft_node_broadcast_blockchain_to_new_node(PBFTNode* node, const char* peer_url);
-int pbft_node_rebroadcast_message(PBFTNode* node, const char* json_data, const char* route);
+int pbft_node_rebroadcast_message(PBFTNode* node, TW_InternalTransaction* message, const char* exclude_peer_url);
 
 // Individual peer communication
 int pbft_node_send_block_to_peer(PBFTNode* node, const char* peer_url, TW_Block* block, const char* block_hash);
@@ -144,22 +147,13 @@ int pbft_node_block_creation(PBFTNode* node, TW_Block* new_block);
 void pbft_node_shuffle_peers(PBFTNode* node);
 int pbft_node_sign_data(PBFTNode* node, const char* data, char* signature_hex);
 int pbft_node_verify_signature(const char* pubkey_hex, const char* signature_hex, const char* data);
-void pbft_node_generate_self_url(PBFTNode* node);
 
-// JSON serialization helpers
-char* pbft_node_serialize_block_to_json(TW_Block* block);
-char* pbft_node_serialize_transaction_to_json(TW_Transaction* transaction);
-char* pbft_node_serialize_blockchain_to_json(TW_BlockChain* blockchain);
-TW_Block* pbft_node_deserialize_block_from_json(const char* json_str);
-TW_Transaction* pbft_node_deserialize_transaction_from_json(const char* json_str);
-TW_BlockChain* pbft_node_deserialize_blockchain_from_json(const char* json_str);
 
 // Hex encoding/decoding utilities
 void pbft_node_bytes_to_hex(const unsigned char* bytes, size_t byte_len, char* hex_str);
 int pbft_node_hex_to_bytes(const char* hex_str, unsigned char* bytes, size_t max_bytes);
 
 // Configuration and initialization
-int pbft_node_configure_blockchain_for_first_use(PBFTNode* node);
 int pbft_node_save_blockchain_periodically(PBFTNode* node);
 
 // Transaction processing functions

@@ -64,6 +64,7 @@ list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/initialization/init_tool.c")
 list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/test_runner.c")
 # Exclude standalone test files that have their own main() functions
 list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/pbft_http_client_test.c")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/pbft_integration_test.c")
 set(TEST_MAIN "src/tests/test_runner.c")
 
 add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES})

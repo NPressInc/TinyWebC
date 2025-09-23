@@ -15,6 +15,8 @@ test_state/blockchain/test_blockchain.db
 *.db-wal
 *.log
 
+venv
+
 # Build artifacts and executables
 tinyweb_tests
 init_tool

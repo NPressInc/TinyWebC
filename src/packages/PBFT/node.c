@@ -5,17 +5,10 @@
 #include <time.h>
 #include <stdint.h>
 #include "node.h"
-#include "packages/signing/signing.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/block.h"
-#include "packages/fileIO/blockchainIO.h"
-#include "packages/keystore/keystore.h"
-#include "packages/encryption/encryption.h"
+// (no additional local includes needed)
 
 // Speed modifier in microseconds (1 second = 1000000 microseconds)
 #define SPEED_MODIFIER 1000000
-#define KEYSTORE_PATH "state/keys/node_private.key" // Legacy path for backward compatibility
-#define KEYSTORE_PASSPHRASE "testpass"  // TODO: Make this configurable
 
 // Global node state
 static NodeState node_state;
@@ -30,86 +23,6 @@ void node_state_cleanup(void) {
         TW_BlockChain_destroy(node_state.blockchain);
         node_state.blockchain = NULL;
     }
-}
-
-void runNode(void) {
-    // Initialize node state
-    printf("Starting PBFT node...\n");
-    node_state_init();
-
-    // Initialize keystore
-    if (!keystore_init()) {
-        printf("Error: Failed to initialize keystore\n");
-        return;
-    }
-
-    // Load keypair from keystore
-    if (!keystore_load_private_key(KEYSTORE_PATH, KEYSTORE_PASSPHRASE)) {
-        printf("Error: Failed to load keypair from %s\n", KEYSTORE_PATH);
-        return;
-    }
-    printf("Successfully loaded keypair\n");
-
-    // Get signing public key for blockchain
-    unsigned char signing_pubkey[PUBKEY_SIZE];
-    if (!keystore_get_public_key(signing_pubkey)) {
-        printf("Error: Failed to get public key\n");
-        keystore_cleanup();
-        return;
-    }
-    memcpy(node_state.public_key, signing_pubkey, PUBKEY_SIZE);
-
-    // Load or create blockchain
-    node_state.blockchain = readBlockChainFromFile();
-    if (!node_state.blockchain) {
-        printf("No existing blockchain found, creating new one...\n");
-        node_state.blockchain = TW_BlockChain_create(signing_pubkey, NULL, 0);
-        if (!node_state.blockchain) {
-            printf("Error: Failed to create new blockchain\n");
-            node_state_cleanup();
-            keystore_cleanup();
-            return;
-        }
-        
-        // Create genesis block with our signing public key
-        TW_BlockChain_create_genesis_block(node_state.blockchain, signing_pubkey);
-        
-        // Save the new blockchain
-        if (!saveBlockChainToFile(node_state.blockchain)) {
-            printf("Error: Failed to save new blockchain\n");
-            node_state_cleanup();
-            keystore_cleanup();
-            return;
-        }
-        printf("Successfully created and saved new blockchain\n");
-    } else {
-        printf("Successfully loaded existing blockchain\n");
-    }
-
-    // TODO: Implement remaining node logic
-    // 3. Set up network connections
-    // 4. Start consensus protocol
-    // 5. Handle incoming messages
-    // 6. Process transactions
-    // 7. Participate in block creation
-
-    printf("PBFT node running...\n");
-
-    // Main node loop
-    while (1) {
-        // TODO: Add node operations here
-        // - Check for new messages
-        // - Process pending transactions
-        // - Participate in consensus
-        // - Update blockchain state
-
-        // Sleep for SPEED_MODIFIER microseconds
-        usleep(SPEED_MODIFIER);
-    }
-
-    // Cleanup (though we never reach here due to infinite loop)
-    node_state_cleanup();
-    keystore_cleanup();
 }
 
 
@@ -311,19 +224,4 @@ uint32_t node_get_id_by_pubkey(const unsigned char* public_key) {
     return 0;
 }
 
-// Consensus functions
-void node_set_proposer_id(uint32_t id) {
-    node_state.proposer_id = id;
-}
-
-uint32_t node_get_proposer_id(void) {
-    return node_state.proposer_id;
-}
-
-void node_set_proposer_offset(uint32_t offset) {
-    node_state.proposer_offset = offset;
-}
-
-uint32_t node_get_proposer_offset(void) {
-    return node_state.proposer_offset;
-}
+// (Removed unused consensus accessor functions)

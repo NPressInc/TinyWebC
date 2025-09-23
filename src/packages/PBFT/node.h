@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <time.h>
-#include "packages/keystore/keystore.h"
 #include "packages/structures/blockChain/blockchain.h"
 
 // Constants
@@ -77,10 +76,6 @@ const char* node_get_ip_by_id(uint32_t id);
 const char* node_get_ip_by_pubkey(const unsigned char* public_key);
 uint32_t node_get_id_by_pubkey(const unsigned char* public_key);
 
-// Consensus functions
-void node_set_proposer_id(uint32_t id);
-uint32_t node_get_proposer_id(void);
-void node_set_proposer_offset(uint32_t offset);
-uint32_t node_get_proposer_offset(void);
+// (Removed unused consensus accessor declarations)
 
 #endif // NODE_H

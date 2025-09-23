@@ -20,11 +20,27 @@
       "is_validator": true
     },
     {
-      "id": "node_002", 
+      "id": "node_002",
       "name": "Backup Family Node",
       "type": "backup",
       "ip": "127.0.0.1",
       "port": 8001,
+      "is_validator": true
+    },
+    {
+      "id": "node_003",
+      "name": "Consensus Node 3",
+      "type": "validator",
+      "ip": "127.0.0.1",
+      "port": 8002,
+      "is_validator": true
+    },
+    {
+      "id": "node_004",
+      "name": "Consensus Node 4",
+      "type": "validator",
+      "ip": "127.0.0.1",
+      "port": 8003,
       "is_validator": true
     }
   ],

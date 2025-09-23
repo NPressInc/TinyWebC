@@ -9,7 +9,6 @@
 #include "packages/keystore/keystore.h"
 #include "packages/structures/blockChain/blockchain.h"
 #include "packages/structures/blockChain/block.h"
-#include "packages/signing/signing.h"
 #include "packages/fileIO/blockchainIO.h"
 #include "packages/structures/blockChain/transaction_types.h"
 #include "packages/encryption/encryption.h"
@@ -97,20 +96,25 @@ int initialize_network(const InitConfig* config) {
 
     printf("Starting network initialization...\n");
     
-    // Ensure blockchain directory exists
-    struct stat st = {0};
-    if (stat(config->blockchain_path, &st) == -1) {
-        if (mkdir(config->blockchain_path, 0700) == -1) {
-            fprintf(stderr, "Error: Failed to create blockchain directory: %s\n", config->blockchain_path);
-            return -1;
+    // Only create and clean production directories in non-debug mode
+    if (!config->node_specific_dirs) {
+        // Ensure blockchain directory exists
+        struct stat st = {0};
+        if (stat(config->blockchain_path, &st) == -1) {
+            if (mkdir(config->blockchain_path, 0700) == -1) {
+                fprintf(stderr, "Error: Failed to create blockchain directory: %s\n", config->blockchain_path);
+                return -1;
+            }
+            printf("Created blockchain directory: %s\n", config->blockchain_path);
         }
-        printf("Created blockchain directory: %s\n", config->blockchain_path);
-    }
-    
-    // Clean up existing blockchain files
-    printf("Cleaning up existing blockchain files...\n");
-    if (!cleanup_existing_files(config->blockchain_path, config->database_path)) {
-        fprintf(stderr, "Warning: Some existing files could not be removed\n");
+        
+        // Clean up existing blockchain files
+        printf("Cleaning up existing blockchain files...\n");
+        if (!cleanup_existing_files(config->blockchain_path, config->database_path)) {
+            fprintf(stderr, "Warning: Some existing files could not be removed\n");
+        }
+    } else {
+        printf("Debug mode: Skipping production directory cleanup\n");
     }
 
     // Initialize all pointers to NULL for proper cleanup
@@ -122,9 +126,10 @@ int initialize_network(const InitConfig* config) {
     // Initialize database
     printf("Initializing SQLite database...\n");
     if (config->node_specific_dirs) {
-        // For node-specific mode, we'll create databases per node later
-        // For now, use a temporary database for initialization
-        snprintf(db_path, sizeof(db_path), "%s/blockchain.db", config->blockchain_path);
+        // For debug mode, use temporary database in test_state
+        snprintf(db_path, sizeof(db_path), "test_state/temp_init.db");
+        // Create test_state directory if it doesn't exist
+        mkdir("test_state", 0700);
     } else {
         if (config->database_path) {
             strncpy(db_path, config->database_path, sizeof(db_path) - 1);
@@ -210,28 +215,108 @@ int initialize_network(const InitConfig* config) {
     printf("Saving blockchain to file...\n");
     
     if (config->node_specific_dirs) {
-        // Save blockchain to each node's directory
+        // Save blockchain once to a temp location, then copy to each node to ensure identical bytes
+        char temp_blockchain_dir[512];
+        snprintf(temp_blockchain_dir, sizeof(temp_blockchain_dir), "test_state/temp_blockchain");
+
+        // Create temp directory if needed
+        if (mkdir(temp_blockchain_dir, 0700) == -1 && errno != EEXIST) {
+            fprintf(stderr, "Error: Failed to create temp blockchain directory: %s\n", temp_blockchain_dir);
+            free(peers);
+            free_generated_keys(&keys);
+            TW_BlockChain_destroy(blockchain);
+            db_close();
+            return -1;
+        }
+
+        // Save blockchain once to temp
+        if (!saveBlockChainToFileWithPath(blockchain, temp_blockchain_dir)) {
+            fprintf(stderr, "Error: Failed to save temp blockchain\n");
+            free(peers);
+            free_generated_keys(&keys);
+            TW_BlockChain_destroy(blockchain);
+            db_close();
+            return -1;
+        }
+        if (!writeBlockChainToJsonWithPath(blockchain, temp_blockchain_dir)) {
+            fprintf(stderr, "Warning: Failed to save temp blockchain JSON\n");
+        }
+
+        // Copy temp blockchain files to each node directory
         for (uint32_t i = 0; i < config->node_count; i++) {
             char node_blockchain_dir[512];
-            snprintf(node_blockchain_dir, sizeof(node_blockchain_dir), "state/node_%u/blockchain", i);
-            
-            if (!saveBlockChainToFileWithPath(blockchain, node_blockchain_dir)) {
-                fprintf(stderr, "Error: Failed to save blockchain for node %u\n", i);
+            char src_path[512];
+            char dst_path[512];
+
+            snprintf(node_blockchain_dir, sizeof(node_blockchain_dir), "test_state/node_%u/blockchain", i);
+
+            // Copy blockchain.dat
+            snprintf(src_path, sizeof(src_path), "%s/blockchain.dat", temp_blockchain_dir);
+            snprintf(dst_path, sizeof(dst_path), "%s/blockchain.dat", node_blockchain_dir);
+
+            FILE* src = fopen(src_path, "rb");
+            if (!src) {
+                fprintf(stderr, "Error: Failed to open temp blockchain.dat for node %u\n", i);
                 free(peers);
                 free_generated_keys(&keys);
                 TW_BlockChain_destroy(blockchain);
                 db_close();
                 return -1;
             }
-            printf("Blockchain saved for node %u: %s/blockchain.dat\n", i, node_blockchain_dir);
-            
-            // Also save JSON for each node
-            if (!writeBlockChainToJsonWithPath(blockchain, node_blockchain_dir)) {
-                fprintf(stderr, "Warning: Failed to save blockchain JSON for node %u\n", i);
-            } else {
-                printf("Blockchain JSON saved for node %u: %s/blockchain.json\n", i, node_blockchain_dir);
+            FILE* dst = fopen(dst_path, "wb");
+            if (!dst) {
+                fprintf(stderr, "Error: Failed to create blockchain.dat for node %u: %s\n", i, dst_path);
+                fclose(src);
+                free(peers);
+                free_generated_keys(&keys);
+                TW_BlockChain_destroy(blockchain);
+                db_close();
+                return -1;
             }
+            char buffer[4096];
+            size_t bytes_read;
+            while ((bytes_read = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+                if (fwrite(buffer, 1, bytes_read, dst) != bytes_read) {
+                    fprintf(stderr, "Error: Failed to copy blockchain.dat for node %u\n", i);
+                    fclose(src);
+                    fclose(dst);
+                    free(peers);
+                    free_generated_keys(&keys);
+                    TW_BlockChain_destroy(blockchain);
+                    db_close();
+                    return -1;
+                }
+            }
+            fclose(src);
+            fclose(dst);
+
+            // Copy blockchain.json (best-effort)
+            snprintf(src_path, sizeof(src_path), "%s/blockchain.json", temp_blockchain_dir);
+            snprintf(dst_path, sizeof(dst_path), "%s/blockchain.json", node_blockchain_dir);
+            FILE* src_json = fopen(src_path, "rb");
+            if (src_json) {
+                FILE* dst_json = fopen(dst_path, "wb");
+                if (dst_json) {
+                    while ((bytes_read = fread(buffer, 1, sizeof(buffer), src_json)) > 0) {
+                        if (fwrite(buffer, 1, bytes_read, dst_json) != bytes_read) {
+                            fprintf(stderr, "Warning: Failed to copy blockchain.json for node %u\n", i);
+                            break;
+                        }
+                    }
+                    fclose(dst_json);
+                }
+                fclose(src_json);
+            }
+
+            printf("Blockchain saved for node %u: %s/blockchain.dat\n", i, node_blockchain_dir);
         }
+
+        // Cleanup temp blockchain directory files (optional, keep dir)
+        char tmp_path[512];
+        snprintf(tmp_path, sizeof(tmp_path), "%s/blockchain.dat", temp_blockchain_dir);
+        unlink(tmp_path);
+        snprintf(tmp_path, sizeof(tmp_path), "%s/blockchain.json", temp_blockchain_dir);
+        unlink(tmp_path);
     } else {
         // Original behavior: save to global directory
         if (!saveBlockChainToFileWithPath(blockchain, config->blockchain_path)) {
@@ -282,34 +367,58 @@ int initialize_network(const InitConfig* config) {
     // 10. Create node-specific databases if in debug mode
     if (config->node_specific_dirs) {
         printf("Creating node-specific databases...\n");
-        
+
+        // Close the temp database
+        db_close();
+
         for (uint32_t i = 0; i < config->node_count; i++) {
             char node_db_path[512];
-            snprintf(node_db_path, sizeof(node_db_path), "state/node_%u/blockchain/blockchain.db", i);
-            
-            // Close current database
-            db_close();
-            
-            // Initialize node-specific database
-            if (db_init(node_db_path) != 0) {
-                fprintf(stderr, "Error: Failed to initialize database for node %u\n", i);
+            snprintf(node_db_path, sizeof(node_db_path), "test_state/node_%u/blockchain/blockchain.db", i);
+
+            // Copy the temp database to the node's directory
+            FILE* src = fopen("test_state/temp_init.db", "rb");
+            if (!src) {
+                fprintf(stderr, "Error: Failed to open temp database for copying to node %u\n", i);
                 free(peers);
                 free_generated_keys(&keys);
                 TW_BlockChain_destroy(blockchain);
                 return -1;
             }
-            
-            // Sync blockchain to this node's database
-            if (db_sync_blockchain(blockchain) != 0) {
-                fprintf(stderr, "Error: Failed to sync blockchain to database for node %u\n", i);
+
+            FILE* dst = fopen(node_db_path, "wb");
+            if (!dst) {
+                fprintf(stderr, "Error: Failed to create database file for node %u: %s\n", i, node_db_path);
+                fclose(src);
                 free(peers);
                 free_generated_keys(&keys);
                 TW_BlockChain_destroy(blockchain);
-                db_close();
                 return -1;
             }
-            
+
+            // Copy file contents
+            char buffer[4096];
+            size_t bytes_read;
+            while ((bytes_read = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+                if (fwrite(buffer, 1, bytes_read, dst) != bytes_read) {
+                    fprintf(stderr, "Error: Failed to write database file for node %u\n", i);
+                    fclose(src);
+                    fclose(dst);
+                    free(peers);
+                    free_generated_keys(&keys);
+                    TW_BlockChain_destroy(blockchain);
+                    return -1;
+                }
+            }
+
+            fclose(src);
+            fclose(dst);
+
             printf("Database created for node %u: %s\n", i, node_db_path);
+        }
+
+        // Re-open the temp database for cleanup
+        if (db_init("test_state/temp_init.db") != 0) {
+            fprintf(stderr, "Warning: Failed to re-open temp database for cleanup\n");
         }
     }
 
@@ -319,15 +428,22 @@ int initialize_network(const InitConfig* config) {
     TW_BlockChain_destroy(blockchain);
     db_close();
 
+    // Clean up temp database file in debug mode
+    if (config->node_specific_dirs) {
+        if (unlink("test_state/temp_init.db") != 0) {
+            printf("Warning: Failed to clean up temp database file\n");
+        }
+    }
+
     printf("Network initialization completed successfully!\n");
     if (config->node_specific_dirs) {
         printf("Files created in node-specific directories:\n");
         for (uint32_t i = 0; i < config->node_count; i++) {
             printf("  Node %u:\n", i);
-            printf("    - Blockchain: state/node_%u/blockchain/blockchain.dat\n", i);
-            printf("    - JSON: state/node_%u/blockchain/blockchain.json\n", i);
-            printf("    - Database: state/node_%u/blockchain/blockchain.db\n", i);
-            printf("    - Private Key: state/node_%u/keys/node_%u_private.key\n", i, i);
+            printf("    - Blockchain: test_state/node_%u/blockchain/blockchain.dat\n", i);
+            printf("    - JSON: test_state/node_%u/blockchain/blockchain.json\n", i);
+            printf("    - Database: test_state/node_%u/blockchain/blockchain.db\n", i);
+            printf("    - Private Key: test_state/node_%u/keys/node_private.key\n", i);
         }
         printf("  Global user keys: %s/user_*_private.key\n", config->keystore_path);
     } else {
@@ -434,18 +550,18 @@ int save_keys_to_keystore_with_config(const GeneratedKeys* keys, const InitConfi
     if (!keys || !config) return -1;
     
     if (config->node_specific_dirs) {
-        // Create node-specific directories and save keys there
+        // Create node-specific directories and save keys there (debug layout under test_state/)
         printf("Creating node-specific key directories...\n");
         
         for (uint32_t i = 0; i < keys->node_count; i++) {
-            // Create directory structure: state/node_X/keys/
+            // Create directory structure: test_state/node_X/{keys,blockchain}/
             char node_dir[512];
             char node_keys_dir[512];
             char node_blockchain_dir[512];
             
-            snprintf(node_dir, sizeof(node_dir), "state/node_%u", i);
-            snprintf(node_keys_dir, sizeof(node_keys_dir), "state/node_%u/keys", i);
-            snprintf(node_blockchain_dir, sizeof(node_blockchain_dir), "state/node_%u/blockchain", i);
+            snprintf(node_dir, sizeof(node_dir), "test_state/node_%u", i);
+            snprintf(node_keys_dir, sizeof(node_keys_dir), "test_state/node_%u/keys", i);
+            snprintf(node_blockchain_dir, sizeof(node_blockchain_dir), "test_state/node_%u/blockchain", i);
             
             // Create directories
             if (mkdir(node_dir, 0700) == -1 && errno != EEXIST) {
@@ -463,7 +579,7 @@ int save_keys_to_keystore_with_config(const GeneratedKeys* keys, const InitConfi
             
             // Save node private key
             char node_key_path[512];
-            snprintf(node_key_path, sizeof(node_key_path), "%s/node_%u_private.key", node_keys_dir, i);
+            snprintf(node_key_path, sizeof(node_key_path), "%s/node_private.key", node_keys_dir);
             FILE* f = fopen(node_key_path, "wb");
             if (!f) {
                 fprintf(stderr, "Failed to create node key file: %s\n", node_key_path);
@@ -475,11 +591,17 @@ int save_keys_to_keystore_with_config(const GeneratedKeys* keys, const InitConfi
             printf("Created node %u key: %s\n", i, node_key_path);
         }
         
-        // For node-specific mode, save user keys in the global keys directory
-        // (users are not node-specific)
+        // For debug mode, save user keys in test_state/keys directory
+        // Create test_state/keys directory
+        char test_keys_dir[] = "test_state/keys";
+        if (mkdir(test_keys_dir, 0700) == -1 && errno != EEXIST) {
+            fprintf(stderr, "Failed to create test keys directory: %s\n", test_keys_dir);
+            return -1;
+        }
+        
         for (uint32_t i = 0; i < keys->user_count; i++) {
             char user_key_path[512];
-            snprintf(user_key_path, sizeof(user_key_path), "%s/user_%u_private.key", config->keystore_path, i);
+            snprintf(user_key_path, sizeof(user_key_path), "%s/user_%u_private.key", test_keys_dir, i);
             FILE* f = fopen(user_key_path, "wb");
             if (!f) {
                 fprintf(stderr, "Failed to create user key file: %s\n", user_key_path);

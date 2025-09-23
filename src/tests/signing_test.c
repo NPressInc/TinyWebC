@@ -22,9 +22,26 @@ int signing_test_main(void) {
         return 1;
     }
 
-    // Load the existing key file instead of generating a new one
-    if (!keystore_load_private_key("node_private.key", "testpass")) {
-        printf("Failed to load private key\n");
+    // Load the existing raw key file instead of generating a new one
+    FILE* key_file = fopen("test_state/keys/node_0_private.key", "rb");
+    if (!key_file) {
+        printf("Failed to open key file\n");
+        keystore_cleanup();
+        return 1;
+    }
+
+    unsigned char raw_private_key[SIGN_SECRET_SIZE];
+    size_t bytes_read = fread(raw_private_key, 1, SIGN_SECRET_SIZE, key_file);
+    fclose(key_file);
+
+    if (bytes_read != SIGN_SECRET_SIZE) {
+        printf("Failed to read complete private key\n");
+        keystore_cleanup();
+        return 1;
+    }
+
+    if (!keystore_load_raw_ed25519_keypair(raw_private_key)) {
+        printf("Failed to load raw private key\n");
         keystore_cleanup();
         return 1;
     }
