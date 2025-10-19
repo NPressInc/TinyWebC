@@ -353,7 +353,41 @@ int deserialize_emergency_alert(const unsigned char* buffer, TW_TXN_EmergencyAle
     return sizeof(uint8_t) + 128 + sizeof(permission_scope_t);
 }
 
-// System Config
+// Node Registration
+int serialize_node_registration(const TW_TXN_NodeRegistration* reg, unsigned char** buffer) {
+    if (!reg || !buffer) return -1;
+
+    size_t size = PUBKEY_SIZE + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint64_t);
+    *buffer = (unsigned char*)malloc(size);
+    if (!*buffer) return -1;
+
+    unsigned char* ptr = *buffer;
+    memcpy(ptr, reg->node_pubkey, PUBKEY_SIZE);
+    ptr += PUBKEY_SIZE;
+    memcpy(ptr, &reg->node_id, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+    memcpy(ptr, &reg->is_consensus_node, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(ptr, &reg->registration_timestamp, sizeof(uint64_t));
+
+    return size;
+}
+
+int deserialize_node_registration(const unsigned char* buffer, TW_TXN_NodeRegistration* reg) {
+    if (!buffer || !reg) return -1;
+
+    const unsigned char* ptr = buffer;
+    memcpy(reg->node_pubkey, ptr, PUBKEY_SIZE);
+    ptr += PUBKEY_SIZE;
+    memcpy(&reg->node_id, ptr, sizeof(uint32_t));
+    ptr += sizeof(uint32_t);
+    memcpy(&reg->is_consensus_node, ptr, sizeof(uint8_t));
+    ptr += sizeof(uint8_t);
+    memcpy(&reg->registration_timestamp, ptr, sizeof(uint64_t));
+
+    return PUBKEY_SIZE + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint64_t);
+}
+
 int serialize_system_config(const TW_TXN_SystemConfig* config, unsigned char** buffer) {
     if (!config || !buffer) return -1;
     

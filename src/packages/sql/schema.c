@@ -56,18 +56,15 @@ const char* SQL_CREATE_TRANSACTION_RECIPIENTS =
     "    FOREIGN KEY (transaction_id) REFERENCES transactions(id)"
     ");";
 
-// Node status tracking table
-const char* SQL_CREATE_NODE_STATUS = 
-    "CREATE TABLE IF NOT EXISTS node_status ("
-    "    node_id TEXT PRIMARY KEY,"
-    "    node_name TEXT NOT NULL,"
-    "    ip_address TEXT NOT NULL,"
-    "    port INTEGER NOT NULL,"
-    "    is_validator BOOLEAN NOT NULL DEFAULT TRUE,"
-    "    status TEXT NOT NULL DEFAULT 'offline',"  // 'online', 'offline', 'unknown'
-    "    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-    "    first_registered TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-    "    heartbeat_count INTEGER DEFAULT 0"
+// (node_status table removed)
+
+const char* SQL_CREATE_CONSENSUS_NODES =
+    "CREATE TABLE IF NOT EXISTS consensus_nodes ("
+    "    node_id INTEGER PRIMARY KEY,"
+    "    pubkey TEXT UNIQUE NOT NULL,"
+    "    is_active INTEGER NOT NULL DEFAULT 1,"
+    "    registered_at INTEGER NOT NULL,"
+    "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
     ");";
 
 // User, Role, and Permission tables
@@ -265,36 +262,30 @@ const char* SQL_UPDATE_CACHED_CONTENT =
 const char* SQL_SELECT_CACHED_CONTENT = 
     "SELECT decrypted_content FROM transactions WHERE id = ? AND is_decrypted = TRUE;";
 
-// Node status management queries
-const char* SQL_INSERT_NODE_STATUS = 
-    "INSERT OR REPLACE INTO node_status "
-    "(node_id, node_name, ip_address, port, is_validator, status, last_seen, heartbeat_count) "
-    "VALUES (?, ?, ?, ?, ?, 'online', CURRENT_TIMESTAMP, COALESCE((SELECT heartbeat_count FROM node_status WHERE node_id = ?), 0) + 1);";
+// (node_status queries removed)
 
-const char* SQL_UPDATE_NODE_HEARTBEAT = 
-    "UPDATE node_status SET status = 'online', last_seen = CURRENT_TIMESTAMP, heartbeat_count = heartbeat_count + 1 "
-    "WHERE node_id = ?;";
+// Consensus nodes management queries
+const char* SQL_INSERT_CONSENSUS_NODE =
+    "INSERT OR REPLACE INTO consensus_nodes (node_id, pubkey, is_active, registered_at, created_at) "
+    "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP);";
 
-const char* SQL_SET_NODE_OFFLINE = 
-    "UPDATE node_status SET status = 'offline' WHERE node_id = ?;";
+const char* SQL_UPDATE_CONSENSUS_NODE_STATUS =
+    "UPDATE consensus_nodes SET is_active = ? WHERE pubkey = ?;";
 
-const char* SQL_SET_STALE_NODES_OFFLINE = 
-    "UPDATE node_status SET status = 'offline' "
-    "WHERE status = 'online' AND last_seen < datetime('now', '-30 seconds');";
+const char* SQL_SELECT_ALL_CONSENSUS_NODES =
+    "SELECT node_id, pubkey, is_active, registered_at, created_at "
+    "FROM consensus_nodes ORDER BY node_id;";
 
-const char* SQL_SELECT_ALL_NODES = 
-    "SELECT node_id, node_name, ip_address, port, is_validator, status, last_seen, heartbeat_count "
-    "FROM node_status ORDER BY node_id;";
+const char* SQL_SELECT_ACTIVE_CONSENSUS_NODES =
+    "SELECT node_id, pubkey, is_active, registered_at, created_at "
+    "FROM consensus_nodes WHERE is_active = 1 ORDER BY node_id;";
 
-const char* SQL_SELECT_ONLINE_NODES = 
-    "SELECT node_id, node_name, ip_address, port, is_validator, status, last_seen, heartbeat_count "
-    "FROM node_status WHERE status = 'online' ORDER BY node_id;";
+const char* SQL_SELECT_CONSENSUS_NODE_BY_PUBKEY =
+    "SELECT node_id, pubkey, is_active, registered_at, created_at "
+    "FROM consensus_nodes WHERE pubkey = ?;";
 
-const char* SQL_COUNT_TOTAL_NODES = 
-    "SELECT COUNT(*) FROM node_status;";
-
-const char* SQL_COUNT_ONLINE_NODES = 
-    "SELECT COUNT(*) FROM node_status WHERE status = 'online';";
+const char* SQL_COUNT_CONSENSUS_NODES =
+    "SELECT COUNT(*) FROM consensus_nodes WHERE is_active = 1;";
 
 // User, Role, and Permission management queries
 const char* SQL_INSERT_USER = 
@@ -406,7 +397,7 @@ int schema_create_all_tables(sqlite3* db) {
         SQL_CREATE_BLOCKS,
         SQL_CREATE_TRANSACTIONS,
         SQL_CREATE_TRANSACTION_RECIPIENTS,
-        SQL_CREATE_NODE_STATUS,
+        SQL_CREATE_CONSENSUS_NODES,
         SQL_CREATE_USERS,
         SQL_CREATE_ROLES,
         SQL_CREATE_PERMISSIONS,
@@ -654,6 +645,39 @@ int schema_migrate(sqlite3* db, int from_version, int to_version) {
         }
 
         if (schema_set_version(db, 3) != 0) {
+            return -1;
+        }
+        return 0;
+    }
+
+    if (from_version == 3 && to_version == 4) {
+        // Add consensus_nodes table
+        char* error_msg = NULL;
+        int rc;
+
+        rc = sqlite3_exec(db, SQL_CREATE_CONSENSUS_NODES, NULL, NULL, &error_msg);
+        if (rc != SQLITE_OK) {
+            printf("Failed to create consensus_nodes table: %s\n", error_msg);
+            sqlite3_free(error_msg);
+            return -1;
+        }
+
+        if (schema_set_version(db, 4) != 0) {
+            return -1;
+        }
+        return 0;
+    }
+
+    if (from_version == 0 && to_version == 4) {
+        // Fresh create all tables, then set to 4
+        if (schema_create_all_tables(db) != 0) {
+            return -1;
+        }
+        if (schema_create_all_indexes(db) != 0) {
+            return -1;
+        }
+
+        if (schema_set_version(db, 4) != 0) {
             return -1;
         }
         return 0;

@@ -1,60 +1,366 @@
-TinyWeb Development Tasks
-🎯 MISSION: Decentralized Family Communication Network
-Build a blockchain-based, PBFT-consensus network where families can communicate securely without centralized control. Nodes run in households, children can only access approved content/people.
-✅ COMPLETED TASKS
-Debug Mode Isolation: Fixed node-specific directories and database creation
-Blockchain Consistency: Ensured identical blockchain files across debug nodes
-Code Cleanup: Removed unused consensus accessor functions
-Consensus Test Setup: Added debug flags for multi-node testing
-🚧 NEXT PRIORITY TASKS
-1. Implement Node Registration System
-Why: Current nodes can't discover peers - each runs in isolated "singular" mode. Need blockchain-based node registration for true decentralization.
-Tasks:
-Add TW_TXN_NODE_REGISTRATION transaction type with admin permissions
-Create TW_TXN_NodeRegistration payload structure (node_id, dns_name, stable_id, admin_authorized)
-Implement serialization/deserialization in transaction_types.c
-Update transaction permission mappings for admin-only node registration
-Add blockchain parser db_parse_and_sync_node_registration() to populate node_status table
-2. Dynamic Address Management System
-Why: IPs change frequently (ISP rotation, DHCP reassignment). Static blockchain IPs won't work.
-Tasks:
-Add TW_INT_TXN_ADDRESS_ANNOUNCE internal transaction type
-Implement AddressAnnouncement payload (node_id, current_ip, port, timestamp, sequence)
-Add staggered announcement timing (node_id * 60s offset) to prevent congestion
-Create address cache system with TTL (last_updated timestamps)
-Integrate with existing heartbeat system in monitor thread
-Update peer lookup to use DNS → Cache → Blockchain fallback
-3. Blockchain-Based Peer Discovery
-Why: Current peer loading only queries local database. Need to bootstrap from blockchain history.
-Tasks:
-Modify pbft_node_load_peers_from_blockchain() to scan blockchain for node registrations
-Update peer discovery to prioritize blockchain data over local DB
-Add node verification during join (check blockchain authorization)
-Implement gradual peer discovery (don't overwhelm new nodes)
-Test multi-node consensus with proper peer discovery
-4. Security & Authorization Controls
-Why: Family network needs strict controls - only authorized nodes can join.
-Tasks:
-Ensure node registration requires admin permissions (SCOPE_GLOBAL)
-Add node revocation transaction type for removing compromised nodes
-Implement cryptographic verification of node identities
-Add audit logging for all network topology changes
-Create admin dashboard for network management
-🎯 IMMEDIATE NEXT STEPS (Start Here)
-Add Node Registration Transaction - Foundation for decentralized network
-Implement Address Announcements - Handle dynamic IPs
-Fix Peer Discovery - Enable multi-node consensus
-Test Full Consensus - Verify 4-node network works
-📋 TESTING CHECKLIST
-[ ] 4 nodes start in debug mode with isolated directories
-[ ] Each node discovers peers from blockchain
-[ ] IP changes are handled via announcements
-[ ] Consensus reaches 2f+1 threshold (3/4 nodes)
-[ ] Blocks are proposed, verified, committed
-[ ] Network survives individual node failures
-🎯 SUCCESS CRITERIA
-Multi-node consensus working (blocks committed with votes)
-Dynamic IP handling (address announcements)
-True decentralization (blockchain as source of truth)
-Family-appropriate security (admin-controlled network access)
-Start with Task 1 - Node Registration System. This is the foundation for everything else.
+Networking Roadmap (MVP → P2P), Step-by-Step
+
+Legend
+- [ ] TODO  - task not started
+- [~] WIP   - in progress
+- [x] DONE  - completed
+
+Phase 0 — Immediate MVP: Central Relay (Signature-Verified), No IPs On-Chain
+
+1) Node Registration Transaction (no IPs on chain)
+- [x] Add struct for node registration:
+  - File: src/packages/structures/blockChain/transaction_types.h
+  - Define TW_TXN_NODE_REGISTRATION payload:
+    - node_pubkey[PUBKEY_SIZE], node_id (uint32_t), is_consensus_node (bool), registration_timestamp (uint64_t)
+- [x] Wire into init.c genesis:
+  - Create and include one TW_TXN_NODE_REGISTRATION per approved consensus node (pubkey, node_id, is_consensus_node)
+- [x] DB schema and queries:
+  - File: src/packages/sql/schema.c/.h
+  - Create table consensus_nodes(node_id INTEGER PK, pubkey TEXT UNIQUE, is_active INTEGER, registered_at INTEGER)
+  - File: src/packages/sql/queries.c/.h
+  - db_get_authorized_nodes(...)
+  - db_is_authorized_consensus_node(pubkey)
+- [ ] (moved to Task 2)
+
+2) Consensus Node Authorization Enforcement (blockchain-first)
+
+- [x] CLEANUP: Remove old IP-based methodology from pbft_node_load_peers_from_blockchain()
+  - Replace db_get_all_nodes() with db_get_authorized_nodes()
+  - Remove is_validator checks and IP address dependencies
+  - Use real public keys instead of dummy keys
+  - Added pbft_node_lookup_peer_address() stub for relay integration (Task 3)
+- [x] Load authorized consensus nodes from DB cache (consensus_nodes)
+  - Use db_get_authorized_nodes(...) to populate in-memory peer set
+- [x] Enforce authorization at peer add/connect time
+  - Before adding a peer, verify db_is_authorized_consensus_node(pubkey) == 1
+  - Reject unauthorized peers and log reason
+- [x] Validate consensus participants
+  - Only count votes from authorized nodes (implemented in vote endpoints)
+  - Validate proposer is authorized for each round/block
+- [ ] Adjust quorum calculations (HYBRID SYSTEM for family reliability)
+  - Replace activity-based quorum (loaded peers) with blockchain-based (authorized nodes)
+  - Use authorized node count from db_count_consensus_nodes(1)
+  - Add graceful degradation when some nodes are offline: base thresholds on responding peers but never exceed authorized count
+  - Emergency fallback: allow simple majority (50% + 1) when 2f+1 cannot be met (config-gated)
+  - Introduce MIN_VIABLE_NODES and compute effective_nodes = max(authorized_nodes, MIN_VIABLE_NODES)
+  - Update verification/commit/new_round handlers to use new thresholds
+  - Add tests: simulate 4-node network with 1-down (should proceed) and 2-down (fallback behavior)
+  
+- [ ] Deauthorization & family controls (parent-friendly)
+  - Add transaction types: TW_TXN_NODE_DEAUTHORIZATION, TW_TXN_FAMILY_MEMBER_ADD, TW_TXN_FAMILY_MEMBER_REMOVE
+  - Define payloads in transaction_types.h/.c and permissions in TXN_PERMISSIONS
+  - Implement db_deauthorize_consensus_node(pubkey) wrapper (sets is_active = 0 via db_update_consensus_node_status)
+  - Ensure deauthorized nodes cannot join or vote (leverages existing db_is_authorized_consensus_node checks)
+  - Automatic deactivation after X days inactivity (periodic task + last_seen tracking; log actions)
+  - Admin APIs (planned): /admin/family/members (GET/POST/DELETE), /admin/nodes/status
+  - Authorization policy for deauth (guardian controls)
+    - Map TW_TXN_NODE_DEAUTHORIZATION to ADMIN-only permission (PERMISSION_MANAGE_NODES, SCOPE_GLOBAL) in TXN_PERMISSIONS
+    - Support two modes:
+      - Suspend: 1-of-N guardian approval, TTL-based temporary block (reversible)
+      - Permanent deauth: M-of-N guardian approvals required (e.g., 2-of-2 parents)
+    - Optional time-lock: single-guardian deauth requires second confirmation within T hours; otherwise auto-revert
+    - Validation in transaction_validation:
+      - Verify sender has ADMIN permission
+      - Enforce M-of-N approval (multi-sig or multi-approval txns referencing same resource_id)
+      - Reject if target pubkey is not an authorized consensus node
+      - Record audit fields (who, when, reason) on-chain
+- [ ] Wire blockchain→DB sync for node registrations
+  - On startup: scan TW_TXN_NODE_REGISTRATION in chain and upsert into consensus_nodes
+  - On new blocks: process TW_TXN_NODE_REGISTRATION and update consensus_nodes
+- [x] Add telemetry/logging
+  - Log authorization failures, totals, and quorum baselines (added to peer add/vote processing)
+
+3) Relay Server in C (signature verification, authorized-node gate)
+- [ ] Create target relay_server (using Mongoose + libsodium + SQLite)
+  - Files:
+    - src/relay_server/relay_server.c/.h (HTTP endpoints)
+    - src/relay_server/relay_storage.c/.h (SQLite ops, TTL cleanup)
+- [ ] Endpoints:
+  - POST /register
+    - Payload: {blockchain_id, public_key, ip, port, timestamp, signature}
+    - Message to sign: sha256(blockchain_id||pubkey||ip||port||timestamp)
+    - verify_signature(signature, message, pubkey)
+    - Check blockchain_id exists in blockchain_registry
+    - Check pubkey is authorized for that blockchain
+    - Store/refresh mapping with last_seen, TTL 5m
+  - GET /lookup/<blockchain_id>/<pubkey_hex>
+    - Validate blockchain_id matches request
+    - Return {ip, port, last_seen} if not stale (<5–10m)
+  - POST /admin/register_blockchain
+    - Payload: {blockchain_id, genesis_hash, admin_pubkey, admin_signature}
+    - Admin-signed registration of new blockchain network
+  - GET /health (200 OK)
+- [ ] Storage:
+  - SQLite table relay_nodes(blockchain_id TEXT, pubkey TEXT, ip TEXT, port INTEGER, last_seen INTEGER, sig BLOB, PRIMARY KEY(blockchain_id, pubkey))
+  - SQLite table blockchain_registry(blockchain_id TEXT PK, genesis_hash TEXT, created_at INTEGER, admin_pubkey TEXT)
+  - Periodic cleanup thread: evict entries older than TTL
+- [ ] Build/run notes:
+  - Link: libsodium, sqlite3, mongoose
+  - Expose port 5050
+
+4) Node: periodic relay registration thread
+- [ ] In pbftNode.c:
+  - pbft_node_startup_sequence():
+    - load authorized nodes (from DB)
+    - start periodic_relay_registration_thread(node) every 120s (with jitter/backoff)
+- [ ] register_with_relay_server(node):
+  - Build message: pubkey_hex, current_ip, api_port, timestamp
+  - Sign with sign_message()
+  - POST to RELAY_URL/register
+  - Log success/failure
+- [ ] Message format for relay registration:
+  - JSON: {"blockchain_id": "string", "public_key": "hex64", "ip": "string", "port": number, "timestamp": number, "signature": "hex128"}
+  - Signature covers: sha256(blockchain_id + pubkey_hex + ip + port + timestamp)
+- [ ] Config/env:
+  - RELAY_URL (e.g., http://<host>:5050)
+  - BLOCKCHAIN_ID (e.g., "family_network_001")
+
+5) Peer discovery flow (MVP, relay-first fallback)
+- [ ] On startup, for each authorized peer:
+  - Try relay lookup -> populate peer connection targets
+  - Attempt HTTP connections using discovered endpoints
+  - Cache successes, TTL 5–10 min
+- [ ] Retries/backoff for unreachable peers
+  - Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+  - Max 5 retry attempts before marking peer unreachable
+
+6) Test script (test_pbft_consensus.sh) integration
+- [ ] Start relay server (local or remote) before nodes
+- [ ] Launch nodes with --relay-server "http://host:5050"
+- [ ] Wait for registration (check /status or /lookup)
+- [ ] Assert 2f+1 connectivity prior to kicking consensus
+- [ ] Verify blocks proposed/verified/committed; gather logs
+
+Phase 1 — STUN Integration (Primary P2P Enabler)
+
+7) Minimal STUN client
+- [ ] Files: src/packages/net/stun.c/.h
+  - int stun_discover(char* ip_out, uint16_t* port_out, nat_type_t* nat_out)
+  - Query multiple servers (stun.l.google.com:19302, stun.cloudflare.com:3478, stun.stunprotocol.org:3478)
+  - Extract XOR-MAPPED-ADDRESS and detect NAT type (full/restricted/port_restricted/symmetric/unknown)
+  - Use first successful response; timeout after 5 seconds per server
+- [ ] Startup:
+  - Call STUN; store public endpoint + NAT type in node memory
+  - Refresh every 5 min or on network change
+
+Phase 2 — Gossip Protocol (Signed Address Announcements, P2P-first)
+
+8) Address announcement format (signed)
+- [ ] JSON fields:
+  - pubkey (hex), endpoints (array of "ip:port"), nat ("full_cone"..."symmetric"), ts (unix), ver (uint)
+  - sig = sign(sha256(pubkey||endpoints||nat||ts||ver))
+- [ ] Validate:
+  - Only accept if pubkey is authorized
+  - Verify signature
+  - Reject if ts skewed (>5m) or ver <= known version
+
+9) Gossip transport and storage
+- [ ] Files: src/packages/net/gossip.c/.h
+  - UDP listener (preferred), HTTP fallback via Mongoose
+  - gossip_broadcast_announce(AddressAnnounce* a) every 60s ± jitter (random 0-10s)
+  - gossip_pull_round(): every ~15s, pick k random peers (k≈3) to pull recent deltas
+  - UDP port: configurable via GOSSIP_UDP_PORT (default 7070)
+- [ ] Peer table:
+  - Track best-known endpoints, NAT type, last_seen, version, score
+  - TTL soft 5m / hard 10m; dedupe by version/pubkey
+
+Phase 3 — Hole Punching (Direct Connectivity Prioritized)
+
+10) Hole punching attempts
+- [ ] Files: src/packages/net/punch.c/.h
+  - UDP: coordinate via gossip (or temporary coordination over HTTP), send simultaneous probe packets to known endpoints
+  - TCP: direct dial attempts on known endpoints with backoff
+- [ ] Endpoint scoring:
+  - Promote endpoints on success; decay on failure
+  - Cache “reachable” endpoints with TTL
+
+Phase 4 — Relay as Backup Only
+
+11) Fallback rules
+- [ ] If peer NAT symmetric or repeated direct failures:
+  - Use relay lookup to refresh endpoints
+  - Re-attempt direct connections
+- [ ] Keep periodic relay registration for discoverability
+
+Error Handling Patterns (following project conventions)
+
+- [ ] Use project standard: return 0 for SUCCESS, -1 for FAILURE
+- [ ] Specific error codes for different failure modes:
+  - Network errors: timeout, connection refused, DNS resolution
+  - Validation errors: invalid signature, malformed JSON, missing fields
+  - Resource errors: peer limit exceeded, memory allocation failure
+  - Protocol errors: version mismatch, unsupported message type
+- [ ] HTTP status code mapping: 4xx client errors (don't retry), 5xx server errors (retry with backoff)
+- [ ] ValidationResult enum for structured error reporting (see validation/transaction_validation.h)
+- [ ] Comprehensive logging with context (node_id, operation, error details)
+
+JSON Message Formats (following existing JsonBuilder/JsonParser patterns)
+
+- [ ] Field ordering for signature verification: blockchain_id, pubkey, ip, port, timestamp, version
+- [ ] Use json_builder_add_* functions for consistent serialization
+- [ ] Use json_parser_get_* functions for safe deserialization with error checking
+- [ ] Message size limits: 64KB max per message to prevent DoS
+- [ ] UTF-8 encoding with proper escaping for binary data (use json_builder_add_hex_bytes)
+- [ ] Required fields validation before processing
+
+Threading & Synchronization (following existing PBFT patterns)
+
+- [ ] Use pthread_t for background threads with proper cleanup
+- [ ] State mutex protection for shared data structures (peer tables, caches)
+- [ ] Atomic running flag for graceful shutdown coordination
+- [ ] Thread naming for debugging: "relay-reg", "gossip-announce", "stun-refresh"
+- [ ] Join threads on shutdown to prevent resource leaks
+- [ ] Lock hierarchy: peer table → cache → network ops (avoid deadlocks)
+
+Network Failure Recovery (following HTTP client patterns)
+
+- [ ] Exponential backoff: 1s, 2s, 4s, 8s, 16s (max 30s)
+- [ ] Max retry attempts: 3 for relay operations, 5 for direct connections
+- [ ] Timeout handling: 5s STUN, 10s relay lookup, 30s peer connection
+- [ ] Circuit breaker pattern: mark peers unreachable after consecutive failures
+- [ ] Health checks: periodic connectivity verification for cached endpoints
+- [ ] Fallback chain: gossip cache → relay lookup → STUN refresh → manual intervention
+
+Security & Validation
+
+11) Signature and replay protection
+- [ ] Always verify signatures on gossip and relay payloads
+- [ ] ts + ver checks; reject stale or downgraded versions
+- [ ] Accept only announcements for pubkeys in authorized set
+- [ ] Rate limiting per IP/pubkey to prevent DoS (100 req/min per source)
+- [ ] Message freshness window: ±5 minutes to prevent replay attacks
+- [ ] Maximum message size validation before processing
+
+Cloud Deployment (for relay)
+
+12) Initial hosting
+- [ ] VPS (Oracle Free/DigitalOcean/Linode) or Fly.io/Railway for quick start
+- [ ] Systemd unit for relay_server
+- [ ] HTTPS reverse proxy (Caddy/NGINX) if exposing publicly
+- [ ] ENV: RELAY_LISTEN_ADDR, RELAY_DB_PATH, RELAY_TTL_SECS
+
+Milestones & Order of Work
+
+M1 (MVP, 1–2 weeks)
+- [ ] Node registration (no IPs)
+- [ ] Consensus-node authorization enforcement (Task 2)
+- [ ] Relay server (C, signature verified)
+- [ ] Periodic node registration + relay lookup
+- [ ] Consensus with 4 nodes using relay for discovery
+
+M2 (1–2 weeks)
+- [ ] STUN discovery; store NAT type & public endpoint
+- [ ] Integrate STUN into startup/refresh
+
+M3 (2 weeks)
+- [ ] Gossip push/pull with signed announcements
+- [ ] Peer table mgmt, TTLs, validation
+
+M4 (1–2 weeks)
+- [ ] Hole punching (UDP/TCP), endpoint scoring/decay
+- [ ] Relay used only as fallback
+
+Acceptance Criteria
+
+- [ ] 4-node consensus works end-to-end (MVP)
+- [ ] Nodes discover each other directly via STUN+gossip in common NATs
+- [ ] Symmetric NATs fall back to relay without blocking consensus
+- [ ] No IP addresses on-chain; authorized nodes controlled via registration txns
+- [ ] All network updates are signed and validated
+
+Appendix — Startup Flow (Gossip-first, Relay-last)
+
+Startup priority (use relay only as last resort)
+- [ ] Load authorized consensus pubkeys from DB
+- [ ] Load local cache of peer endpoints (SQLite) into in-memory table
+- [ ] Run STUN to get own public endpoint + NAT type; immediately gossip Announce
+- [ ] Start gossip subsystem (UDP preferred; HTTP fallback)
+  - [ ] Start listener
+  - [ ] Perform 2–3 quick Pull rounds within ~15s window to fetch latest Announce/Delta
+- [ ] Attempt direct connections using freshest/highest-scoring endpoints (gossip/cache)
+- [ ] If peers unresolved after retries/backoff: query relay once, then retry direct connects
+
+Signed message formats
+- [ ] Announce JSON
+  - pubkey (hex), endpoints (array of "ip:port"), nat (full_cone|restricted|port_restricted|symmetric|unknown), ts (unix), ver (uint)
+  - sig = sign(sha256(pubkey||endpoints||nat||ts||ver))
+- [ ] Pull/Delta
+  - Request: send updates since version V
+  - Response: list of Announce for updated peers
+- [ ] Validation rules
+  - Accept only if pubkey is authorized; signature valid; ts within skew window; ver strictly increasing
+
+Resource Limits & Performance (following existing constants)
+
+- [ ] Peer management limits: MAX_PEERS=100, MAX_ENDPOINTS_PER_PEER=6
+- [ ] Network buffer sizes: 64KB messages, 50-char IP addresses (IPv6 compatible)
+- [ ] Cache limits: 1000 recent peer entries, LRU eviction when exceeded
+- [ ] Thread pool limits: max 8 concurrent network operations per node
+- [ ] Memory allocation: pre-allocate peer tables, use fixed-size buffers
+- [ ] Connection limits: max 50 concurrent HTTP connections, 100 UDP sockets
+- [ ] Rate limiting: 100 ops/sec per peer, circuit break after 5 consecutive failures
+
+In-memory storage (authoritative at runtime)
+- [ ] Data structures
+  - Endpoint: ip[64], port(uint16_t), last_seen(uint64_t), reachable(uint8_t: 0=unknown,1=yes,2=no), source_mask(uint8_t: bitmask), score(uint32_t)
+  - PeerInfo: pubkey[PUBKEY_SIZE], endpoints[MAX_ENDPOINTS], endpoint_count(uint8_t), nat_type(uint8_t), version(uint64_t), last_update(uint64_t)
+  - MAX_ENDPOINTS = 6 per peer
+- [ ] Selection rules
+  - Prefer endpoints with GOSSIP source and recent last_seen (< 2–5m)
+  - Promote on successful connect; decay on failures and time
+  - Keep multiple endpoints per peer; rotate on failure
+
+Persistent local cache (warm restarts)
+- [ ] Table peer_endpoints(pubkey TEXT, endpoint TEXT, nat_type INT, last_seen INT, version INT, score INT, source INT, PRIMARY KEY(pubkey, endpoint))
+- [ ] On startup: seed in-memory table from cache before gossip begins
+- [ ] Periodically and on shutdown: persist best N endpoints per peer
+
+Core APIs (skeleton to implement)
+- [ ] STUN: int stun_discover(char* ip_out, uint16_t* port_out, uint8_t* nat_out)
+- [ ] Gossip listener/start: int gossip_start_listener(uint16_t udp_port)
+- [ ] Gossip announce: int gossip_send_announce(const PeerInfo* self)
+- [ ] Gossip pull: int gossip_pull_round(void)
+- [ ] Cache load/save: peerdb_load_cache(...), peerdb_save_endpoint(...)
+- [ ] Relay: relay_register_periodic(...), relay_lookup(pubkey, Endpoint* out)
+- [ ] Selection/connect: peer_select_best_endpoint(...), connect_try_direct(const Endpoint*), endpoint_record_result(..., success)
+- [ ] Thread management: pthread_create for periodic tasks, pthread_join on shutdown
+- [ ] Error handling: return 0 for success, -1 for failure (follow project convention)
+
+Startup pseudocode
+- [ ] load_authorized_nodes(); peerdb_load_cache(&peers);
+- [ ] stun_discover(self_ip, &self_port, &self_nat);
+- [ ] gossip_start_listener(udp_port); gossip_send_announce(&self_info);
+- [ ] For ~15s: repeat gossip_pull_round(&peers) with short sleeps
+- [ ] For each authorized peer: try gossip endpoint → cached endpoint → relay lookup (then retry direct)
+- [ ] Start periodic loops with jitter:
+  - announce(60s), pull(15s), stun_refresh(5m), relay_register(120s)
+
+Operational Hardening & Tests
+- [ ] Relay authorized-node bootstrap
+  - [ ] Option A: On relay startup, bootstrap authorized pubkeys from a trusted genesis snapshot
+  - [ ] Option B: Expose admin endpoint POST /admin/authorize_node (admin-signed) to add/remove authorized pubkeys
+  - [ ] Cache and persist authorized pubkeys in relay DB (table authorized_nodes)
+- [ ] Relay anti-abuse & correctness
+  - [ ] Rate limit /register and /lookup per-IP and per-pubkey (100 req/min per source)
+  - [ ] Enforce timestamp freshness window (e.g., ±5 minutes) to prevent replay
+  - [ ] Require HTTPS (behind reverse proxy) and validate JSON sizes (64KB max) to avoid DoS
+- [ ] Blockchain isolation & access control
+  - [ ] Blockchain ID validation: Each request must include blockchain_id parameter
+  - [ ] Cross-blockchain prevention: Nodes can only lookup peers from their own blockchain
+  - [ ] Blockchain-specific storage: Separate tables/namespaces per blockchain
+  - [ ] Genesis hash validation: Verify requesting node belongs to specified blockchain
+  - [ ] Rate limiting per blockchain: Separate limits for each blockchain network
+- [ ] Config & CLI flags
+  - [ ] Add CLI/env for ports, intervals (announce/pull/stun/relay), TTLs, fanout, and jitter ranges
+  - [ ] Add RELAY_URL and GOSSIP_UDP_PORT to node CLI/config files
+  - [ ] Default values: RELAY_URL="http://localhost:5050", GOSSIP_UDP_PORT=7070, announce_interval=60s, pull_interval=15s, stun_refresh=300s, relay_register=120s
+- [ ] Thread lifecycle & shutdown
+  - [ ] Ensure periodic threads (gossip, stun refresh, relay register) respect node->running and join on shutdown
+  - [ ] Persist peer cache on shutdown and rotate cache files atomically
+- [ ] Test coverage (following existing test_runner.c patterns)
+  - [ ] Unit tests: signature verification (relay), JSON validation, timestamp window checks, STUN discovery
+  - [ ] Integration tests: relay register/lookup happy path + stale eviction; 4-node gossip convergence without relay
+  - [ ] Network simulation: symmetric NAT fallback to relay; relay offline; outdated announce version ignored; clock skew
+  - [ ] Performance tests: 100-peer network convergence, memory usage under load, concurrent connection handling
+  - [ ] Failure scenarios: network partition recovery, node restart with stale cache, malicious node isolation
+  - [ ] Test runner integration: add *_test_main() functions to test_runner.c for automated execution

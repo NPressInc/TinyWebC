@@ -110,6 +110,10 @@ int pbft_node_remove_peer(PBFTNode* node, uint32_t peer_id);
 int pbft_node_mark_peer_delinquent(PBFTNode* node, uint32_t peer_id);
 int pbft_node_is_peer_active(PBFTNode* node, uint32_t peer_id);
 
+// Peer address lookup (relay integration point for Task 3)
+int pbft_node_lookup_peer_address(PBFTNode* node, const unsigned char* peer_pubkey, 
+                                   uint32_t peer_node_id, char* ip_port_out, size_t out_size);
+
 // Consensus algorithm
 uint32_t pbft_node_calculate_proposer_id(PBFTNode* node);
 int pbft_node_is_proposer(PBFTNode* node);

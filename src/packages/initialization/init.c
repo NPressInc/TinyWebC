@@ -682,6 +682,9 @@ void free_generated_keys(GeneratedKeys* keys) {
     keys->user_count = 0;
 }
 
+// Forward declarations for transaction creation functions
+TW_Transaction* create_node_registration_transaction(const GeneratedKeys* keys, uint32_t node_index, const unsigned char* creator_pubkey);
+
 // Create initialization block with all setup transactions
 int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers, TW_BlockChain* blockchain, const InitConfig* config) {
     if (!keys || !peers || !blockchain || !config) return -1;
@@ -697,7 +700,7 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
     printf("Initialized keystore keypair for encryption operations\n");
 
     // Array to collect all initialization transactions
-    TW_Transaction** init_transactions = malloc(sizeof(TW_Transaction*) * (keys->user_count + keys->node_count + 2)); // Users + peers + system (removed roles since they're in user registration)
+    TW_Transaction** init_transactions = malloc(sizeof(TW_Transaction*) * (keys->user_count + keys->node_count + keys->node_count + 2)); // Users + peers + node registrations + system
     int txn_count = 0;
 
     // 1. Create user registration transactions (now includes role assignment)
@@ -721,6 +724,18 @@ int create_initialization_block(const GeneratedKeys* keys, const PeerInfo* peers
             printf("Created peer registration transaction for peer %u\n", i);
         } else {
             printf("Failed to create peer registration transaction for peer %u\n", i);
+        }
+    }
+
+    // 2.5. Create node registration transactions
+    printf("Creating node registration transactions...\n");
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        TW_Transaction* node_txn = create_node_registration_transaction(keys, i, blockchain->creator_pubkey);
+        if (node_txn) {
+            init_transactions[txn_count++] = node_txn;
+            printf("Created node registration transaction for consensus node %u\n", i);
+        } else {
+            printf("Failed to create node registration transaction for consensus node %u\n", i);
         }
     }
 
@@ -1034,6 +1049,79 @@ TW_Transaction* create_peer_registration_transaction(const PeerInfo* peers, uint
         free_encrypted_payload(encrypted_payload);
     }
     
+    free(txn_recipients_flat);
+    return txn;
+}
+
+TW_Transaction* create_node_registration_transaction(const GeneratedKeys* keys, uint32_t node_index, const unsigned char* creator_pubkey) {
+    if (!keys || node_index >= keys->node_count || !creator_pubkey) {
+        return NULL;
+    }
+
+    // Create node registration data
+    TW_TXN_NodeRegistration node_data;
+    memcpy(node_data.node_pubkey, keys->node_public_keys[node_index], PUBKEY_SIZE);
+    node_data.node_id = node_index;  // Node ID corresponds to array index
+    node_data.is_consensus_node = 1;  // All generated nodes are consensus nodes
+    node_data.registration_timestamp = time(NULL);
+
+    unsigned char* serialized_buffer = NULL;
+    int serialized_size = serialize_node_registration(&node_data, &serialized_buffer);
+    if (serialized_size < 0 || !serialized_buffer) {
+        return NULL;
+    }
+
+    // Create flat array of all recipients (nodes + users)
+    uint32_t total_recipients;
+    unsigned char* all_recipients_flat = create_all_recipients_flat(keys, &total_recipients);
+    if (!all_recipients_flat) {
+        free(serialized_buffer);
+        return NULL;
+    }
+
+    EncryptedPayload* encrypted_payload = encrypt_payload_multi(
+        serialized_buffer,
+        serialized_size,
+        all_recipients_flat,
+        total_recipients
+    );
+    free(serialized_buffer);
+    free(all_recipients_flat);
+    if (!encrypted_payload) {
+        return NULL;
+    }
+
+    // Create flat array for transaction (TW_Transaction_create expects flat array)
+    unsigned char* txn_recipients_flat = malloc(PUBKEY_SIZE * total_recipients);
+    if (!txn_recipients_flat) {
+        free_encrypted_payload(encrypted_payload);
+        return NULL;
+    }
+
+    // Copy all recipients to flat array for transaction
+    for (uint32_t i = 0; i < keys->node_count; i++) {
+        memcpy(txn_recipients_flat + (i * PUBKEY_SIZE), keys->node_public_keys[i], PUBKEY_SIZE);
+    }
+    for (uint32_t i = 0; i < keys->user_count; i++) {
+        memcpy(txn_recipients_flat + ((keys->node_count + i) * PUBKEY_SIZE), keys->user_public_keys[i], PUBKEY_SIZE);
+    }
+
+    TW_Transaction* txn = TW_Transaction_create(
+        TW_TXN_NODE_REGISTRATION,
+        creator_pubkey,
+        txn_recipients_flat,
+        total_recipients,
+        NULL,
+        encrypted_payload,
+        NULL
+    );
+
+    if (txn) {
+        TW_Transaction_add_signature(txn);
+    } else {
+        free_encrypted_payload(encrypted_payload);
+    }
+
     free(txn_recipients_flat);
     return txn;
 }

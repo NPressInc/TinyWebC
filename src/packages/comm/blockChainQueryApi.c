@@ -6,11 +6,8 @@
 #include <cjson/cJSON.h>
 #include "../sql/database.h"
 #include "../sql/queries.h"
-#include "../PBFT/pbftNode.h"
 #include "pbftApi.h"
 #include <unistd.h>
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/utils/jsonUtils.h"
 
 // Forward declarations
 cJSON* create_transaction_json_with_payload(TransactionRecord* tx_record);
@@ -154,22 +151,18 @@ void handle_get_network_stats(struct mg_connection* c, struct mg_http_message* h
         db_get_transaction_count(&total_transactions);
     }
     
-    // Get real node counts from database node status tracking
+    // Get node counts from consensus_nodes (authorized/active nodes)
     uint32_t total_nodes = 0;
     uint32_t online_nodes = 0;
-    
-    // Clean up stale nodes first (nodes not seen in last 30 seconds)
-    db_cleanup_stale_nodes();
-    
-    // Get actual counts from database
-    if (db_count_total_nodes(&total_nodes) != 0) {
-        // Fallback to configuration file if database query fails
+    if (db_is_initialized()) {
+        if (db_count_consensus_nodes(&total_nodes) != 0) {
+            total_nodes = get_configured_node_count();
+        }
+        // For MVP, treat active consensus node count as online count
+        online_nodes = total_nodes;
+    } else {
         total_nodes = get_configured_node_count();
-    }
-    
-    if (db_count_online_nodes(&online_nodes) != 0) {
-        // Fallback: assume at least this node is online
-        online_nodes = 1;
+        online_nodes = total_nodes;
     }
     
     // Calculate average block time (in seconds) using database

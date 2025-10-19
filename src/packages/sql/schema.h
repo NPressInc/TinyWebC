@@ -1,15 +1,17 @@
 #ifndef SCHEMA_H
 #define SCHEMA_H
 
+#include <sqlite3.h>
+
 // Database schema version
-#define CURRENT_SCHEMA_VERSION 3
+#define CURRENT_SCHEMA_VERSION 4
 
 // SQL statements for creating tables
 extern const char* SQL_CREATE_BLOCKCHAIN_INFO;
 extern const char* SQL_CREATE_BLOCKS;
 extern const char* SQL_CREATE_TRANSACTIONS;
 extern const char* SQL_CREATE_TRANSACTION_RECIPIENTS;
-extern const char* SQL_CREATE_NODE_STATUS;
+extern const char* SQL_CREATE_CONSENSUS_NODES;
 
 // User, Role, and Permission tables
 extern const char* SQL_CREATE_USERS;
@@ -57,15 +59,15 @@ extern const char* SQL_SELECT_RECIPIENTS_BY_TRANSACTION;
 extern const char* SQL_UPDATE_CACHED_CONTENT;
 extern const char* SQL_SELECT_CACHED_CONTENT;
 
-// Node status management queries
-extern const char* SQL_INSERT_NODE_STATUS;
-extern const char* SQL_UPDATE_NODE_HEARTBEAT;
-extern const char* SQL_SET_NODE_OFFLINE;
-extern const char* SQL_SET_STALE_NODES_OFFLINE;
-extern const char* SQL_SELECT_ALL_NODES;
-extern const char* SQL_SELECT_ONLINE_NODES;
-extern const char* SQL_COUNT_TOTAL_NODES;
-extern const char* SQL_COUNT_ONLINE_NODES;
+// (node_status removed)
+
+// Consensus nodes management queries
+extern const char* SQL_INSERT_CONSENSUS_NODE;
+extern const char* SQL_UPDATE_CONSENSUS_NODE_STATUS;
+extern const char* SQL_SELECT_ALL_CONSENSUS_NODES;
+extern const char* SQL_SELECT_ACTIVE_CONSENSUS_NODES;
+extern const char* SQL_SELECT_CONSENSUS_NODE_BY_PUBKEY;
+extern const char* SQL_COUNT_CONSENSUS_NODES;
 
 // User, Role, and Permission management queries
 extern const char* SQL_INSERT_USER;

@@ -7,11 +7,8 @@
 #include <sodium.h>
 #include "packages/PBFT/pbftNode.h"
 #include "packages/comm/pbftApi.h"
-#include "packages/utils/jsonUtils.h"
 #include "packages/sql/database.h"
 #include "packages/structures/blockChain/blockchain.h"
-#include "packages/signing/signing.h"
-#include "packages/sql/queries.h"
 #include "packages/fileIO/blockchainPersistence.h"
 #include "packages/utils/statePaths.h"
 
@@ -145,14 +142,7 @@ void* monitor_thread(void* arg) {
         // Monitor node health and performance
         pthread_mutex_lock(&node->state_mutex);
         
-        // Send heartbeat to database every 10 seconds
-        if (node->counter % 10 == 0) {
-            if (db_is_initialized()) {
-                if (db_update_node_heartbeat(node_id_str) != 0) {
-                    printf("Warning: Failed to update node heartbeat\n");
-                }
-            }
-        }
+        // (heartbeat removed)
         
         // Print periodic status every 100 iterations (~100 seconds)
         if (node->counter % 100 == 0 && node->counter > 0) {
@@ -169,11 +159,7 @@ void* monitor_thread(void* arg) {
         sleep(1);
     }
     
-    // Mark node as offline when shutting down
-    if (db_is_initialized()) {
-        printf("Marking node %s as offline...\n", node_id_str);
-        db_set_node_offline(node_id_str);
-    }
+    // (node_status offline marker removed)
     
     printf("TinyWeb monitor thread stopping\n");
     return NULL;
@@ -252,14 +238,7 @@ int main(int argc, char* argv[]) {
         char node_id_str[32];
         snprintf(node_id_str, sizeof(node_id_str), "node_%03u", node_id);
         
-        char node_name[128];
-        snprintf(node_name, sizeof(node_name), "TinyWeb Node %u", node_id);
-        
-        if (db_register_node(node_id_str, node_name, "127.0.0.1", port, true) == 0) {
-            printf("✓ Node registered successfully: %s\n", node_id_str);
-        } else {
-            printf("⚠️ Warning: Failed to register node in database\n");
-        }
+        // (node_status registration removed)
         
         printf("✅ Robust persistence system active\n");
     } else {

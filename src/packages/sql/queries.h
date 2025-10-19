@@ -30,18 +30,16 @@ typedef struct {
     uint32_t offset;
 } BlockFilter;
 
-// Node status record structure
+// (node_status removed)
+
+// Consensus node record structure
 typedef struct {
-    char node_id[128];
-    char node_name[256];
-    char ip_address[64];
-    uint16_t port;
-    bool is_validator;
-    char status[16]; // 'online', 'offline', 'unknown'
-    uint64_t last_seen;
-    uint64_t first_registered;
-    uint32_t heartbeat_count;
-} NodeStatusRecord;
+    uint32_t node_id;
+    char pubkey[128]; // Hex-encoded public key
+    int is_active;
+    uint64_t registered_at;
+    uint64_t created_at;
+} ConsensusNodeRecord;
 
 // High-level query functions
 int query_transactions(const TransactionFilter* filter, TransactionRecord** results, size_t* count);
@@ -72,15 +70,15 @@ void free_block_filter(BlockFilter* filter);
 // Result management
 void free_block_records(BlockRecord* records, size_t count);
 
-// Node status management functions
-int db_register_node(const char* node_id, const char* node_name, const char* ip_address, uint16_t port, bool is_validator);
-int db_update_node_heartbeat(const char* node_id);
-int db_set_node_offline(const char* node_id);
-int db_cleanup_stale_nodes(void);
-int db_get_all_nodes(NodeStatusRecord** results, size_t* count);
-int db_get_online_nodes(NodeStatusRecord** results, size_t* count);
-int db_count_total_nodes(uint32_t* count);
-int db_count_online_nodes(uint32_t* count);
-void db_free_node_records(NodeStatusRecord* records, size_t count);
+// (node_status functions removed)
+
+// Consensus nodes management functions
+int db_register_consensus_node(uint32_t node_id, const unsigned char* pubkey, int is_active, uint64_t registered_at);
+int db_update_consensus_node_status(const unsigned char* pubkey, int is_active);
+int db_get_authorized_nodes(ConsensusNodeRecord** results, size_t* count);
+int db_get_all_consensus_nodes(ConsensusNodeRecord** results, size_t* count);
+int db_is_authorized_consensus_node(const unsigned char* pubkey);
+int db_count_consensus_nodes(uint32_t* count);
+void db_free_consensus_node_records(ConsensusNodeRecord* records, size_t count);
 
 #endif // QUERIES_H 

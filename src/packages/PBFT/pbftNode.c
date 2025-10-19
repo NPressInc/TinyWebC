@@ -19,6 +19,10 @@
 #include "../fileIO/blockchainIO.h"
 #include "../utils/statePaths.h"
 #include "../comm/blockChainQueryApi.h"
+#include "../fileIO/blockchainPersistence.h"
+#include "../utils/byteorder.h"
+#include "../comm/accessApi.h"
+#include <sodium.h>
 
 // Global node ID for state path resolution
 static uint32_t g_current_node_id = 0;
@@ -41,10 +45,6 @@ static bool get_current_node_db_path(char* buffer, size_t buffer_size) {
 
     return state_paths_get_database_file(&paths, buffer, buffer_size);
 }
-#include "../comm/accessApi.h"
-#include "mongoose.h"
-#include "packages/fileIO/blockchainPersistence.h"
-#include "packages/utils/byteorder.h"
 
 // Forward declarations for endpoint handlers
 static void pbft_api_event_handler(struct mg_connection *c, int ev, void *ev_data);
@@ -1070,86 +1070,110 @@ int pbft_node_replace_blockchain(PBFTNode* node, TW_BlockChain* new_blockchain) 
     }
 }
 
+// Stub function for peer address lookup - will be replaced with relay server integration (Task 3)
+// Returns 1 on success, 0 on failure
+int pbft_node_lookup_peer_address(PBFTNode* node, const unsigned char* peer_pubkey, 
+                                   uint32_t peer_node_id, char* ip_port_out, size_t out_size) {
+    if (!node || !peer_pubkey || !ip_port_out || out_size == 0) return 0;
+
+    // TODO(Task 3): Replace with actual relay server lookup
+    // This stub provides a fallback for local testing only
+    // 
+    // Future implementation will:
+    // 1. Query relay server: GET /lookup/<blockchain_id>/<pubkey_hex>
+    // 2. Parse response: {ip, port, last_seen}
+    // 3. Validate TTL (not stale)
+    // 4. Return formatted "ip:port" string
+    //
+    // For now, use environment variable or fallback to localhost for testing
+    const char* relay_url = getenv("RELAY_URL");
+    if (relay_url) {
+        // Relay server configured but not implemented yet
+        printf("Node %u: Relay lookup not implemented (RELAY_URL=%s)\n", node->base.id, relay_url);
+        return 0;
+    }
+
+    // Fallback for local testing: derive from node_id and own port
+    // This allows existing tests to continue working
+    uint16_t base_port = (node->api_port > node->base.id) ? 
+                         (uint16_t)(node->api_port - node->base.id) : node->api_port;
+    snprintf(ip_port_out, out_size, "127.0.0.1:%u", (unsigned)(base_port + peer_node_id));
+    
+    printf("Node %u: Using fallback address for peer node_id=%u: %s (relay not configured)\n",
+           node->base.id, peer_node_id, ip_port_out);
+    return 1;
+}
+
 int pbft_node_load_peers_from_blockchain(PBFTNode* node) {
     if (!node) return -1;
 
-    printf("Node %u: Loading peers from database...\n", node->base.id);
+    printf("Node %u: Loading authorized consensus peers...\n", node->base.id);
 
     // Clear existing peers
     node->base.peer_count = 0;
 
-    // Query all nodes from database
-    NodeStatusRecord* node_records = NULL;
-    size_t node_count = 0;
-
-    if (db_get_all_nodes(&node_records, &node_count) != 0) {
-        printf("Node %u: Failed to query nodes from database\n", node->base.id);
+    // Load authorized consensus nodes
+    ConsensusNodeRecord* records = NULL;
+    size_t count = 0;
+    if (db_get_authorized_nodes(&records, &count) != 0) {
+        printf("Node %u: Failed to query authorized consensus nodes\n", node->base.id);
         return -1;
     }
 
-    if (node_count == 0) {
-        printf("Node %u: No nodes found in database\n", node->base.id);
+    if (count == 0) {
+        printf("Node %u: No authorized consensus nodes found\n", node->base.id);
         return 0;
     }
 
-    // Create current node ID string for comparison
-    char current_node_id[32];
-    snprintf(current_node_id, sizeof(current_node_id), "node_%03u", node->base.id);
-
-    printf("Node %u: Found %zu total nodes in database\n", node->base.id, node_count);
-
-    // Add peers for all nodes except ourselves
     size_t peers_added = 0;
-    for (size_t i = 0; i < node_count; i++) {
-        NodeStatusRecord* record = &node_records[i];
+    for (size_t i = 0; i < count; i++) {
+        ConsensusNodeRecord* rec = &records[i];
 
-        // Skip ourselves
-        if (strcmp(record->node_id, current_node_id) == 0) {
+        // Convert hex pubkey to bytes
+        unsigned char pubkey_bytes[PUBKEY_SIZE];
+        if (pbft_node_hex_to_bytes(rec->pubkey, pubkey_bytes, PUBKEY_SIZE) != PUBKEY_SIZE) {
+            printf("Node %u: Skipping node_id %u due to invalid pubkey\n", node->base.id, rec->node_id);
             continue;
         }
 
-        // Skip non-validator nodes
-        if (!record->is_validator) {
-            printf("Node %u: Skipping non-validator node %s\n", node->base.id, record->node_id);
+        // Skip ourselves by comparing pubkeys
+        if (memcmp(pubkey_bytes, node->base.public_key, PUBKEY_SIZE) == 0) {
             continue;
         }
 
-        // Parse peer ID from node_id string (e.g., "node_003" -> 3)
-        uint32_t peer_id;
-        if (sscanf(record->node_id, "node_%u", &peer_id) != 1) {
-            printf("Node %u: Failed to parse peer ID from %s\n", node->base.id, record->node_id);
+        // TODO(Task 3): Query relay server for peer's current IP:port
+        // For now, use a stub that will be replaced with relay lookup
+        char ip_port[64];
+        if (!pbft_node_lookup_peer_address(node, pubkey_bytes, rec->node_id, ip_port, sizeof(ip_port))) {
+            printf("Node %u: Failed to lookup address for peer node_id=%u (relay not implemented)\n", 
+                   node->base.id, rec->node_id);
             continue;
         }
 
-        // Create a public key for this peer (in a real implementation,
-        // this would come from the blockchain or keystore)
-        unsigned char dummy_pubkey[PUBKEY_SIZE];
-        memset(dummy_pubkey, 0, PUBKEY_SIZE);
-        // Set a unique identifier in the public key based on peer ID
-        dummy_pubkey[0] = (unsigned char)peer_id;
-
-        // Create IP:port string
-        char ip_port[100];
-        snprintf(ip_port, sizeof(ip_port), "%s:%u", record->ip_address, record->port);
-
-        printf("Node %u: Adding peer %s (%s) at %s\n",
-               node->base.id, record->node_id, record->node_name, ip_port);
-
-        if (pbft_node_add_peer(node, dummy_pubkey, ip_port, peer_id) != 0) {
-            printf("Node %u: Failed to add peer %s\n", node->base.id, record->node_id);
+        if (pbft_node_add_peer(node, pubkey_bytes, ip_port, rec->node_id) != 0) {
+            printf("Node %u: Failed to add peer node_id=%u\n", node->base.id, rec->node_id);
         } else {
             peers_added++;
         }
     }
 
-    // Free the node records
-    db_free_node_records(node_records, node_count);
+    db_free_consensus_node_records(records, count);
 
-    printf("Node %u: Successfully loaded %zu peers from database\n", node->base.id, peers_added);
+    printf("Node %u: Successfully loaded %zu authorized peers\n", node->base.id, peers_added);
     return 0;
 }
+
 int pbft_node_add_peer(PBFTNode* node, const unsigned char* public_key, const char* ip, uint32_t id) {
     if (!node || !public_key || !ip) return -1;
+
+    // Verify peer is authorized consensus node
+    if (db_is_authorized_consensus_node(public_key) != 1) {
+        char pubkey_hex[65];
+        sodium_bin2hex(pubkey_hex, sizeof(pubkey_hex), public_key, 32);
+        printf("Node %u: ❌ REJECTED unauthorized peer %u (pubkey: %s)\n",
+               node->base.id, id, pubkey_hex);
+        return -1; // Reject unauthorized peer
+    }
 
     if (node->base.peer_count >= MAX_PEERS) {
         printf("Node %u: Cannot add peer %u, maximum peers reached\n", node->base.id, id);
@@ -1176,7 +1200,7 @@ int pbft_node_add_peer(PBFTNode* node, const unsigned char* public_key, const ch
 
     node->base.peer_count++;
 
-    printf("Node %u: Added peer %u at %s\n", node->base.id, id, ip);
+    printf("Node %u: ✅ Added authorized peer %u at %s\n", node->base.id, id, ip);
     return 0;
 }
 int pbft_node_remove_peer(PBFTNode* node, uint32_t peer_id) { return 0; }
@@ -3152,8 +3176,20 @@ static void handle_verification_vote_endpoint(struct mg_connection *c, struct mg
 
     // Validate type and signature
     if (vote->type != TW_INT_TXN_VOTE_VERIFY || !TW_InternalTransaction_verify_signature(vote)) {
-        mg_http_reply(c, 401, "Content-Type: application/json\r\n", 
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
                      "{\"error\":\"Invalid verification vote\"}");
+        tw_destroy_internal_transaction(vote);
+        return;
+    }
+
+    // Verify sender is authorized consensus node
+    if (db_is_authorized_consensus_node(vote->sender) != 1) {
+        char sender_hex[65];
+        sodium_bin2hex(sender_hex, sizeof(sender_hex), vote->sender, 32);
+        printf("Node %u: ❌ REJECTED verification vote from unauthorized node (pubkey: %s)\n",
+               node->base.id, sender_hex);
+        mg_http_reply(c, 403, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Unauthorized consensus participant\"}");
         tw_destroy_internal_transaction(vote);
         return;
     }
@@ -3207,8 +3243,20 @@ static void handle_commit_vote_endpoint(struct mg_connection *c, struct mg_http_
 
     // Validate type and signature
     if (vote->type != TW_INT_TXN_VOTE_COMMIT || !TW_InternalTransaction_verify_signature(vote)) {
-        mg_http_reply(c, 401, "Content-Type: application/json\r\n", 
+        mg_http_reply(c, 401, "Content-Type: application/json\r\n",
                      "{\"error\":\"Invalid commit vote\"}");
+        tw_destroy_internal_transaction(vote);
+        return;
+    }
+
+    // Verify sender is authorized consensus node
+    if (db_is_authorized_consensus_node(vote->sender) != 1) {
+        char sender_hex[65];
+        sodium_bin2hex(sender_hex, sizeof(sender_hex), vote->sender, 32);
+        printf("Node %u: ❌ REJECTED commit vote from unauthorized node (pubkey: %s)\n",
+               node->base.id, sender_hex);
+        mg_http_reply(c, 403, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Unauthorized consensus participant\"}");
         tw_destroy_internal_transaction(vote);
         return;
     }
@@ -3283,6 +3331,18 @@ static void handle_new_round_endpoint(struct mg_connection *c, struct mg_http_me
     if (vote->type != TW_INT_TXN_VOTE_NEW_ROUND || !TW_InternalTransaction_verify_signature(vote)) {
         mg_http_reply(c, 401, "Content-Type: application/json\r\n",
                      "{\"error\":\"Invalid new round vote\"}");
+        tw_destroy_internal_transaction(vote);
+        return;
+    }
+
+    // Verify sender is authorized consensus node
+    if (db_is_authorized_consensus_node(vote->sender) != 1) {
+        char sender_hex[65];
+        sodium_bin2hex(sender_hex, sizeof(sender_hex), vote->sender, 32);
+        printf("Node %u: ❌ REJECTED new round vote from unauthorized node (pubkey: %s)\n",
+               node->base.id, sender_hex);
+        mg_http_reply(c, 403, "Content-Type: application/json\r\n",
+                     "{\"error\":\"Unauthorized consensus participant\"}");
         tw_destroy_internal_transaction(vote);
         return;
     }

@@ -96,6 +96,13 @@ typedef struct {
 
 // Network Management Structs
 typedef struct {
+    unsigned char node_pubkey[PUBKEY_SIZE];  // Node's Ed25519 public key
+    uint32_t node_id;                        // Unique node identifier
+    uint8_t is_consensus_node;               // 1 if consensus node, 0 otherwise
+    uint64_t registration_timestamp;         // When node was registered
+} TW_TXN_NodeRegistration;
+
+typedef struct {
     uint8_t config_type;  // e.g., network settings, security settings
     uint8_t config_value; // New configuration value
     permission_scope_t config_scope; // Which scope this config applies to
@@ -132,6 +139,7 @@ static const TW_TransactionPermission TXN_PERMISSIONS[] = {
     {TW_TXN_EMERGENCY_ALERT, PERM_CATEGORY_MESSAGING, PERMISSION_SEND_EMERGENCY, SCOPE_COMMUNITY},
     
     // System Management
+    {TW_TXN_NODE_REGISTRATION, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_SETTINGS, SCOPE_GLOBAL},
     {TW_TXN_SYSTEM_CONFIG, PERM_CATEGORY_ADMIN, PERMISSION_MANAGE_SETTINGS, SCOPE_GLOBAL},
     
     // Access Control
@@ -211,6 +219,9 @@ int deserialize_location_update(const unsigned char* buffer, TW_TXN_LocationUpda
 
 int serialize_emergency_alert(const TW_TXN_EmergencyAlert* alert, unsigned char** buffer);
 int deserialize_emergency_alert(const unsigned char* buffer, TW_TXN_EmergencyAlert* alert);
+
+int serialize_node_registration(const TW_TXN_NodeRegistration* reg, unsigned char** buffer);
+int deserialize_node_registration(const unsigned char* buffer, TW_TXN_NodeRegistration* reg);
 
 int serialize_system_config(const TW_TXN_SystemConfig* config, unsigned char** buffer);
 int deserialize_system_config(const unsigned char* buffer, TW_TXN_SystemConfig* config);

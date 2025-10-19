@@ -38,6 +38,7 @@ typedef enum {
     TW_TXN_EMERGENCY_ALERT,        // Emergency notification
     
     // Network Management (Core)
+    TW_TXN_NODE_REGISTRATION,      // Register consensus node (blockchain-verified)
     TW_TXN_SYSTEM_CONFIG,          // Network-wide configuration changes
     
     // Access Control (Core)
