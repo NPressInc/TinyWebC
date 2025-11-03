@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include "packages/initialization/init.h"
 #include "packages/sql/database.h"
-#include "packages/structures/blockChain/transaction_types.h"
+#include "features/blockchain/core/transaction_types.h"
 #include "packages/validation/transaction_validation.h"
 #include "packages/keystore/keystore.h"
 #include "packages/signing/signing.h"

@@ -4,10 +4,10 @@
 #include <sqlite3.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/block.h"
-#include "packages/structures/blockChain/transaction.h"
-#include "packages/structures/blockChain/transaction_types.h"
+#include "features/blockchain/core/blockchain.h"
+#include "features/blockchain/core/block.h"
+#include "packages/transactions/transaction.h"
+#include "features/blockchain/core/transaction_types.h"
 
 // Database configuration
 #define DEFAULT_DB_PATH "state/blockchain/blockchain.db"
@@ -122,6 +122,7 @@ typedef struct {
 
 // Core database functions
 int db_init(const char* db_path);
+int db_init_gossip(const char* db_path);
 int db_close(void);
 int db_create_schema(void);
 int db_configure_wal_mode(void);

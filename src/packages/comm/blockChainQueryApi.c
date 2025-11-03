@@ -4,8 +4,8 @@
 #include <string.h>
 #include <time.h>
 #include <cjson/cJSON.h>
-#include "../sql/database.h"
-#include "../sql/queries.h"
+#include "packages/sql/database.h"
+#include "packages/sql/queries.h"
 #include "pbftApi.h"
 #include <unistd.h>
 

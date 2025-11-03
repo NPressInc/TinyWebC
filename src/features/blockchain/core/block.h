@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <time.h>      // For time_t
 #include <openssl/sha.h> // For SHA256
-#include "transaction.h" // Assume this exists for TW_Transaction
+#include "packages/transactions/transaction.h" // Assume this exists for TW_Transaction
 #include "merkleTree.h" // Assume this exists
 
 #define HASH_SIZE 32   // SHA-256 hash size

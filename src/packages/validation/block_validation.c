@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include "packages/signing/signing.h"
-#include "packages/structures/blockChain/merkleTree.h"
+#include "features/blockchain/core/merkleTree.h"
 #include "packages/encryption/encryption.h"
 #include "packages/validation/transaction_validation.h"
 

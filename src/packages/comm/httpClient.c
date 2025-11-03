@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "external/mongoose/mongoose.h"
-#include "packages/structures/blockChain/internalTransaction.h"
+#include "features/blockchain/core/internalTransaction.h"
 
 // Global HTTP client manager
 static struct mg_mgr http_client_mgr;

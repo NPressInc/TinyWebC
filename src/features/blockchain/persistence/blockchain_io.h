@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/transaction.h"
+#include "features/blockchain/core/blockchain.h"
+#include "packages/transactions/transaction.h"
 #include "packages/sql/database.h"
 
 // Save blockchain to a file

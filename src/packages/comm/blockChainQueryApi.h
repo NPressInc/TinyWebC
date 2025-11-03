@@ -2,8 +2,8 @@
 #define BLOCKCHAIN_QUERY_API_H
 
 #include "../../external/mongoose/mongoose.h"
-#include "../structures/blockChain/block.h"
-#include "../structures/blockChain/transaction.h"
+#include "features/blockchain/core/block.h"
+#include "packages/transactions/transaction.h"
 
 // JSON response helper functions
 void send_json_response(struct mg_connection* c, int status, const char* json_response);

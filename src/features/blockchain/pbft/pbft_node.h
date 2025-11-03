@@ -6,10 +6,10 @@
 #include <time.h>
 #include <pthread.h>
 #include "node.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/block.h"
-#include "packages/structures/blockChain/transaction.h"
-#include "packages/structures/blockChain/internalTransaction.h"
+#include "features/blockchain/core/blockchain.h"
+#include "features/blockchain/core/block.h"
+#include "packages/transactions/transaction.h"
+#include "features/blockchain/core/internalTransaction.h"
 #include "packages/comm/httpClient.h"
 #include "external/mongoose/mongoose.h"
 
@@ -37,6 +37,7 @@ typedef struct {
 
     // Configuration
     bool debug_mode;  // true for debug mode, false for production mode
+    bool consensus_enabled;
 
     // Network configuration
     char self_url[MAX_URL_LENGTH];

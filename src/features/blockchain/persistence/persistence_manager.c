@@ -6,13 +6,13 @@
 #include <errno.h>
 #include <time.h>
 #include <sodium.h>
-#include "blockchainPersistence.h"
-#include "blockchainIO.h"
+#include "persistence_manager.h"
+#include "blockchain_io.h"
 #include "packages/sql/database.h"
 #include "packages/utils/print.h"
-#include "packages/PBFT/pbftNode.h"
-#include "packages/structures/blockChain/block.h"
-#include "packages/structures/blockChain/transaction.h"
+#include "features/blockchain/pbft/pbft_node.h"
+#include "features/blockchain/core/block.h"
+#include "packages/transactions/transaction.h"
 
 // Missing constants if not defined elsewhere
 #ifndef MAX_RECIPIENTS

@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "packages/structures/blockChain/transaction.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/transaction_types.h"
+#include "packages/transactions/transaction.h"
+#include "features/blockchain/core/blockchain.h"
+#include "features/blockchain/core/transaction_types.h"
 #include "packages/sql/database.h"
 #include "structs/permission/permission.h"
 

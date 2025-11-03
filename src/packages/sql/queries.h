@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "database.h"
-#include "packages/structures/blockChain/transaction.h"
+#include "packages/transactions/transaction.h"
 
 // Query filter structures
 typedef struct {

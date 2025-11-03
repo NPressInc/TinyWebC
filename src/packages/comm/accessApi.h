@@ -2,8 +2,8 @@
 #define TW_ACCESS_API_H
 
 #include "external/mongoose/mongoose.h"
-#include "packages/structures/blockChain/transaction.h"
-#include "packages/structures/blockChain/blockchain.h"
+#include "packages/transactions/transaction.h"
+#include "features/blockchain/core/blockchain.h"
 #include "packages/sql/database.h"
 #include <stdio.h>
 #include <stdlib.h>

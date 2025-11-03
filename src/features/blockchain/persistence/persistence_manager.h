@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include "packages/structures/blockChain/blockchain.h"
+#include "features/blockchain/core/blockchain.h"
 #include "packages/sql/database.h"
 
 // Two-phase commit result codes

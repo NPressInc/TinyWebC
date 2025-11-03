@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
-#include "../packages/PBFT/node.h"
+#include "../features/blockchain/pbft/node.h"
 #include "../packages/keystore/keystore.h"
 
 // Test helper functions

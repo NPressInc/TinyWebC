@@ -1,33 +1,121 @@
 # CTinyWeb Setup Guide
 
-This guide explains how to set up the development environment for CTinyWeb, including automated setup for AI agents like Cursor AI.
+The project now defaults to a gossip-first runtime. Blockchain + PBFT remain available as an optional feature under `src/features/blockchain`.
 
-## Quick Setup (Automated)
-
-### For Cursor AI Agent
-
-Cursor AI Agent can automatically use these files for setup:
-
-1. **`.cursor-setup.json`** - Main configuration file for Cursor AI
-2. **`install_deps.sh`** - Automated dependency installation
-3. **`run_tests.sh`** - Complete test suite runner
-
-Simply tell Cursor AI Agent: *"Set up the development environment and run tests"* and it will:
-- Read the `.cursor-setup.json` configuration
-- Run `./install_deps.sh` to install dependencies
-- Execute `./run_tests.sh` to build and test the project
-
-### Manual Setup
-
-If you prefer manual setup or are not using Cursor AI:
+## 1. Dependencies
 
 ```bash
-# 1. Install dependencies
 ./install_deps.sh
-
-# 2. Build and test
-./run_tests.sh
 ```
+
+This installs toolchains (gcc, cmake, make) and required libraries (libsodium, sqlite3, cJSON, libmicrohttpd, etc.).
+
+## 2. Configure + Build
+
+```bash
+cmake -S . -B build
+cmake --build build --target tinyweb tinyweb_tests
+```
+
+This produces the gossip node (`tinyweb`) and the default gossip test binary (`tinyweb_tests`).
+
+## 3. Run Gossip Tests
+
+```bash
+cd build
+ctest --output-on-failure
+```
+
+By default the test runner executes encryption, signing, and gossip-related suites. Use `ctest -N` to view available test names.
+
+## 4. Optional: Build PBFT Feature Targets
+
+```bash
+cmake --build build --target tinyweb_pbft tinyweb_pbft_tests init_tool
+
+cd build
+ctest -R "^Pbft" --output-on-failure
+```
+
+PBFT executables and tests are isolated in `src/features/blockchain`. Building these targets is opt-in and does not affect the gossip executable.
+
+## Reference Scripts
+
+- `install_deps.sh` – installs system packages listed in `requirements-apt.txt`
+- `run_tests.sh` – legacy helper that still runs the gossip pipeline (`cmake`, build, `ctest`)
+- `.cursor-setup.json` – configuration for the Cursor AI agent (dependency install + build + test commands)
+
+## Build Matrix
+
+| Target | Description |
+|--------|-------------|
+| `tinyweb` | Gossip UDP + HTTP node |
+| `tinyweb_tests` | Gossip unit/integration tests |
+| `tinyweb_pbft` | PBFT blockchain node (optional) |
+| `tinyweb_pbft_tests` | PBFT-specific tests (optional) |
+| `init_tool` | Blockchain initialisation helper |
+
+## Testing Cheat Sheet
+
+```bash
+# Gossip-only test run
+cmake --build build --target tinyweb_tests
+ctest --output-on-failure
+
+# PBFT feature test run
+cmake --build build --target tinyweb_pbft_tests
+ctest -R "^Pbft" --output-on-failure
+```
+
+## Continuous Integration Snippet
+
+```yaml
+- name: Install deps
+  run: ./install_deps.sh
+
+- name: Build gossip node
+  run: |
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build --target tinyweb tinyweb_tests
+
+- name: Run gossip tests
+  run: |
+    cd build
+    ctest --output-on-failure
+
+- name: Build PBFT feature (optional)
+  if: ${{ inputs.build_pbft }}
+  run: |
+    cmake --build build --target tinyweb_pbft tinyweb_pbft_tests init_tool
+    cd build
+    ctest -R "^Pbft" --output-on-failure
+```
+
+## Project Layout
+
+```
+CTinyWeb/
+├── src/
+│   ├── main.c                         # Gossip entry point
+│   ├── packages/
+│   │   ├── comm/gossip/               # UDP transport
+│   │   ├── comm/gossipApi.*           # HTTP API
+│   │   ├── sql/gossip_store.*         # Gossip persistence
+│   │   └── transactions/              # Shared transaction types
+│   └── features/blockchain/           # Optional PBFT modules & tests
+├── CMakeLists.txt                     # Gossip-first build configuration
+├── src/features/blockchain/CMakeLists.txt  # Feature-only targets
+├── install_deps.sh
+├── requirements-apt.txt
+└── SETUP.md
+```
+
+## Troubleshooting
+
+- **Missing packages** – rerun `./install_deps.sh`
+- **Build errors** – run `cmake --build build --clean-first ...`
+- **ctest failures** – rerun with `--output-on-failure` or `-V` for verbose logs
+- **PBFT schema issues** – remember that the default gossip runtime uses `db_init_gossip`; PBFT targets run the full schema migration when they start.
 
 ## Prerequisites Files Explained
 

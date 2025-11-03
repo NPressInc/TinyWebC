@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,71 +6,92 @@
 #include <signal.h>
 #include <pthread.h>
 #include <sodium.h>
-#include "packages/PBFT/pbftNode.h"
-#include "packages/comm/pbftApi.h"
+#include <time.h>
+
+#include "packages/comm/gossip/gossip.h"
 #include "packages/sql/database.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/fileIO/blockchainPersistence.h"
+#include "packages/sql/gossip_store.h"
 #include "packages/utils/statePaths.h"
+#include "packages/validation/gossip_validation.h"
+#include "packages/transactions/transaction.h"
+#include "packages/comm/gossipApi.h"
 
-// Global variables
-static PBFTNode* g_pbft_node = NULL;
-static int g_running = 1;
+typedef struct {
+    uint32_t node_id;
+    bool debug_mode;
+    uint16_t gossip_port;
+    uint16_t api_port;
+} AppConfig;
 
-// Signal handler for graceful shutdown
-void signal_handler(int sig) {
-    printf("\nReceived signal %d, shutting down gracefully...\n", sig);
+static volatile int g_running = 1;
+static GossipService g_gossip_service;
+static GossipValidationConfig g_validation_config = {
+    .max_clock_skew_seconds = 300,
+    .message_ttl_seconds = 60ULL * 60ULL * 24ULL * 30ULL,
+    .max_payload_bytes = MAX_PAYLOAD_SIZE_EXTERNAL
+};
+static volatile int g_cleanup_running = 0;
+static pthread_t g_cleanup_thread;
+static bool g_cleanup_thread_started = false;
+static bool g_http_server_running = false;
+
+static void handle_signal(int sig);
+static int parse_arguments(int argc, char* argv[], AppConfig* config);
+static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len);
+static int start_gossip_service(uint16_t port);
+static void stop_gossip_service(void);
+static int start_http_api(uint16_t port);
+static void stop_http_api(void);
+static int gossip_receive_handler(GossipService* service, TW_Transaction* transaction, const struct sockaddr_in* source, void* context);
+static void* cleanup_loop(void* arg);
+
+static void handle_signal(int sig) {
+    (void)sig;
+    printf("\nReceived shutdown signal. Stopping services...\n");
     g_running = 0;
-    
-    if (g_pbft_node) {
-        g_pbft_node->running = 0;
-    }
+    g_cleanup_running = 0;
 }
 
-// Print usage information
-void print_usage(const char* program_name) {
+static void print_usage(const char* program_name) {
     printf("Usage: %s [OPTIONS]\n", program_name);
     printf("Options:\n");
-    printf("  -i, --id <node_id>      Node ID (default: 0)\n");
-    printf("  -p, --port <port>       API server port (default: 8000)\n");
-    printf("  -d, --debug             Use isolated test directories (test_state/node_X/)\n");
-    printf("  -h, --help              Show this help message\n");
-    printf("\nExamples:\n");
-    printf("  %s --id 1 --port 8001\n", program_name);
-    printf("  %s --debug --id 0 --port 8000\n", program_name);
+    printf("  -i, --id <node_id>       Node identifier (default: 0)\n");
+    printf("  -g, --gossip-port <port> Gossip UDP port (default: 9000)\n");
+    printf("  -p, --api-port <port>    HTTP API port (default: 8000)\n");
+    printf("  -d, --debug              Use test_state/ directories instead of state/\n");
+    printf("  -h, --help               Show this help message\n");
 }
 
-// Parse command line arguments
-int parse_arguments(int argc, char* argv[], uint32_t* node_id, uint16_t* port, bool* debug_mode) {
-    *node_id = 0;     // Default node ID
-    *port = 8000;     // Default port (keeping original port)
-    *debug_mode = false;  // Default to normal mode
+static int parse_arguments(int argc, char* argv[], AppConfig* config) {
+    config->node_id = 0;
+    config->debug_mode = false;
+    config->gossip_port = 9000;
+    config->api_port = 8000;
 
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--id") == 0) {
-            if (i + 1 >= argc) {
-                fprintf(stderr, "Error: --id requires a value\n");
+    for (int i = 1; i < argc; ++i) {
+        if ((strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--id") == 0) && i + 1 < argc) {
+            config->node_id = (uint32_t)atoi(argv[++i]);
+        } else if ((strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--gossip-port") == 0) && i + 1 < argc) {
+            uint32_t port = (uint32_t)atoi(argv[++i]);
+            if (port < 1024 || port > 65535) {
+                fprintf(stderr, "Error: gossip port must be between 1024 and 65535\n");
                 return -1;
             }
-            *node_id = (uint32_t)atoi(argv[++i]);
-        } else if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--port") == 0) {
-            if (i + 1 >= argc) {
-                fprintf(stderr, "Error: --port requires a value\n");
+            config->gossip_port = (uint16_t)port;
+        } else if ((strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--api-port") == 0) && i + 1 < argc) {
+            uint32_t port = (uint32_t)atoi(argv[++i]);
+            if (port < 1024 || port > 65535) {
+                fprintf(stderr, "Error: API port must be between 1024 and 65535\n");
                 return -1;
             }
-            *port = (uint16_t)atoi(argv[++i]);
-            if (*port < 1024 || *port > 65535) {
-                fprintf(stderr, "Error: Port must be between 1024 and 65535\n");
-                return -1;
-            }
+            config->api_port = (uint16_t)port;
         } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--debug") == 0) {
-            *debug_mode = true;
-            printf("🐛 Debug mode enabled - using isolated test directories\n");
+            config->debug_mode = true;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             exit(0);
         } else {
-            fprintf(stderr, "Error: Unknown option %s\n", argv[i]);
+            fprintf(stderr, "Unknown option: %s\n", argv[i]);
             return -1;
         }
     }
@@ -77,209 +99,181 @@ int parse_arguments(int argc, char* argv[], uint32_t* node_id, uint16_t* port, b
     return 0;
 }
 
-// Initialize system components
-int initialize_system(uint32_t node_id, bool debug_mode) {
-    printf("Initializing TinyWeb system components for node %u...\n", node_id);
-    
-    // Initialize sodium for cryptography
-    if (sodium_init() < 0) {
-        printf("Failed to initialize sodium\n");
+static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len) {
+    if (!state_paths_init(config->node_id, config->debug_mode, paths)) {
+        fprintf(stderr, "Failed to initialize state paths for node %u\n", config->node_id);
+        return -1;
+    }
+
+    if (!state_paths_get_database_file(paths, db_path, db_path_len)) {
+        fprintf(stderr, "Failed to resolve database path for node %u\n", config->node_id);
         return -1;
     }
     
-    // Initialize node-specific state paths
-    NodeStatePaths paths;
-    if (!state_paths_init(node_id, debug_mode, &paths)) {
-        printf("Failed to initialize node state paths\n");
+    if (db_init_gossip(db_path) != 0) {
+        fprintf(stderr, "Failed to initialize database at %s\n", db_path);
         return -1;
     }
     
-    // Initialize message queues
-    init_message_queues();
-    
-    printf("System components initialized successfully for node %u\n", node_id);
+    if (gossip_store_init() != 0) {
+        fprintf(stderr, "Failed to initialize gossip message store\n");
+        return -1;
+    }
+
     return 0;
 }
 
-// Cleanup system components
-void cleanup_system(void) {
-    printf("Cleaning up system components...\n");
-    
-    // Cleanup persistence system first
-    blockchain_persistence_cleanup();
-    
-    // Cleanup message queues
-    cleanup_message_queues();
-    
-    // Close database
-    if (db_is_initialized()) {
-        db_close();
-        printf("Database closed\n");
+static int start_gossip_service(uint16_t port) {
+    if (gossip_service_init(&g_gossip_service, port, gossip_receive_handler, &g_validation_config) != 0) {
+        fprintf(stderr, "Failed to initialize gossip service\n");
+        return -1;
     }
-    
-    if (g_pbft_node) {
-        // Clear the global pbft_node pointer
-        extern PBFTNode* pbft_node;
-        pbft_node = NULL;
-        
-        pbft_node_destroy(g_pbft_node);
-        g_pbft_node = NULL;
+
+    if (gossip_service_start(&g_gossip_service) != 0) {
+        fprintf(stderr, "Failed to start gossip service\n");
+        return -1;
     }
-    
-    printf("System cleanup completed\n");
+
+    g_cleanup_running = 1;
+    if (pthread_create(&g_cleanup_thread, NULL, cleanup_loop, NULL) == 0) {
+        g_cleanup_thread_started = true;
+    } else {
+        fprintf(stderr, "Warning: Failed to start gossip cleanup thread\n");
+        g_cleanup_running = 0;
+    }
+
+    return 0;
 }
 
-// Main application thread that monitors the node
-void* monitor_thread(void* arg) {
-    PBFTNode* node = (PBFTNode*)arg;
-    
-    printf("TinyWeb monitor thread started\n");
-    
-    char node_id_str[32];
-    snprintf(node_id_str, sizeof(node_id_str), "node_%03u", node->base.id);
-    
-    while (g_running && node->running) {
-        // Monitor node health and performance
-        pthread_mutex_lock(&node->state_mutex);
-        
-        // (heartbeat removed)
-        
-        // Print periodic status every 100 iterations (~100 seconds)
-        if (node->counter % 100 == 0 && node->counter > 0) {
-            printf("Node Status - ID: %u, Port: %u, Blockchain Length: %u, Peers: %zu\n",
-                   node->base.id, 
-                   node->api_port,
-                   node->base.blockchain ? node->base.blockchain->length : 0,
-                   node->base.peer_count);
-        }
-        
-        pthread_mutex_unlock(&node->state_mutex);
-        
-        // Sleep for 1 second
-        sleep(1);
+static void stop_gossip_service(void) {
+    g_cleanup_running = 0;
+    if (g_cleanup_thread_started) {
+        pthread_join(g_cleanup_thread, NULL);
+        g_cleanup_thread_started = false;
     }
-    
-    // (node_status offline marker removed)
-    
-    printf("TinyWeb monitor thread stopping\n");
+    gossip_service_stop(&g_gossip_service);
+}
+
+static int start_http_api(uint16_t port) {
+    if (g_http_server_running) {
+        return 0;
+    }
+
+    if (gossip_api_start(port, &g_gossip_service, &g_validation_config) != 0) {
+        return -1;
+    }
+
+    g_http_server_running = true;
+    return 0;
+}
+
+static void stop_http_api(void) {
+    if (!g_http_server_running) {
+        return;
+    }
+
+    gossip_api_stop();
+    g_http_server_running = false;
+}
+
+static int gossip_receive_handler(GossipService* service, TW_Transaction* transaction, const struct sockaddr_in* source, void* context) {
+    (void)service;
+    (void)source;
+
+    const GossipValidationConfig* config = (const GossipValidationConfig*)context;
+    uint64_t now = (uint64_t)time(NULL);
+
+    GossipValidationResult result = gossip_validate_transaction(transaction, config, now);
+    if (result != GOSSIP_VALIDATION_OK) {
+        fprintf(stderr, "Rejected gossip transaction: %s\n", gossip_validation_error_string(result));
+        return -1;
+    }
+
+    if (!db_is_initialized()) {
+        return 0;
+    }
+
+    uint64_t expires_at = gossip_validation_expiration(transaction, config);
+    if (gossip_store_save_transaction(transaction, expires_at) != 0) {
+        fprintf(stderr, "Failed to persist gossip transaction\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static void* cleanup_loop(void* arg) {
+    (void)arg;
+
+    while (g_cleanup_running) {
+        sleep(60);
+        if (!g_cleanup_running || !db_is_initialized()) {
+            continue;
+        }
+        uint64_t now = (uint64_t)time(NULL);
+        gossip_store_cleanup(now);
+    }
+
     return NULL;
 }
 
 int main(int argc, char* argv[]) {
-    uint32_t node_id;
-    uint16_t port;
-    bool debug_mode;
-    pthread_t monitor_tid;
+    AppConfig config;
+    NodeStatePaths paths;
+    char db_path[MAX_STATE_PATH_LEN];
 
-    printf("=================================================================\n");
-    printf("🚀 Welcome to TinyWeb - Decentralized PBFT Blockchain Node!\n");
-    printf("=================================================================\n");
-
-    // Parse command line arguments
-    if (parse_arguments(argc, argv, &node_id, &port, &debug_mode) != 0) {
+    if (parse_arguments(argc, argv, &config) != 0) {
+        print_usage(argv[0]);
         return 1;
     }
     
-    printf("Node Configuration:\n");
-    printf("  Node ID: %u\n", node_id);
-    printf("  API Port: %u\n", port);
-    printf("  Protocol: HTTP + PBFT Consensus\n");
-    printf("  Features: Blockchain, Encrypted Transactions\n");
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+    
+    if (sodium_init() < 0) {
+        fprintf(stderr, "Failed to initialize libsodium\n");
+        return 1;
+    }
+    
+    if (initialize_storage(&config, &paths, db_path, sizeof(db_path)) != 0) {
+        return 1;
+    }
+    
+    if (start_gossip_service(config.gossip_port) != 0) {
+        stop_gossip_service();
+        db_close();
+        return 1;
+    }
+    
+    if (start_http_api(config.api_port) != 0) {
+        fprintf(stderr, "Failed to start HTTP API on port %u\n", config.api_port);
+        stop_gossip_service();
+        db_close();
+        return 1;
+    }
+    
+    printf("=================================================================\n");
+    printf("🚀 TinyWeb Gossip Node Online\n");
+    printf("=================================================================\n");
+    printf("  Node ID:           %u\n", config.node_id);
+    printf("  Gossip UDP Port:   %u\n", config.gossip_port);
+    printf("  HTTP API Port:     %u\n", config.api_port);
+    printf("  Storage Path:      %s\n", db_path);
     printf("-----------------------------------------------------------------\n");
-    
-    // Set up signal handlers for graceful shutdown
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
-    
-    // Initialize system components
-    if (initialize_system(node_id, debug_mode) != 0) {
-        fprintf(stderr, "Failed to initialize system components\n");
-        return 1;
+    printf("Waiting for gossip traffic... Press Ctrl+C to exit.\n");
+
+    while (g_running) {
+        sleep(1);
     }
-    
-    // Create and initialize PBFT node
-    printf("Creating PBFT node...\n");
-    g_pbft_node = pbft_node_create(node_id, port, debug_mode);
-    if (!g_pbft_node) {
-        fprintf(stderr, "Failed to create PBFT node\n");
-        cleanup_system();
-        return 1;
-    }
-    
-    // Set the global pbft_node pointer for API access
-    extern PBFTNode* pbft_node;
-    pbft_node = g_pbft_node;
-    
-    // Initialize node cryptographic keys
-    printf("Initializing node keys...\n");
-    if (pbft_node_initialize_keys(g_pbft_node) != 0) {
-        fprintf(stderr, "Failed to initialize node keys\n");
-        cleanup_system();
-        return 1;
-    }
-    
-    // Load or create blockchain
-    printf("Loading blockchain...\n");
-    if (pbft_node_load_or_create_blockchain(g_pbft_node) != 0) {
-        fprintf(stderr, "Failed to load/create blockchain\n");
-        cleanup_system();
-        return 1;
-    }
-    
-    // Load peers from database immediately after blockchain initialization
-    printf("Loading peers from database...\n");
-    if (pbft_node_load_peers_from_blockchain(g_pbft_node) != 0) {
-        printf("⚠️ Warning: Failed to load peers from database, continuing...\n");
-    }
-    
-    // Register this node in the database if it's available
+
+    stop_http_api();
+    stop_gossip_service();
+
     if (db_is_initialized()) {
-        printf("📝 Registering node in database...\n");
-        char node_id_str[32];
-        snprintf(node_id_str, sizeof(node_id_str), "node_%03u", node_id);
-        
-        // (node_status registration removed)
-        
-        printf("✅ Robust persistence system active\n");
-    } else {
-        printf("⚠️ Database not available - running in file-only mode\n");
+        gossip_store_cleanup((uint64_t)time(NULL));
+        db_close();
     }
-    
-    // Load peers from blockchain
-    if (pbft_node_load_peers_from_blockchain(g_pbft_node) != 0) {
-        printf("Warning: Failed to load peers from blockchain (starting in singular mode)\n");
-    }
-    
-    printf("✅ TinyWeb PBFT node initialized successfully\n");
-    printf("-----------------------------------------------------------------\n");
-    printf("🌐 HTTP API Server: http://localhost:%u\n", port);
-    printf("📊 Available Endpoints:\n");
-    printf("  • GET  /                          - Node status\n");
-    printf("  • GET  /GetBlockChainLength       - Blockchain info\n");
-    printf("  • POST /Transaction               - Submit transaction\n");\
-    printf("🔧 Press Ctrl+C to shutdown gracefully\n");
-    printf("=================================================================\n");
-    
-    // Start monitor thread
-    if (pthread_create(&monitor_tid, NULL, monitor_thread, g_pbft_node) != 0) {
-        fprintf(stderr, "Failed to create monitor thread\n");
-        cleanup_system();
-        return 1;
-    }
-    
-    // Run the PBFT node (this will start both consensus and API server threads)
-    // This function blocks until the node shuts down
-    pbft_node_run(g_pbft_node);
-    
-    // Wait for monitor thread to finish
-    printf("Waiting for monitor thread to finish...\n");
-    pthread_join(monitor_tid, NULL);
-    
-    // Cleanup and exit
-    cleanup_system();
-    printf("\n=================================================================\n");
-    printf("🛑 TinyWeb PBFT Node shutdown complete - Goodbye!\n");
-    printf("=================================================================\n");
-    
+
+    printf("Shutdown complete. Goodbye!\n");
     return 0;
 }

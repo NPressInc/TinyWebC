@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <time.h>
-#include "../packages/PBFT/pbftNode.h"
+#include "../features/blockchain/pbft/pbft_node.h"
 #include "../packages/comm/httpClient.h"
 #include "../external/mongoose/mongoose.h"
 

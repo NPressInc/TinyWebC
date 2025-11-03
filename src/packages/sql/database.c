@@ -6,11 +6,13 @@
 #include "database.h"
 #include "schema.h"
 #include "packages/encryption/encryption.h"
-#include "packages/structures/blockChain/block.h"
-#include "packages/structures/blockChain/transaction.h"
+#include "features/blockchain/core/block.h"
+#include "packages/transactions/transaction.h"
 
 // Global database context
 static DatabaseContext g_db_ctx = {0};
+
+static int db_prepare_context(const char* db_path);
 
 // Helper function to ensure directory exists
 static bool ensure_directory_exists(const char* path) {
@@ -28,52 +30,75 @@ static bool ensure_directory_exists(const char* path) {
     return true;
 }
 
-// Core database functions
-int db_init(const char* db_path) {
+static int db_prepare_context(const char* db_path) {
     if (g_db_ctx.is_initialized) {
         printf("Database already initialized\n");
-        return 0;
+        return 1;
     }
 
     if (!db_path) {
         db_path = DEFAULT_DB_PATH;
     }
 
-    // Ensure the directory exists
     char dir_path[256];
     strncpy(dir_path, db_path, sizeof(dir_path) - 1);
     dir_path[sizeof(dir_path) - 1] = '\0';
-    
+
     char* last_slash = strrchr(dir_path, '/');
     if (last_slash) {
         *last_slash = '\0';
         if (!ensure_directory_exists(dir_path)) {
-            return -1;
+            return 0;
         }
     }
 
-    // Open database
     int rc = sqlite3_open(db_path, &g_db_ctx.db);
     if (rc != SQLITE_OK) {
         printf("Failed to open database: %s\n", sqlite3_errmsg(g_db_ctx.db));
         sqlite3_close(g_db_ctx.db);
-        return -1;
+        g_db_ctx.db = NULL;
+        return 0;
     }
 
-    // Store database path
     g_db_ctx.db_path = malloc(strlen(db_path) + 1);
     if (!g_db_ctx.db_path) {
         sqlite3_close(g_db_ctx.db);
-        return -1;
+        g_db_ctx.db = NULL;
+        return 0;
     }
     strcpy(g_db_ctx.db_path, db_path);
 
-    // Configure WAL mode and other optimizations
     if (db_configure_wal_mode() != 0) {
         printf("Warning: Failed to configure WAL mode\n");
     }
 
-    // Check schema version and migrate if necessary
+    return 1;
+}
+
+int db_init_gossip(const char* db_path) {
+    if (g_db_ctx.is_initialized) {
+        return 0;
+    }
+
+    if (!db_prepare_context(db_path)) {
+        return -1;
+    }
+
+    g_db_ctx.is_initialized = true;
+    printf("Database (gossip) initialized: %s\n", g_db_ctx.db_path);
+    return 0;
+}
+
+int db_init(const char* db_path) {
+    if (g_db_ctx.is_initialized) {
+        printf("Database already initialized\n");
+        return 0;
+    }
+
+    if (!db_prepare_context(db_path)) {
+        return -1;
+    }
+
     int current_version;
     if (schema_check_version(g_db_ctx.db, &current_version) != 0) {
         printf("Failed to check schema version\n");
@@ -82,7 +107,7 @@ int db_init(const char* db_path) {
     }
 
     if (current_version < CURRENT_SCHEMA_VERSION) {
-        printf("Database schema needs migration from version %d to %d\n", 
+        printf("Database schema needs migration from version %d to %d\n",
                current_version, CURRENT_SCHEMA_VERSION);
         if (schema_migrate(g_db_ctx.db, current_version, CURRENT_SCHEMA_VERSION) != 0) {
             printf("Failed to migrate database schema\n");
@@ -92,7 +117,7 @@ int db_init(const char* db_path) {
     }
 
     g_db_ctx.is_initialized = true;
-    printf("Database initialized successfully: %s\n", db_path);
+    printf("Database initialized successfully: %s\n", g_db_ctx.db_path);
     return 0;
 }
 

@@ -13,15 +13,69 @@ add_compile_definitions(
 # Main sources (exclude Merkle tree if not needed)
 file(GLOB_RECURSE SOURCES "src/*.c")
 list(FILTER SOURCES EXCLUDE REGEX "src/tests/.*")
-list(FILTER SOURCES EXCLUDE REGEX "src/packages/initialization/init_tool.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/initialization/.*")
+list(FILTER SOURCES EXCLUDE REGEX "src/features/blockchain/.*")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/comm/pbft.*")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/comm/blockChainQueryApi.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/comm/accessApi.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/comm/httpClient.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/sql/database.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/sql/queries.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/sql/schema.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/validation/block_validation.c")
+list(FILTER SOURCES EXCLUDE REGEX "src/packages/validation/transaction_validation.c")
+list(FILTER SOURCES EXCLUDE REGEX "pbft_node_runner.c")
 
 # Explicitly ensure mongoose source is included
 set(MONGOOSE_SOURCES
     src/external/mongoose/mongoose.c
 )
 
+# Gossip-only database layer
+set(GOSSIP_DB_SOURCES
+    src/packages/sql/database_gossip.c
+)
+
+# Protobuf-C generation for envelope/content
+find_program(PROTOC_EXECUTABLE protoc)
+find_program(PROTOC_C_EXECUTABLE protoc-c)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PROTOBUFC REQUIRED libprotobuf-c)
+
+set(PROTO_DIR ${CMAKE_SOURCE_DIR}/src/proto)
+set(GEN_DIR ${CMAKE_BINARY_DIR}/generated)
+file(MAKE_DIRECTORY ${GEN_DIR})
+
+set(PROTO_FILES
+    ${PROTO_DIR}/envelope.proto
+    ${PROTO_DIR}/content.proto
+)
+
+set(GENERATED_SOURCES)
+set(GENERATED_HEADERS)
+foreach(PF ${PROTO_FILES})
+    get_filename_component(BN ${PF} NAME_WE)
+    set(OUT_C ${GEN_DIR}/${BN}.pb-c.c)
+    set(OUT_H ${GEN_DIR}/${BN}.pb-c.h)
+    add_custom_command(
+        OUTPUT ${OUT_C} ${OUT_H}
+        COMMAND ${PROTOC_C_EXECUTABLE} --c_out=${GEN_DIR} -I ${PROTO_DIR} ${PF}
+        DEPENDS ${PF}
+        COMMENT "Generating protobuf-c for ${PF}"
+        VERBATIM
+    )
+    list(APPEND GENERATED_SOURCES ${OUT_C})
+    list(APPEND GENERATED_HEADERS ${OUT_H})
+endforeach()
+
+# Create a custom target for protobuf generation
+add_custom_target(generate_proto DEPENDS ${GENERATED_SOURCES} ${GENERATED_HEADERS})
+
 add_executable(tinyweb ${SOURCES})
 include_directories(src) 
+target_sources(tinyweb PRIVATE ${GENERATED_SOURCES} ${GOSSIP_DB_SOURCES})
+target_include_directories(tinyweb PRIVATE ${GEN_DIR})
+add_dependencies(tinyweb generate_proto)
 
 # Dependencies (unchanged)
 find_package(PkgConfig REQUIRED)
@@ -40,6 +94,7 @@ target_link_libraries(tinyweb PRIVATE
     OpenSSL::Crypto
     ${LZ4_LIBRARIES}
     SQLite::SQLite3
+    ${PROTOBUFC_LIBRARIES}
     pthread  # Mongoose uses pthreads for async operations
     m        # Math library for mongoose
 )
@@ -49,6 +104,7 @@ target_include_directories(tinyweb PRIVATE
     ${SODIUM_INCLUDE_DIRS} 
     /usr/include/cjson
     ${LZ4_INCLUDE_DIRS}
+    ${PROTOBUFC_INCLUDE_DIRS}
     src/external/mongoose  # Add mongoose include directory
 )
 
@@ -57,7 +113,26 @@ file(GLOB_RECURSE TEST_SOURCES "src/tests/*.c")
 file(GLOB_RECURSE LIB_SOURCES "src/*.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/main.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/tests/.*")
-list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/initialization/init_tool.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/initialization/.*")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/features/blockchain/.*")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/comm/pbft.*")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/comm/blockChainQueryApi.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/comm/accessApi.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/comm/httpClient.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/sql/database.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/sql/queries.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/sql/schema.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/validation/block_validation.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/validation/transaction_validation.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "pbft_node_runner.c")
+
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/pbft_.*")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/blockchain_test.c")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/database_test.c")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/node_peer_management_test.c")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/access_request_test.c")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/http_client_test.c")
+list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/init_network_test.c")
 # Note: init_network_test.c is now included since it has init_network_test_main instead of main
 
 # Ensure test_runner.c is the main entry point for tests
@@ -68,6 +143,8 @@ list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/pbft_integration_test.c")
 set(TEST_MAIN "src/tests/test_runner.c")
 
 add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES})
+target_sources(tinyweb_tests PRIVATE ${GENERATED_SOURCES} ${GOSSIP_DB_SOURCES})
+add_dependencies(tinyweb_tests generate_proto)
 target_link_libraries(tinyweb_tests PRIVATE 
     ${MICROHTTPD_LIBRARIES} 
     cjson 
@@ -75,6 +152,7 @@ target_link_libraries(tinyweb_tests PRIVATE
     OpenSSL::Crypto
     ${LZ4_LIBRARIES}
     SQLite::SQLite3
+    ${PROTOBUFC_LIBRARIES}
     pthread  # Mongoose uses pthreads for async operations
     m        # Math library for mongoose
 )
@@ -84,6 +162,8 @@ target_include_directories(tinyweb_tests PRIVATE
     ${SODIUM_INCLUDE_DIRS} 
     /usr/include/cjson 
     ${LZ4_INCLUDE_DIRS}
+    ${PROTOBUFC_INCLUDE_DIRS}
+    ${GEN_DIR}
     src
     src/external/mongoose  # Add mongoose include directory
 )
@@ -92,118 +172,9 @@ target_include_directories(tinyweb_tests PRIVATE
 enable_testing()
 add_test(NAME EncryptionTest COMMAND tinyweb_tests encryption)
 add_test(NAME SigningTest COMMAND tinyweb_tests signing)
-add_test(NAME BlockchainTest COMMAND tinyweb_tests blockchain)
-add_test(NAME InitNetworkTest COMMAND tinyweb_tests init_network)
 add_test(NAME MongooseTest COMMAND tinyweb_tests mongoose)
-add_test(NAME AccessRequestTest COMMAND tinyweb_tests access_request)
-add_test(NAME NodePeerManagementTest COMMAND tinyweb_tests node_peer_management)
 
 
 
 # Add a separate executable for the initialization tool
-add_executable(init_tool
-    src/packages/initialization/init_tool.c
-    src/packages/initialization/init.c
-    src/packages/keystore/keystore.c
-    src/packages/signing/signing.c
-    src/packages/structures/blockChain/blockchain.c
-    src/packages/structures/blockChain/block.c
-    src/packages/structures/blockChain/merkleTree.c
-    src/packages/structures/blockChain/merkleTreeNode.c
-    src/packages/fileIO/blockchainIO.c
-    src/packages/encryption/encryption.c
-    src/packages/structures/blockChain/transaction.c
-    src/packages/structures/blockChain/transaction_types.c
-    src/packages/utils/byteorder.c
-    src/packages/utils/statePaths.c
-    src/packages/fileIO/compression.c
-    src/packages/sql/database.c
-    src/packages/sql/schema.c
-    src/packages/sql/queries.c
-    src/structs/permission/permission.c
-    # Add any other required source files here
-)
-
-target_include_directories(init_tool PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
-    ${MICROHTTPD_INCLUDE_DIRS}
-    ${SODIUM_INCLUDE_DIRS}
-    /usr/include/cjson
-    ${LZ4_INCLUDE_DIRS}
-)
-
-target_link_libraries(init_tool
-    ${SODIUM_LIBRARIES}
-    OpenSSL::Crypto
-    ${LZ4_LIBRARIES}
-    cjson
-    SQLite::SQLite3
-)
-
-# Multi-node PBFT integration test
-add_executable(pbft_integration_test
-    src/tests/pbft_integration_test.c
-    ${LIB_SOURCES}
-)
-
-target_link_libraries(pbft_integration_test PRIVATE
-    ${MICROHTTPD_LIBRARIES}
-    cjson
-    ${SODIUM_LIBRARIES}
-    OpenSSL::Crypto
-    ${LZ4_LIBRARIES}
-    SQLite::SQLite3
-    pthread
-    m
-)
-
-target_include_directories(pbft_integration_test PRIVATE
-    ${MICROHTTPD_INCLUDE_DIRS}
-    ${SODIUM_INCLUDE_DIRS}
-    /usr/include/cjson
-    ${LZ4_INCLUDE_DIRS}
-    src
-    src/external/mongoose
-)
-
-# Multi-node PBFT test is built separately in the root directory
-
-# Add standalone test executables that have their own main() functions
-# Note: node_peer_management_test is now integrated into the main test suite
-
-add_executable(pbft_http_client_test
-    src/tests/pbft_http_client_test.c
-    ${LIB_SOURCES}
-)
-
-target_link_libraries(pbft_http_client_test PRIVATE
-    ${MICROHTTPD_LIBRARIES}
-    cjson
-    ${SODIUM_LIBRARIES}
-    OpenSSL::Crypto
-    ${LZ4_LIBRARIES}
-    SQLite::SQLite3
-    pthread
-    m
-)
-
-target_include_directories(pbft_http_client_test PRIVATE
-    ${MICROHTTPD_INCLUDE_DIRS}
-    ${SODIUM_INCLUDE_DIRS}
-    /usr/include/cjson
-    ${LZ4_INCLUDE_DIRS}
-    src
-    src/external/mongoose
-)
-
-# Add fixed multi-node PBFT architecture test (only if file exists)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/multi_node_pbft_test_fixed.c")
-    add_executable(multi_node_pbft_test_fixed
-        multi_node_pbft_test_fixed.c
-    )
-
-    target_link_libraries(multi_node_pbft_test_fixed 
-        ${CURL_LIBRARIES}
-        cjson
-    )
-endif()
+add_subdirectory(src/features/blockchain EXCLUDE_FROM_ALL)

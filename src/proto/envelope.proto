@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package tinyweb;
+
+message EnvelopeHeader {
+  uint32 version = 1;
+  uint32 content_type = 2;       // application-specific content id
+  uint32 schema_version = 3;     // version of the content schema
+  uint64 timestamp = 4;          // seconds since epoch
+  bytes  sender_pubkey = 5;      // 32 bytes
+  repeated bytes recipients_pubkey = 6; // 32 bytes each
+  bytes  group_id = 7;           // optional, may be empty
+}
+
+message RecipientKeyWrap {
+  bytes recipient_pubkey = 1;    // 32 bytes
+  bytes key_nonce = 2;           // 24 bytes
+  bytes wrapped_key = 3;         // key + MAC
+}
+
+message Envelope {
+  EnvelopeHeader header = 1;
+  bytes payload_nonce = 2;       // 24 bytes
+  bytes ephemeral_pubkey = 3;    // 32 bytes
+  bytes payload_ciphertext = 4;  // ciphertext + MAC
+  repeated RecipientKeyWrap keywraps = 5;
+  bytes signature = 6;           // 64 bytes Ed25519
+}
+
+

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <sqlite3.h>
-#include "packages/structures/blockChain/transaction_types.h"
+#include "features/blockchain/core/transaction_types.h"
 #include "packages/utils/byteorder.h"
 
 // Core validation function

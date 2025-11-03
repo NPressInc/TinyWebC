@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "external/mongoose/mongoose.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/transaction.h"
-#include "packages/structures/blockChain/block.h"
-#include "packages/structures/blockChain/internalTransaction.h"
-#include "packages/PBFT/node.h"
+#include "features/blockchain/core/blockchain.h"
+#include "packages/transactions/transaction.h"
+#include "features/blockchain/core/block.h"
+#include "features/blockchain/core/internalTransaction.h"
+#include "features/blockchain/pbft/node.h"
 
 // PBFT Message Queue Management
 #define MAX_PENDING_BLOCKS 1000

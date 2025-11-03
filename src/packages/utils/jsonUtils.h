@@ -4,9 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "external/mongoose/mongoose.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/block.h"
-#include "packages/structures/blockChain/transaction.h"
+#include "features/blockchain/core/blockchain.h"
+#include "features/blockchain/core/block.h"
+#include "packages/transactions/transaction.h"
 
 // JSON builder structure for constructing JSON strings
 typedef struct {

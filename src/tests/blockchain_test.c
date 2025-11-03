@@ -3,13 +3,13 @@
 #include <unistd.h>  // For sleep()
 
 #include "blockchain_test.h" 
-#include "packages/structures/blockChain/blockchain.h"
+#include "features/blockchain/core/blockchain.h"
 #include "packages/keystore/keystore.h"
-#include "packages/structures/blockChain/transaction.h"
-#include "packages/structures/blockChain/block.h"
+#include "packages/transactions/transaction.h"
+#include "features/blockchain/core/block.h"
 #include "packages/encryption/encryption.h"
 #include "packages/utils/print.h"
-#include "packages/fileIO/blockchainIO.h"
+#include "features/blockchain/persistence/blockchain_io.h"
 #include "packages/validation/block_validation.h"
 
 #define NUM_BLOCKS 10

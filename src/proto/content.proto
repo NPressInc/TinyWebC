@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package tinyweb;
+
+message DirectMessage {
+  bytes text = 1;
+  bytes media_ref = 2; // optional reference id or small blob
+}
+
+message GroupMessage {
+  bytes text = 1;
+  bytes group_id = 2;
+}
+
+message LocationUpdate {
+  double lat = 1;
+  double lon = 2;
+  uint32 accuracy_m = 3;
+}
+
+message EmergencyAlert {
+  uint32 alert_type = 1; // e.g., 1=medical, 2=safety
+  string message = 2;
+}
+
+

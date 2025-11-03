@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "packages/signing/signing.h"
-#include "packages/structures/blockChain/block.h"
+#include "features/blockchain/core/block.h"
 
 #define HASH_SIZE 32
 #define MAX_PEERS 100

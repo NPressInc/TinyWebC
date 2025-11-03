@@ -9,9 +9,9 @@
 #include "packages/sql/database.h"
 #include "packages/sql/queries.h"
 #include "packages/sql/schema.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/transaction_types.h"
-#include "packages/fileIO/blockchainIO.h"
+#include "features/blockchain/core/blockchain.h"
+#include "features/blockchain/core/transaction_types.h"
+#include "features/blockchain/persistence/blockchain_io.h"
 #include "packages/keystore/keystore.h"
 #include "structs/permission/permission.h"
 

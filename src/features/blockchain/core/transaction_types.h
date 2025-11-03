@@ -2,7 +2,7 @@
 #define TW_TRANSACTION_TYPES_H
 
 #include <stdint.h>
-#include "transaction.h"
+#include "packages/transactions/transaction.h"
 #include "../../../structs/permission/permission.h"
 
 // Maximum lengths for string fields

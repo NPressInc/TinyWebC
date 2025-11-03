@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "packages/structures/blockChain/internalTransaction.h"
+#include "features/blockchain/core/internalTransaction.h"
 
 // HTTP response structure
 typedef struct {

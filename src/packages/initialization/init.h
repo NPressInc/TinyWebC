@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "packages/keystore/keystore.h"
-#include "packages/structures/blockChain/blockchain.h"
+#include "features/blockchain/core/blockchain.h"
 
 // Constants
 #define BASE_PORT 8000

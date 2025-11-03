@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "packages/structures/blockChain/block.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "packages/structures/blockChain/transaction.h"
+#include "features/blockchain/core/block.h"
+#include "features/blockchain/core/blockchain.h"
+#include "packages/transactions/transaction.h"
 
 // Validation error codes
 typedef enum {

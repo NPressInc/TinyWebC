@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <openssl/sha.h>
 #include "block.h"
-#include "transaction.h"
+#include "packages/transactions/transaction.h"
 #include "internalTransaction.h"
 #include "merkleTree.h"
 #include "merkleTreeNode.h"

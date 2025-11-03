@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <time.h>
-#include "packages/structures/blockChain/blockchain.h"
+#include "features/blockchain/core/blockchain.h"
 
 // Constants
 #define MAX_PEERS 100

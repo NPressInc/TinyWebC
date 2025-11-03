@@ -7,7 +7,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <errno.h>
-#include "../packages/PBFT/pbftNode.h"
+#include "../features/blockchain/pbft/pbft_node.h"
 #include "../packages/comm/httpClient.h"
 
 // Test configuration

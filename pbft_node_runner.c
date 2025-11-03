@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
-#include "src/packages/PBFT/pbftNode.h"
+#include "src/features/blockchain/pbft/pbft_node.h"
 
 // Simple PBFT node runner for testing
 int main(int argc, char* argv[]) {
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
     printf("🚀 Starting PBFT Node %u on port %d\n", node_id, port);
 
     // Create PBFT node
-    PBFTNode* node = pbft_node_create(node_id, port);
+    PBFTNode* node = pbft_node_create(node_id, port, false);
     if (!node) {
         printf("❌ Failed to create PBFT node %u\n", node_id);
         return 1;

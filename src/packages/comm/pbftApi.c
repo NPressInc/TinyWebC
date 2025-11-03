@@ -3,13 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../structures/blockChain/internalTransaction.h"
-#include "../structures/blockChain/block.h"
+#include "features/blockchain/core/internalTransaction.h"
+#include "features/blockchain/core/block.h"
 #include <cjson/cJSON.h>
-#include "../fileIO/blockchainIO.h"
-#include "../sql/database.h"
-#include "../PBFT/pbftNode.h"
-#include "../sql/queries.h"
+#include "features/blockchain/persistence/blockchain_io.h"
+#include "packages/sql/database.h"
+#include "features/blockchain/pbft/pbft_node.h"
+#include "packages/sql/queries.h"
 
 // Global message queues instance
 MessageQueues message_queues;

@@ -1,5 +1,5 @@
 #include "accessApi.h"
-#include "packages/structures/blockChain/transaction_types.h"
+#include "features/blockchain/core/transaction_types.h"
 #include "packages/validation/transaction_validation.h"
 #include "packages/signing/signing.h"
 #include "packages/encryption/encryption.h"

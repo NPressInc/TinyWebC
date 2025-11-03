@@ -1,4 +1,4 @@
-#include "pbftNode.h"
+#include "pbft_node.h"
 #include "node.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,22 +6,22 @@
 #include <unistd.h>
 #include <time.h>
 #include <cjson/cJSON.h>
-#include "../keystore/keystore.h"
-#include "../signing/signing.h"
-#include "../structures/blockChain/blockchain.h"
-#include "../structures/blockChain/block.h"
-#include "../validation/block_validation.h"
-#include "../validation/transaction_validation.h"
-#include "../comm/pbftApi.h"
-#include "../comm/httpClient.h"
-#include "../sql/database.h"
-#include "../sql/queries.h"
-#include "../fileIO/blockchainIO.h"
-#include "../utils/statePaths.h"
-#include "../comm/blockChainQueryApi.h"
-#include "../fileIO/blockchainPersistence.h"
-#include "../utils/byteorder.h"
-#include "../comm/accessApi.h"
+#include "packages/keystore/keystore.h"
+#include "packages/signing/signing.h"
+#include "features/blockchain/core/blockchain.h"
+#include "features/blockchain/core/block.h"
+#include "packages/validation/block_validation.h"
+#include "packages/validation/transaction_validation.h"
+#include "packages/comm/pbftApi.h"
+#include "packages/comm/httpClient.h"
+#include "packages/sql/database.h"
+#include "packages/sql/queries.h"
+#include "features/blockchain/persistence/blockchain_io.h"
+#include "packages/utils/statePaths.h"
+#include "packages/comm/blockChainQueryApi.h"
+#include "features/blockchain/persistence/persistence_manager.h"
+#include "packages/utils/byteorder.h"
+#include "packages/comm/accessApi.h"
 #include <sodium.h>
 
 // Global node ID for state path resolution
@@ -76,6 +76,7 @@ PBFTNode* pbft_node_create(uint32_t node_id, uint16_t api_port, bool debug_mode)
     node->base.id = node_id;
     node->api_port = api_port;
     node->debug_mode = debug_mode;
+    node->consensus_enabled = true;
     node->running = 1;
 
     // Initialize view change state
@@ -271,19 +272,22 @@ void pbft_node_run(PBFTNode* node) {
         return;
     }
     
-    // Start main consensus loop thread
-    if (pthread_create(&node->node_thread, NULL, pbft_node_main_loop, node) != 0) {
-        printf("Failed to start main consensus thread\n");
-        node->running = 0;
+    if (node->consensus_enabled) {
+        if (pthread_create(&node->node_thread, NULL, pbft_node_main_loop, node) != 0) {
+            printf("Failed to start main consensus thread\n");
+            node->running = 0;
+            pthread_join(node->api_thread, NULL);
+            return;
+        }
+
+        printf("PBFT node threads started successfully\n");
+
         pthread_join(node->api_thread, NULL);
-        return;
+        pthread_join(node->node_thread, NULL);
+    } else {
+        printf("PBFT consensus disabled - running API-only mode\n");
+        pthread_join(node->api_thread, NULL);
     }
-    
-    printf("PBFT node threads started successfully\n");
-    
-    // Wait for threads to complete
-    pthread_join(node->api_thread, NULL);
-    pthread_join(node->node_thread, NULL);
     
     printf("PBFT node %u shutdown complete\n", node->base.id);
 }

@@ -7,7 +7,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include "packages/comm/httpClient.h"
-#include "packages/structures/blockChain/internalTransaction.h"
+#include "features/blockchain/core/internalTransaction.h"
 #include "packages/keystore/keystore.h"
 #include "external/mongoose/mongoose.h"
 #include "http_client_test.h"

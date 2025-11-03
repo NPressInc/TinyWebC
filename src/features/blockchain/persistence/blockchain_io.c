@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include "blockchainIO.h"
-#include "packages/structures/blockChain/blockchain.h"
-#include "compression.h"
+#include "blockchain_io.h"
+#include "features/blockchain/core/blockchain.h"
+#include "packages/fileIO/compression.h"
 #include <cjson/cJSON.h>
-#include "packages/structures/blockChain/block.h"
-#include "packages/structures/blockChain/transaction.h"
+#include "features/blockchain/core/block.h"
+#include "packages/transactions/transaction.h"
 #include "packages/utils/statePaths.h"
 
 #define BLOCKCHAIN_DIR "state/blockchain"
