@@ -11,6 +11,7 @@
 #include "packages/comm/gossip/gossip.h"
 #include "packages/sql/database.h"
 #include "packages/sql/gossip_store.h"
+#include "packages/sql/gossip_peers.h"
 #include "packages/utils/statePaths.h"
 #include "packages/validation/gossip_validation.h"
 #include "packages/transactions/transaction.h"
@@ -39,6 +40,7 @@ static void handle_signal(int sig);
 static int parse_arguments(int argc, char* argv[], AppConfig* config);
 static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len);
 static int start_gossip_service(uint16_t port);
+static void bootstrap_known_peers(GossipService* service);
 static void stop_gossip_service(void);
 static int start_http_api(uint16_t port);
 static void stop_http_api(void);
@@ -120,6 +122,11 @@ static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, ch
         return -1;
     }
 
+    if (gossip_peers_init() != 0) {
+        fprintf(stderr, "Failed to initialize gossip peer store\n");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -133,6 +140,8 @@ static int start_gossip_service(uint16_t port) {
         fprintf(stderr, "Failed to start gossip service\n");
         return -1;
     }
+
+    bootstrap_known_peers(&g_gossip_service);
 
     g_cleanup_running = 1;
     if (pthread_create(&g_cleanup_thread, NULL, cleanup_loop, NULL) == 0) {
@@ -177,8 +186,6 @@ static void stop_http_api(void) {
 }
 
 static int gossip_receive_handler(GossipService* service, TW_Transaction* transaction, const struct sockaddr_in* source, void* context) {
-    (void)service;
-    (void)source;
 
     const GossipValidationConfig* config = (const GossipValidationConfig*)context;
     uint64_t now = (uint64_t)time(NULL);
@@ -189,14 +196,31 @@ static int gossip_receive_handler(GossipService* service, TW_Transaction* transa
         return -1;
     }
 
-    if (!db_is_initialized()) {
-        return 0;
+    unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE] = {0};
+    TW_Transaction_hash(transaction, digest);
+
+    int seen = 0;
+    if (db_is_initialized()) {
+        if (gossip_store_has_seen(digest, &seen) != 0) {
+            fprintf(stderr, "Warning: failed to check gossip digest cache\n");
+        } else if (seen) {
+            return 0;
+        }
     }
 
     uint64_t expires_at = gossip_validation_expiration(transaction, config);
-    if (gossip_store_save_transaction(transaction, expires_at) != 0) {
-        fprintf(stderr, "Failed to persist gossip transaction\n");
-        return -1;
+    if (db_is_initialized()) {
+        if (gossip_store_save_transaction(transaction, expires_at) != 0) {
+            fprintf(stderr, "Failed to persist gossip transaction\n");
+            return -1;
+        }
+        if (gossip_store_mark_seen(digest, expires_at) != 0) {
+            fprintf(stderr, "Warning: failed to record gossip digest\n");
+        }
+    }
+
+    if (gossip_service_rebroadcast_transaction(service, transaction, source) != 0) {
+        fprintf(stderr, "Warning: failed to rebroadcast gossip transaction\n");
     }
 
     return 0;
@@ -215,6 +239,40 @@ static void* cleanup_loop(void* arg) {
     }
 
     return NULL;
+}
+
+static void bootstrap_known_peers(GossipService* service) {
+    if (!service) {
+        return;
+    }
+
+    GossipPeerInfo* peers = NULL;
+    size_t count = 0;
+    if (gossip_peers_fetch_all(&peers, &count) != 0) {
+        fprintf(stderr, "Failed to load bootstrap peers from database\n");
+        return;
+    }
+
+    if (!peers || count == 0) {
+        gossip_peers_free(peers, count);
+        return;
+    }
+
+    size_t added = 0;
+    for (size_t i = 0; i < count; ++i) {
+        if (peers[i].hostname[0] == '\0' || peers[i].gossip_port == 0) {
+            continue;
+        }
+        if (gossip_service_add_peer(service, peers[i].hostname, peers[i].gossip_port) == 0) {
+            ++added;
+        }
+    }
+
+    if (added > 0) {
+        printf("Loaded %zu bootstrap peers from database\n", added);
+    }
+
+    gossip_peers_free(peers, count);
 }
 
 int main(int argc, char* argv[]) {

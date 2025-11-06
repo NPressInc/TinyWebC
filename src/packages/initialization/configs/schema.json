@@ -70,7 +70,7 @@
       "maxItems": 10,
       "items": {
         "type": "object",
-        "required": ["id", "name", "type", "ip", "port"],
+        "required": ["id", "name", "type", "hostname", "gossip_port"],
         "properties": {
           "id": {
             "type": "string",
@@ -85,19 +85,38 @@
           },
           "type": {
             "type": "string",
-            "enum": ["primary", "backup", "validator"],
+            "enum": ["primary", "backup", "validator", "observer", "edge", "custom"],
             "description": "Type of node in the network"
           },
-          "ip": {
+          "hostname": {
             "type": "string",
-            "format": "ipv4",
-            "description": "IP address of the node"
+            "format": "hostname",
+            "description": "Tailscale-resolvable hostname for the node"
           },
-          "port": {
+          "gossip_port": {
             "type": "integer",
             "minimum": 1024,
             "maximum": 65535,
-            "description": "Port number for the node"
+            "description": "UDP port the node uses for gossip"
+          },
+          "api_port": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535,
+            "description": "HTTP API port exposed by the node"
+          },
+          "peers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[^:]+(:[0-9]{1,5})?$",
+              "description": "Peer endpoint in hostname[:port] format"
+            },
+            "default": []
+          },
+          "tags": {
+            "type": "string",
+            "description": "Optional metadata such as Tailscale tags"
           },
           "is_validator": {
             "type": "boolean",

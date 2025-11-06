@@ -6,269 +6,245 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
 #include "init.h"
 
-// Extended configuration structure for JSON-based initialization
+#define DEFAULT_STATE_ROOT "state"
+#define DEFAULT_TEST_STATE_ROOT "test_state"
+
 typedef struct {
-    // Network settings
     char* network_name;
     char* network_description;
     uint16_t base_port;
-    uint32_t max_connections;
-    
-    // Storage settings
-    char* keystore_path;
-    char* blockchain_path;
-    char* passphrase;
-    
-    // Node information
+
     uint32_t node_count;
     struct {
         char* id;
         char* name;
         char* type;
-        char* ip;
-        uint16_t port;
-        int is_validator;
+        char* hostname;
+        uint16_t gossip_port;
+        uint16_t api_port;
+        char* tags;
+        char** peers;
+        uint32_t peer_count;
     } nodes[MAX_NODES];
-    
-    // User information
+
     uint32_t admin_count;
+    struct {
+        char* id;
+        char* name;
+        char* role;
+    } admins[MAX_USERS];
+
     uint32_t member_count;
     struct {
         char* id;
         char* name;
         char* role;
-        char* email;  // optional
-    } admins[MAX_USERS];
-    struct {
-        char* id;
-        char* name;
-        char* role;
         uint32_t age;
-        char* email;  // optional
-        char* supervised_by[MAX_USERS];
+        char** supervised_by;
         uint32_t supervisor_count;
     } members[MAX_USERS];
 } JsonConfig;
 
-void print_usage(const char* program_name) {
+static void print_usage(const char* program_name) {
     printf("Usage: %s [options] <config_file>\n", program_name);
-    printf("Initialize a TinyWeb blockchain network from JSON configuration\n\n");
+    printf("Initialize a TinyWeb gossip network from JSON configuration\n\n");
     printf("Arguments:\n");
     printf("  config_file         Path to JSON configuration file\n\n");
     printf("Options:\n");
     printf("  -h, --help          Show this help message\n");
     printf("  -v, --verbose       Enable verbose output\n");
-    printf("  -d, --debug         Create isolated test directories (test_state/node_X/)\n");
+    printf("  -d, --debug         Use test_state/ directories per node\n");
     printf("\nExample:\n");
     printf("  %s src/packages/initialization/configs/network_config.json\n", program_name);
-    printf("  %s --debug config.json  # Create isolated test directories for multi-node testing\n", program_name);
+    printf("  %s --debug config.json\n", program_name);
 }
 
-int parse_json_config(const char* config_file, JsonConfig* config) {
-    FILE* file = fopen(config_file, "r");
-    if (!file) {
-        fprintf(stderr, "Error: Cannot open config file '%s'\n", config_file);
+static int parse_json_config(const char* path, JsonConfig* out) {
+    if (!path || !out) {
         return -1;
     }
 
-    // Read file content
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    
-    char* json_string = malloc(file_size + 1);
-    if (!json_string) {
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        fclose(file);
+    FILE* file = fopen(path, "r");
+    if (!file) {
+        fprintf(stderr, "Error: cannot open config file '%s'\n", path);
         return -1;
     }
-    
-    fread(json_string, 1, file_size, file);
-    json_string[file_size] = '\0';
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buffer = malloc((size_t)size + 1);
+    if (!buffer) {
+        fclose(file);
+        fprintf(stderr, "Error: failed to allocate memory for config\n");
+        return -1;
+    }
+
+    fread(buffer, 1, (size_t)size, file);
+    buffer[size] = '\0';
     fclose(file);
 
-    // Parse JSON
-    cJSON* json = cJSON_Parse(json_string);
-    free(json_string);
-    
-    if (!json) {
-        fprintf(stderr, "Error: Invalid JSON in config file\n");
+    cJSON* root = cJSON_Parse(buffer);
+    free(buffer);
+    if (!root) {
+        fprintf(stderr, "Error: invalid JSON in config\n");
         return -1;
     }
 
-    // Parse network section
-    cJSON* network = cJSON_GetObjectItem(json, "network");
+    memset(out, 0, sizeof(*out));
+
+    cJSON* network = cJSON_GetObjectItem(root, "network");
     if (network) {
         cJSON* name = cJSON_GetObjectItem(network, "name");
-        if (name && cJSON_IsString(name)) {
-            config->network_name = strdup(name->valuestring);
+        if (cJSON_IsString(name)) {
+            out->network_name = strdup(name->valuestring);
         }
-        
         cJSON* description = cJSON_GetObjectItem(network, "description");
-        if (description && cJSON_IsString(description)) {
-            config->network_description = strdup(description->valuestring);
+        if (cJSON_IsString(description)) {
+            out->network_description = strdup(description->valuestring);
         }
-        
         cJSON* base_port = cJSON_GetObjectItem(network, "base_port");
-        if (base_port && cJSON_IsNumber(base_port)) {
-            config->base_port = (uint16_t)base_port->valueint;
-        }
-        
-        cJSON* max_connections = cJSON_GetObjectItem(network, "max_connections");
-        if (max_connections && cJSON_IsNumber(max_connections)) {
-            config->max_connections = (uint32_t)max_connections->valueint;
+        if (cJSON_IsNumber(base_port)) {
+            out->base_port = (uint16_t)base_port->valueint;
         }
     }
 
-    // Parse storage section
-    cJSON* storage = cJSON_GetObjectItem(json, "storage");
-    if (storage) {
-        cJSON* keystore_path = cJSON_GetObjectItem(storage, "keystore_path");
-        if (keystore_path && cJSON_IsString(keystore_path)) {
-            config->keystore_path = strdup(keystore_path->valuestring);
-        }
-        
-        cJSON* blockchain_path = cJSON_GetObjectItem(storage, "blockchain_path");
-        if (blockchain_path && cJSON_IsString(blockchain_path)) {
-            config->blockchain_path = strdup(blockchain_path->valuestring);
-        }
-        
-        cJSON* passphrase = cJSON_GetObjectItem(storage, "passphrase");
-        if (passphrase && cJSON_IsString(passphrase)) {
-            config->passphrase = strdup(passphrase->valuestring);
-        }
+    cJSON* nodes = cJSON_GetObjectItem(root, "nodes");
+    if (!cJSON_IsArray(nodes)) {
+        fprintf(stderr, "Error: config must contain a 'nodes' array\n");
+        cJSON_Delete(root);
+        return -1;
     }
 
-    // Parse nodes section
-    cJSON* nodes = cJSON_GetObjectItem(json, "nodes");
-    if (nodes && cJSON_IsArray(nodes)) {
-        config->node_count = cJSON_GetArraySize(nodes);
-        if (config->node_count > MAX_NODES) {
-            config->node_count = MAX_NODES;
-        }
-        
-        for (int i = 0; i < config->node_count; i++) {
-            cJSON* node = cJSON_GetArrayItem(nodes, i);
-            if (node) {
-                cJSON* id = cJSON_GetObjectItem(node, "id");
-                if (id && cJSON_IsString(id)) {
-                    config->nodes[i].id = strdup(id->valuestring);
-                }
-                
-                cJSON* name = cJSON_GetObjectItem(node, "name");
-                if (name && cJSON_IsString(name)) {
-                    config->nodes[i].name = strdup(name->valuestring);
-                }
-                
-                cJSON* type = cJSON_GetObjectItem(node, "type");
-                if (type && cJSON_IsString(type)) {
-                    config->nodes[i].type = strdup(type->valuestring);
-                }
-                
-                cJSON* ip = cJSON_GetObjectItem(node, "ip");
-                if (ip && cJSON_IsString(ip)) {
-                    config->nodes[i].ip = strdup(ip->valuestring);
-                }
-                
-                cJSON* port = cJSON_GetObjectItem(node, "port");
-                if (port && cJSON_IsNumber(port)) {
-                    config->nodes[i].port = (uint16_t)port->valueint;
-                }
-                
-                cJSON* is_validator = cJSON_GetObjectItem(node, "is_validator");
-                if (is_validator && cJSON_IsBool(is_validator)) {
-                    config->nodes[i].is_validator = cJSON_IsTrue(is_validator);
-                }
-            }
-        }
+    out->node_count = (uint32_t)cJSON_GetArraySize(nodes);
+    if (out->node_count > MAX_NODES) {
+        fprintf(stderr, "Warning: limiting nodes to %d\n", MAX_NODES);
+        out->node_count = MAX_NODES;
     }
 
-    // Parse users section
-    cJSON* users = cJSON_GetObjectItem(json, "users");
-    if (users) {
-        // Parse admins
-        cJSON* admins = cJSON_GetObjectItem(users, "admins");
-        if (admins && cJSON_IsArray(admins)) {
-            config->admin_count = cJSON_GetArraySize(admins);
-            if (config->admin_count > MAX_USERS) {
-                config->admin_count = MAX_USERS;
-            }
-            
-            for (int i = 0; i < config->admin_count; i++) {
-                cJSON* admin = cJSON_GetArrayItem(admins, i);
-                if (admin) {
-                    cJSON* id = cJSON_GetObjectItem(admin, "id");
-                    if (id && cJSON_IsString(id)) {
-                        config->admins[i].id = strdup(id->valuestring);
-                    }
-                    
-                    cJSON* name = cJSON_GetObjectItem(admin, "name");
-                    if (name && cJSON_IsString(name)) {
-                        config->admins[i].name = strdup(name->valuestring);
-                    }
-                    
-                    cJSON* role = cJSON_GetObjectItem(admin, "role");
-                    if (role && cJSON_IsString(role)) {
-                        config->admins[i].role = strdup(role->valuestring);
-                    }
-                    
-                    cJSON* email = cJSON_GetObjectItem(admin, "email");
-                    if (email && cJSON_IsString(email)) {
-                        config->admins[i].email = strdup(email->valuestring);
-                    }
-                }
-            }
+    for (uint32_t i = 0; i < out->node_count; ++i) {
+        cJSON* node = cJSON_GetArrayItem(nodes, (int)i);
+        if (!cJSON_IsObject(node)) {
+            continue;
         }
-        
-        // Parse members
-        cJSON* members = cJSON_GetObjectItem(users, "members");
-        if (members && cJSON_IsArray(members)) {
-            config->member_count = cJSON_GetArraySize(members);
-            if (config->member_count > MAX_USERS) {
-                config->member_count = MAX_USERS;
-            }
-            
-            for (int i = 0; i < config->member_count; i++) {
-                cJSON* member = cJSON_GetArrayItem(members, i);
-                if (member) {
-                    cJSON* id = cJSON_GetObjectItem(member, "id");
-                    if (id && cJSON_IsString(id)) {
-                        config->members[i].id = strdup(id->valuestring);
-                    }
-                    
-                    cJSON* name = cJSON_GetObjectItem(member, "name");
-                    if (name && cJSON_IsString(name)) {
-                        config->members[i].name = strdup(name->valuestring);
-                    }
-                    
-                    cJSON* role = cJSON_GetObjectItem(member, "role");
-                    if (role && cJSON_IsString(role)) {
-                        config->members[i].role = strdup(role->valuestring);
-                    }
-                    
-                    cJSON* age = cJSON_GetObjectItem(member, "age");
-                    if (age && cJSON_IsNumber(age)) {
-                        config->members[i].age = (uint32_t)age->valueint;
-                    }
-                    
-                    cJSON* email = cJSON_GetObjectItem(member, "email");
-                    if (email && cJSON_IsString(email)) {
-                        config->members[i].email = strdup(email->valuestring);
-                    }
-                    
-                    cJSON* supervised_by = cJSON_GetObjectItem(member, "supervised_by");
-                    if (supervised_by && cJSON_IsArray(supervised_by)) {
-                        config->members[i].supervisor_count = cJSON_GetArraySize(supervised_by);
-                        if (config->members[i].supervisor_count > MAX_USERS) {
-                            config->members[i].supervisor_count = MAX_USERS;
+
+        cJSON* id = cJSON_GetObjectItem(node, "id");
+        if (cJSON_IsString(id)) {
+            out->nodes[i].id = strdup(id->valuestring);
+        }
+        cJSON* name = cJSON_GetObjectItem(node, "name");
+        if (cJSON_IsString(name)) {
+            out->nodes[i].name = strdup(name->valuestring);
+        }
+        cJSON* type = cJSON_GetObjectItem(node, "type");
+        if (cJSON_IsString(type)) {
+            out->nodes[i].type = strdup(type->valuestring);
+        }
+        cJSON* hostname = cJSON_GetObjectItem(node, "hostname");
+        if (cJSON_IsString(hostname)) {
+            out->nodes[i].hostname = strdup(hostname->valuestring);
+        }
+        cJSON* gossip_port = cJSON_GetObjectItem(node, "gossip_port");
+        if (cJSON_IsNumber(gossip_port)) {
+            out->nodes[i].gossip_port = (uint16_t)gossip_port->valueint;
+        }
+        cJSON* api_port = cJSON_GetObjectItem(node, "api_port");
+        if (cJSON_IsNumber(api_port)) {
+            out->nodes[i].api_port = (uint16_t)api_port->valueint;
+        }
+        cJSON* tags = cJSON_GetObjectItem(node, "tags");
+        if (cJSON_IsString(tags)) {
+            out->nodes[i].tags = strdup(tags->valuestring);
+        }
+
+        cJSON* peers = cJSON_GetObjectItem(node, "peers");
+        if (cJSON_IsArray(peers)) {
+            out->nodes[i].peer_count = (uint32_t)cJSON_GetArraySize(peers);
+            if (out->nodes[i].peer_count > 0) {
+                out->nodes[i].peers = calloc(out->nodes[i].peer_count, sizeof(char*));
+                if (out->nodes[i].peers) {
+                    for (uint32_t p = 0; p < out->nodes[i].peer_count; ++p) {
+                        cJSON* peer = cJSON_GetArrayItem(peers, (int)p);
+                        if (cJSON_IsString(peer)) {
+                            out->nodes[i].peers[p] = strdup(peer->valuestring);
                         }
-                        
-                        for (int j = 0; j < config->members[i].supervisor_count; j++) {
-                            cJSON* supervisor = cJSON_GetArrayItem(supervised_by, j);
-                            if (supervisor && cJSON_IsString(supervisor)) {
-                                config->members[i].supervised_by[j] = strdup(supervisor->valuestring);
+                    }
+                }
+            }
+        }
+    }
+
+    cJSON* users = cJSON_GetObjectItem(root, "users");
+    if (users) {
+        cJSON* admins = cJSON_GetObjectItem(users, "admins");
+        if (cJSON_IsArray(admins)) {
+            out->admin_count = (uint32_t)cJSON_GetArraySize(admins);
+            if (out->admin_count > MAX_USERS) {
+                out->admin_count = MAX_USERS;
+            }
+            for (uint32_t i = 0; i < out->admin_count; ++i) {
+                cJSON* admin = cJSON_GetArrayItem(admins, (int)i);
+                if (!cJSON_IsObject(admin)) {
+                    continue;
+                }
+                cJSON* id = cJSON_GetObjectItem(admin, "id");
+                if (cJSON_IsString(id)) {
+                    out->admins[i].id = strdup(id->valuestring);
+                }
+                cJSON* name = cJSON_GetObjectItem(admin, "name");
+                if (cJSON_IsString(name)) {
+                    out->admins[i].name = strdup(name->valuestring);
+                }
+                cJSON* role = cJSON_GetObjectItem(admin, "role");
+                if (cJSON_IsString(role)) {
+                    out->admins[i].role = strdup(role->valuestring);
+                }
+            }
+        }
+
+        cJSON* members = cJSON_GetObjectItem(users, "members");
+        if (cJSON_IsArray(members)) {
+            out->member_count = (uint32_t)cJSON_GetArraySize(members);
+            if (out->member_count > MAX_USERS) {
+                out->member_count = MAX_USERS;
+            }
+            for (uint32_t i = 0; i < out->member_count; ++i) {
+                cJSON* member = cJSON_GetArrayItem(members, (int)i);
+                if (!cJSON_IsObject(member)) {
+                    continue;
+                }
+                cJSON* id = cJSON_GetObjectItem(member, "id");
+                if (cJSON_IsString(id)) {
+                    out->members[i].id = strdup(id->valuestring);
+                }
+                cJSON* name = cJSON_GetObjectItem(member, "name");
+                if (cJSON_IsString(name)) {
+                    out->members[i].name = strdup(name->valuestring);
+                }
+                cJSON* role = cJSON_GetObjectItem(member, "role");
+                if (cJSON_IsString(role)) {
+                    out->members[i].role = strdup(role->valuestring);
+                }
+                cJSON* age = cJSON_GetObjectItem(member, "age");
+                if (cJSON_IsNumber(age)) {
+                    out->members[i].age = (uint32_t)age->valueint;
+                }
+                cJSON* supervisors = cJSON_GetObjectItem(member, "supervised_by");
+                if (cJSON_IsArray(supervisors)) {
+                    uint32_t count = (uint32_t)cJSON_GetArraySize(supervisors);
+                    out->members[i].supervisor_count = count;
+                    if (count > 0) {
+                        out->members[i].supervised_by = calloc(count, sizeof(char*));
+                        if (out->members[i].supervised_by) {
+                            for (uint32_t s = 0; s < count; ++s) {
+                                cJSON* supervisor = cJSON_GetArrayItem(supervisors, (int)s);
+                                if (cJSON_IsString(supervisor)) {
+                                    out->members[i].supervised_by[s] = strdup(supervisor->valuestring);
+                                }
                             }
                         }
                     }
@@ -277,198 +253,154 @@ int parse_json_config(const char* config_file, JsonConfig* config) {
         }
     }
 
-    cJSON_Delete(json);
+    cJSON_Delete(root);
     return 0;
 }
 
-void free_json_config(JsonConfig* config) {
-    if (!config) return;
-    
+static void free_json_config(JsonConfig* config) {
+    if (!config) {
+        return;
+    }
+
     free(config->network_name);
     free(config->network_description);
-    free(config->keystore_path);
-    free(config->blockchain_path);
-    free(config->passphrase);
-    
-    for (int i = 0; i < config->node_count; i++) {
+
+    for (uint32_t i = 0; i < config->node_count; ++i) {
         free(config->nodes[i].id);
         free(config->nodes[i].name);
         free(config->nodes[i].type);
-        free(config->nodes[i].ip);
+        free(config->nodes[i].hostname);
+        free(config->nodes[i].tags);
+        if (config->nodes[i].peers) {
+            for (uint32_t p = 0; p < config->nodes[i].peer_count; ++p) {
+                free(config->nodes[i].peers[p]);
+            }
+            free(config->nodes[i].peers);
+        }
     }
-    
-    for (int i = 0; i < config->admin_count; i++) {
+
+    for (uint32_t i = 0; i < config->admin_count; ++i) {
         free(config->admins[i].id);
         free(config->admins[i].name);
         free(config->admins[i].role);
-        free(config->admins[i].email);
     }
-    
-    for (int i = 0; i < config->member_count; i++) {
+
+    for (uint32_t i = 0; i < config->member_count; ++i) {
         free(config->members[i].id);
         free(config->members[i].name);
         free(config->members[i].role);
-        free(config->members[i].email);
-        for (int j = 0; j < config->members[i].supervisor_count; j++) {
-            free(config->members[i].supervised_by[j]);
+        if (config->members[i].supervised_by) {
+            for (uint32_t s = 0; s < config->members[i].supervisor_count; ++s) {
+                free(config->members[i].supervised_by[s]);
+            }
+            free(config->members[i].supervised_by);
         }
     }
+
+    memset(config, 0, sizeof(*config));
 }
 
-/**
- * Check if a directory exists and contains files
- */
-int directory_has_files(const char* path) {
+static int directory_has_files(const char* path) {
     DIR* dir = opendir(path);
-    if (dir == NULL) {
-        return 0; // Directory doesn't exist
+    if (!dir) {
+        return 0;
     }
-    
+
     struct dirent* entry;
     int has_files = 0;
-    
     while ((entry = readdir(dir)) != NULL) {
-        // Skip . and .. entries
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
             has_files = 1;
             break;
         }
     }
-    
+
     closedir(dir);
     return has_files;
 }
 
-/**
- * Prompt user for yes/no confirmation
- */
-int prompt_user_confirmation(const char* message) {
+static int prompt_user_confirmation(const char* message) {
     char response[16];
-    
     printf("%s (y/N): ", message);
     fflush(stdout);
-    
-    if (fgets(response, sizeof(response), stdin) == NULL) {
-        return 0; // Default to no on input error
+
+    if (!fgets(response, sizeof(response), stdin)) {
+        return 0;
     }
-    
-    // Check if user responded with 'y' or 'Y'
-    if (response[0] == 'y' || response[0] == 'Y') {
-        return 1;
-    }
-    
-    return 0;
+    return response[0] == 'y' || response[0] == 'Y';
 }
 
-/**
- * Remove all files in a directory
- */
-int clean_directory(const char* path) {
+static int clean_directory(const char* path) {
     DIR* dir = opendir(path);
-    if (dir == NULL) {
-        return 0; // Directory doesn't exist, nothing to clean
+    if (!dir) {
+        return 1;
     }
-    
+
     struct dirent* entry;
-    char filepath[512];
+    char child[512];
     int success = 1;
-    
+
     while ((entry = readdir(dir)) != NULL) {
-        // Skip . and .. entries
-        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            snprintf(filepath, sizeof(filepath), "%s/%s", path, entry->d_name);
-            
-            struct stat statbuf;
-            if (stat(filepath, &statbuf) == 0) {
-                if (S_ISREG(statbuf.st_mode)) {
-                    // Regular file - delete it
-                    if (unlink(filepath) != 0) {
-                        fprintf(stderr, "Warning: Failed to delete file %s\n", filepath);
-                        success = 0;
-                    }
-                } else if (S_ISDIR(statbuf.st_mode)) {
-                    // Directory - recursively clean and remove it
-                    if (clean_directory(filepath) && rmdir(filepath) != 0) {
-                        fprintf(stderr, "Warning: Failed to remove directory %s\n", filepath);
-                        success = 0;
-                    }
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        snprintf(child, sizeof(child), "%s/%s", path, entry->d_name);
+        struct stat st;
+        if (stat(child, &st) == 0) {
+            if (S_ISDIR(st.st_mode)) {
+                if (!clean_directory(child) || rmdir(child) != 0) {
+                    fprintf(stderr, "Warning: failed to remove directory %s\n", child);
+                    success = 0;
                 }
+            } else if (unlink(child) != 0) {
+                fprintf(stderr, "Warning: failed to remove file %s\n", child);
+                success = 0;
             }
         }
     }
-    
+
     closedir(dir);
     return success;
 }
 
-/**
- * Check for existing state and prompt user for cleanup
- */
-int check_and_clean_existing_state(const char* keystore_path, const char* blockchain_path) {
-    int keystore_has_files = directory_has_files(keystore_path);
-    int blockchain_has_files = directory_has_files(blockchain_path);
-    
-    if (!keystore_has_files && !blockchain_has_files) {
-        return 0; // No existing state found
+static int check_and_clean_existing_state(const char* state_root) {
+    if (!state_root) {
+        return 0;
     }
-    
-    printf("\nExisting blockchain state detected:\n");
-    if (keystore_has_files) {
-        printf("  - Keystore directory (%s) contains files\n", keystore_path);
+
+    if (!directory_has_files(state_root)) {
+        return 0;
     }
-    if (blockchain_has_files) {
-        printf("  - Blockchain directory (%s) contains files\n", blockchain_path);
-    }
-    
-    printf("\nProceeding with initialization will overwrite existing data.\n");
-    
-    if (!prompt_user_confirmation("Do you want to delete the existing blockchain state and continue?")) {
+
+    printf("\nExisting state detected in '%s'.\n", state_root);
+    if (!prompt_user_confirmation("Remove existing state and continue?")) {
         printf("Initialization cancelled by user.\n");
         return -1;
     }
-    
-    printf("\nCleaning existing state...\n");
-    
-    int success = 1;
-    if (keystore_has_files) {
-        printf("  - Cleaning keystore directory...\n");
-        if (!clean_directory(keystore_path)) {
-            success = 0;
-        }
+
+    printf("Cleaning '%s' ...\n", state_root);
+    if (!clean_directory(state_root)) {
+        fprintf(stderr, "Warning: some files inside '%s' could not be removed.\n", state_root);
+        return 1;
     }
-    
-    if (blockchain_has_files) {
-        printf("  - Cleaning blockchain directory...\n");
-        if (!clean_directory(blockchain_path)) {
-            success = 0;
-        }
-    }
-    
-    if (!success) {
-        fprintf(stderr, "Warning: Some files could not be removed. Initialization may fail.\n");
-    } else {
-        printf("Existing state cleaned successfully.\n");
-    }
-    
     return 0;
 }
 
 int main(int argc, char* argv[]) {
     int verbose = 0;
-    int debug_nodes = 0;
-    const char* config_file = NULL;
+    int debug_mode = 0;
+    const char* config_path = NULL;
 
-    static struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
-        {"verbose", no_argument, 0, 'v'},
-        {"debug", no_argument, 0, 'd'},
+    static struct option long_opts[] = {
+        {"help",   no_argument,       0, 'h'},
+        {"verbose",no_argument,       0, 'v'},
+        {"debug",  no_argument,       0, 'd'},
         {0, 0, 0, 0}
     };
 
     int opt;
-    int option_index = 0;
-
-    while ((opt = getopt_long(argc, argv, "hvd", long_options, &option_index)) != -1) {
+    int opt_index = 0;
+    while ((opt = getopt_long(argc, argv, "hvd", long_opts, &opt_index)) != -1) {
         switch (opt) {
             case 'h':
                 print_usage(argv[0]);
@@ -477,7 +409,7 @@ int main(int argc, char* argv[]) {
                 verbose = 1;
                 break;
             case 'd':
-                debug_nodes = 1;
+                debug_mode = 1;
                 break;
             default:
                 print_usage(argv[0]);
@@ -485,76 +417,117 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Check for config file argument
     if (optind >= argc) {
-        fprintf(stderr, "Error: Missing configuration file argument\n\n");
+        fprintf(stderr, "Error: missing configuration file argument\n\n");
         print_usage(argv[0]);
         return 1;
     }
-    
-    config_file = argv[optind];
+    config_path = argv[optind];
 
-    // Parse JSON configuration
-    JsonConfig json_config = {0};
-    if (parse_json_config(config_file, &json_config) != 0) {
-        fprintf(stderr, "Error: Failed to parse configuration file\n");
+    JsonConfig json = {0};
+    if (parse_json_config(config_path, &json) != 0) {
+        return 1;
+    }
+
+    if (json.node_count == 0) {
+        fprintf(stderr, "Error: configuration must define at least one node\n");
+        free_json_config(&json);
         return 1;
     }
 
     if (verbose) {
-        printf("Parsed configuration from: %s\n", config_file);
-        printf("Network: %s\n", json_config.network_name ? json_config.network_name : "Unknown");
-        printf("Nodes: %u\n", json_config.node_count);
-        printf("Admins: %u\n", json_config.admin_count);
-        printf("Members: %u\n", json_config.member_count);
-        printf("\n");
+        printf("Loaded network config from: %s\n", config_path);
+        printf("  Nodes: %u\n", json.node_count);
     }
 
-    // Convert to InitConfig for compatibility with existing initialize_network function
-    InitConfig config = {
-        .keystore_path = json_config.keystore_path ? json_config.keystore_path : "state/keys/",
-        .blockchain_path = json_config.blockchain_path ? json_config.blockchain_path : "state/blockchain/",
-        .passphrase = json_config.passphrase ? json_config.passphrase : "testpass",
-        .base_port = json_config.base_port ? json_config.base_port : BASE_PORT,
-        .node_count = json_config.node_count,
-        .user_count = json_config.admin_count + json_config.member_count,
-        .node_specific_dirs = debug_nodes
+    const char* state_root = debug_mode ? DEFAULT_TEST_STATE_ROOT : DEFAULT_STATE_ROOT;
+    if (debug_mode) {
+        printf("Debug mode: using isolated directories under '%s/'\n", state_root);
+    }
+
+    int clean_result = check_and_clean_existing_state(state_root);
+    if (clean_result < 0) {
+        free_json_config(&json);
+        return 0; // User cancelled intentionally
+    }
+
+    InitNodeConfig node_configs[MAX_NODES];
+    memset(node_configs, 0, sizeof(node_configs));
+
+    for (uint32_t i = 0; i < json.node_count; ++i) {
+        node_configs[i].id = json.nodes[i].id;
+        node_configs[i].name = json.nodes[i].name;
+        node_configs[i].type = json.nodes[i].type;
+        node_configs[i].hostname = json.nodes[i].hostname;
+        node_configs[i].gossip_port = json.nodes[i].gossip_port;
+        node_configs[i].api_port = json.nodes[i].api_port;
+        node_configs[i].tags = json.nodes[i].tags;
+        node_configs[i].peer_count = json.nodes[i].peer_count;
+        node_configs[i].peers = (const char* const*)json.nodes[i].peers;
+    }
+
+    InitUserRecord* admin_records = NULL;
+    if (json.admin_count > 0) {
+        admin_records = calloc(json.admin_count, sizeof(InitUserRecord));
+        for (uint32_t i = 0; i < json.admin_count; ++i) {
+            admin_records[i].id = json.admins[i].id;
+            admin_records[i].name = json.admins[i].name;
+            admin_records[i].role = json.admins[i].role ? json.admins[i].role : "admin";
+        }
+    }
+
+    InitUserRecord* member_records = NULL;
+    if (json.member_count > 0) {
+        member_records = calloc(json.member_count, sizeof(InitUserRecord));
+        for (uint32_t i = 0; i < json.member_count; ++i) {
+            member_records[i].id = json.members[i].id;
+            member_records[i].name = json.members[i].name;
+            member_records[i].role = json.members[i].role ? json.members[i].role : "member";
+            member_records[i].age = json.members[i].age;
+            member_records[i].supervised_by = (const char* const*)json.members[i].supervised_by;
+            member_records[i].supervisor_count = json.members[i].supervisor_count;
+        }
+    }
+
+    InitUsersConfig users_cfg = {
+        .admins = admin_records,
+        .admin_count = json.admin_count,
+        .members = member_records,
+        .member_count = json.member_count
     };
 
-    printf("Initializing '%s' network...\n", json_config.network_name ? json_config.network_name : "TinyWeb");
-    if (json_config.network_description) {
-        printf("Description: %s\n", json_config.network_description);
-    }
-    printf("Configuration:\n");
-    printf("  Nodes: %u\n", config.node_count);
-    printf("  Users: %u (%u admins, %u members)\n", config.user_count, json_config.admin_count, json_config.member_count);
-    printf("  Keystore: %s\n", config.keystore_path);
-    printf("  Blockchain: %s\n", config.blockchain_path);
-    printf("  Base Port: %u\n", config.base_port);
-    printf("  Mode: %s\n", debug_nodes ? "Node-specific directories (debug)" : "Global directories");
-    printf("\n");
-    
-    // Check for existing state and prompt user for cleanup (skip in debug mode)
-    if (!debug_nodes) {
-        int cleanup_result = check_and_clean_existing_state(config.keystore_path, config.blockchain_path);
-        if (cleanup_result != 0) {
-            free_json_config(&json_config);
-            return cleanup_result == -1 ? 0 : 1; // Return 0 if user cancelled, 1 if cleanup failed
-        }
-    } else {
-        printf("Debug mode: Skipping production directory cleanup check\n");
-    }
+    InitNetworkConfig init_cfg = {
+        .network_name = json.network_name,
+        .network_description = json.network_description,
+        .base_port = json.base_port,
+        .node_count = json.node_count,
+        .debug_mode = debug_mode,
+        .nodes = node_configs,
+        .users = users_cfg,
+    };
 
-    int result = initialize_network(&config);
-    if (result != 0) {
-        fprintf(stderr, "Error: Network initialization failed\n");
-        free_json_config(&json_config);
+    printf("\nInitializing gossip network...\n");
+    if (initialize_network(&init_cfg) != 0) {
+        fprintf(stderr, "Initialization failed.\n");
+        free(admin_records);
+        free(member_records);
+        free_json_config(&json);
         return 1;
     }
 
-    printf("Network initialization completed successfully!\n");
-    printf("Network '%s' is ready for use.\n", json_config.network_name ? json_config.network_name : "TinyWeb");
-    
-    free_json_config(&json_config);
+    printf("\nNetwork '%s' is ready.\n", init_cfg.network_name ? init_cfg.network_name : "TinyWeb");
+    if (admin_records) {
+        for (uint32_t i = 0; i < json.admin_count; ++i) {
+            free(admin_records[i].key_path);
+        }
+    }
+    if (member_records) {
+        for (uint32_t i = 0; i < json.member_count; ++i) {
+            free(member_records[i].key_path);
+        }
+    }
+    free(admin_records);
+    free(member_records);
+    free_json_config(&json);
     return 0;
 } 

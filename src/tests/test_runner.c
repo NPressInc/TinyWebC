@@ -6,6 +6,7 @@
 #include "tests/encryption_test.h"
 #include "tests/signing_test.h"
 #include "tests/mongoose_test.h"
+#include "tests/gossip_store_test.h"
 
 int main(int argc, char* argv[]) {
     // Initialize libsodium once at the start
@@ -18,7 +19,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 3;
+        int total_tests = 4;
 
         printf("Running all gossip tests...\n\n");
 
@@ -58,6 +59,17 @@ int main(int argc, char* argv[]) {
         keystore_cleanup();
         printf("\n");
 
+        // Run gossip store tests
+        printf("Running gossip store tests...\n");
+        if (gossip_store_test_main() == 0) {
+            printf("✓ Gossip store tests passed\n");
+            tests_passed++;
+        } else {
+            printf("✗ Gossip store tests failed\n");
+            tests_failed++;
+        }
+        printf("\n");
+
         printf("\n=== Test Summary ===\n");
         printf("Total Tests: %d\n", total_tests);
         printf("Passed: %d\n", tests_passed);
@@ -75,9 +87,11 @@ int main(int argc, char* argv[]) {
             return signing_test_main();
         } else if (strcmp(test_name, "mongoose") == 0) {
             return (mongoose_test_main() == 1) ? 0 : 1;  // convert 1=success to 0=success
+        } else if (strcmp(test_name, "gossipdb") == 0) {
+            return gossip_store_test_main();
         } else {
             printf("Unknown test: %s\n", test_name);
-            printf("Available tests: encryption, signing, mongoose\n");
+            printf("Available tests: encryption, signing, mongoose, gossipdb\n");
             return 1;
         }
     }

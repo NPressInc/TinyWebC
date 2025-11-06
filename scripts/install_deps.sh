@@ -31,7 +31,8 @@ sudo apt-get install -y \
     liblz4-dev \
     libp11-kit-dev \
     libssl-dev \
-    libcrypto++-dev
+    libcrypto++-dev \
+    libprotobuf-c-dev
 
 # Install additional development tools (optional but helpful)
 echo "🔍 Installing development tools..."

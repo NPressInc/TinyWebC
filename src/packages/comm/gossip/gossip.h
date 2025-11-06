@@ -13,7 +13,7 @@
 #define GOSSIP_MAX_MESSAGE_SIZE 8192
 
 typedef struct {
-    char address[64];
+    char address[256];
     uint16_t port;
 } GossipPeer;
 
@@ -54,6 +54,10 @@ void gossip_service_stop(GossipService* service);
 
 int gossip_service_broadcast_transaction(GossipService* service,
                                          TW_Transaction* transaction);
+
+int gossip_service_rebroadcast_transaction(GossipService* service,
+                                           TW_Transaction* transaction,
+                                           const struct sockaddr_in* source);
 
 size_t gossip_service_peer_count(const GossipService* service);
 

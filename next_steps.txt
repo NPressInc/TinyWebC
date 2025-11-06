@@ -1,0 +1,46 @@
+Here’s the shortest path to MVP you can test with a local client, then Ubuntu Touch.
+Server hardening (gossip node)
+Add incremental fetch to GET /gossip/recent:
+since_id (or since_ts), sender filter, and max limit.
+Add basic message types and constraints:
+text message (utf-8, <= N bytes), location update, simple metadata.
+Standardize API responses:
+consistent JSON error codes; include server timestamp and node id in responses.
+Logging and observability:
+concise structured logs; toggle via env (debug/info).
+System service:
+provide tinyweb.service and a one-liner enable/start doc.
+Permissions/identity for MVP
+Use pre-seeded users only for MVP (no dynamic registration).
+Client holds its Ed25519 keys; server validates signature and permission on submit.
+Client SDK + Test client
+Minimal client library (start with Python):
+keygen (Ed25519), sign, serialize, submit to POST /gossip/transaction, poll GET /gossip/recent?....
+CLI test tool:
+send-text, tail-inbox (with since), print pretty.
+Ship fixtures pointing at http://node:8000 and read keys from ~/.tinyweb/keys.
+Ubuntu Touch (first app)
+Lightweight QML app + service:
+store device keys (Ed25519) under app sandbox;
+background poll every N seconds using since_id;
+simple send-message UI to a chosen peer (seeded user).
+Packaging:
+single-click package (no native libs beyond HTTPS + libsodium). If libs needed, bundle or use pure-Python client for first cut.
+Networking and deploy
+Tailscale quick path:
+confirm setup_tailscale.sh + health check are enough; document MagicDNS hostname you’ll use in client config.
+Node service and data:
+run tinyweb under systemd; state lives in state/ (prod) and test_state/ (tests).
+Tests (extend beyond current)
+API-level tests:
+submit-valid-message → appears in /gossip/recent (with since_id);
+invalid signature → 422;
+oversize payload → 413.
+Permission path:
+user without permission → 403 (or 422 with specific code).
+Dedupe:
+repost same tx → 200 duplicate, no rebroadcast.
+If you want, I can:
+add since and filters to /gossip/recent,
+add the systemd service for tinyweb,
+scaffold a tiny Python client (keygen/send/recv) you can run on desktop and then port to Ubuntu Touch.

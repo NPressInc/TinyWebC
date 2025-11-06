@@ -4,9 +4,17 @@
 #include <sodium.h>
 #include <assert.h>
 #include <openssl/sha.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include "packages/keystore/keystore.h"
 #include "packages/utils/print.h"
 #include "packages/signing/signing.h"
+
+static void ensure_directory(const char* path) {
+    if (mkdir(path, 0755) == -1 && errno != EEXIST) {
+        fprintf(stderr, "Failed to create directory %s: %s\n", path, strerror(errno));
+    }
+}
 
 int signing_test_main(void) {
     int tests_passed = 0;
@@ -22,16 +30,52 @@ int signing_test_main(void) {
         return 1;
     }
 
-    // Load the existing raw key file instead of generating a new one
-    FILE* key_file = fopen("test_state/keys/node_0_private.key", "rb");
-    if (!key_file) {
-        printf("Failed to open key file\n");
-        keystore_cleanup();
-        return 1;
-    }
+    const char* key_dir = "test_state/keys";
+    const char* key_path = "test_state/keys/node_0_private.key";
 
     unsigned char raw_private_key[SIGN_SECRET_SIZE];
-    size_t bytes_read = fread(raw_private_key, 1, SIGN_SECRET_SIZE, key_file);
+    size_t bytes_read = 0;
+
+    FILE* key_file = fopen(key_path, "rb");
+    if (!key_file) {
+        // Generate and persist a test key if it doesn't exist yet
+        ensure_directory("test_state");
+        ensure_directory(key_dir);
+
+        if (!keystore_generate_keypair()) {
+            printf("Failed to generate keypair for signing test\n");
+            keystore_cleanup();
+            return 1;
+        }
+
+        if (!_keystore_get_private_key(raw_private_key)) {
+            printf("Failed to extract generated private key\n");
+            keystore_cleanup();
+            return 1;
+        }
+
+        key_file = fopen(key_path, "wb");
+        if (!key_file) {
+            printf("Failed to create key file\n");
+            keystore_cleanup();
+            return 1;
+        }
+        if (fwrite(raw_private_key, 1, SIGN_SECRET_SIZE, key_file) != SIGN_SECRET_SIZE) {
+            printf("Failed to write private key\n");
+            fclose(key_file);
+            keystore_cleanup();
+            return 1;
+        }
+        fclose(key_file);
+        key_file = fopen(key_path, "rb");
+        if (!key_file) {
+            printf("Failed to reopen key file\n");
+            keystore_cleanup();
+            return 1;
+        }
+    }
+
+    bytes_read = fread(raw_private_key, 1, SIGN_SECRET_SIZE, key_file);
     fclose(key_file);
 
     if (bytes_read != SIGN_SECRET_SIZE) {

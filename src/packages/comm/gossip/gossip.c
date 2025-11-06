@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <netdb.h>
 
 typedef struct {
     GossipService* service;
@@ -145,8 +146,9 @@ void gossip_service_stop(GossipService* service) {
     pthread_mutex_destroy(&service->peer_lock);
 }
 
-int gossip_service_broadcast_transaction(GossipService* service,
-                                         TW_Transaction* transaction) {
+static int gossip_service_send_transaction(GossipService* service,
+                                            TW_Transaction* transaction,
+                                            const struct sockaddr_in* exclude_source) {
     if (!service || service->socket_fd < 0 || !transaction) {
         return -1;
     }
@@ -170,31 +172,60 @@ int gossip_service_broadcast_transaction(GossipService* service,
     pthread_mutex_lock(&service->peer_lock);
 
     for (size_t i = 0; i < service->peer_count; ++i) {
-        struct sockaddr_in dest;
-        memset(&dest, 0, sizeof(dest));
-        dest.sin_family = AF_INET;
-        dest.sin_port = htons(service->peers[i].port);
+        char port_str[6];
+        snprintf(port_str, sizeof(port_str), "%u", service->peers[i].port);
 
-        if (inet_pton(AF_INET, service->peers[i].address, &dest.sin_addr) <= 0) {
+        struct addrinfo hints;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_DGRAM;
+        hints.ai_protocol = IPPROTO_UDP;
+
+        struct addrinfo* result = NULL;
+        int rc = getaddrinfo(service->peers[i].address, port_str, &hints, &result);
+        if (rc != 0) {
+            fprintf(stderr, "gossip: failed to resolve %s: %s\n", service->peers[i].address, gai_strerror(rc));
             continue;
         }
 
-        ssize_t sent = sendto(service->socket_fd,
-                              buffer,
-                              serialized_size,
-                              0,
-                              (struct sockaddr*)&dest,
-                              sizeof(dest));
+        for (struct addrinfo* ai = result; ai != NULL; ai = ai->ai_next) {
+            if (exclude_source && ai->ai_family == AF_INET) {
+                const struct sockaddr_in* dest = (const struct sockaddr_in*)ai->ai_addr;
+                if (dest->sin_port == exclude_source->sin_port &&
+                    memcmp(&dest->sin_addr, &exclude_source->sin_addr, sizeof(struct in_addr)) == 0) {
+                    continue;
+                }
+            }
 
-        if (sent < 0) {
-            perror("gossip sendto");
+            ssize_t sent = sendto(service->socket_fd,
+                                  buffer,
+                                  serialized_size,
+                                  0,
+                                  ai->ai_addr,
+                                  ai->ai_addrlen);
+            if (sent < 0) {
+                perror("gossip sendto");
+                continue;
+            }
         }
+
+        freeaddrinfo(result);
     }
 
     pthread_mutex_unlock(&service->peer_lock);
-
     free(buffer);
     return 0;
+}
+
+int gossip_service_broadcast_transaction(GossipService* service,
+                                         TW_Transaction* transaction) {
+    return gossip_service_send_transaction(service, transaction, NULL);
+}
+
+int gossip_service_rebroadcast_transaction(GossipService* service,
+                                           TW_Transaction* transaction,
+                                           const struct sockaddr_in* source) {
+    return gossip_service_send_transaction(service, transaction, source);
 }
 
 size_t gossip_service_peer_count(const GossipService* service) {

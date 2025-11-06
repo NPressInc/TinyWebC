@@ -276,6 +276,24 @@ static void handle_post_transaction(struct mg_connection* c, struct mg_http_mess
         return;
     }
 
+    unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE] = {0};
+    TW_Transaction_hash(txn, digest);
+
+    int seen = 0;
+    if (db_is_initialized()) {
+        if (gossip_store_has_seen(digest, &seen) != 0) {
+            fprintf(stderr, "gossip_api: failed to check digest cache\n");
+        } else if (seen) {
+            TW_Transaction_destroy(txn);
+            cJSON_Delete(root);
+            mg_http_reply(c, 200,
+                          "Content-Type: application/json\r\n"
+                          "Access-Control-Allow-Origin: *\r\n",
+                          "{\"status\":\"duplicate\"}");
+            return;
+        }
+    }
+
     uint64_t expires_at = gossip_validation_expiration(txn, g_server.config);
     if (gossip_store_save_transaction(txn, expires_at) != 0) {
         TW_Transaction_destroy(txn);
@@ -285,8 +303,11 @@ static void handle_post_transaction(struct mg_connection* c, struct mg_http_mess
         return;
     }
 
-    if (gossip_service_broadcast_transaction(g_server.service, txn) != 0) {
-        // Continue even if broadcast fails, but log it
+    if (gossip_store_mark_seen(digest, expires_at) != 0) {
+        fprintf(stderr, "gossip_api: failed to record digest\n");
+    }
+
+    if (gossip_service_rebroadcast_transaction(g_server.service, txn, NULL) != 0) {
         fprintf(stderr, "gossip_api: failed to broadcast transaction\n");
     }
 

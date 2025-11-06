@@ -551,6 +551,33 @@ src/packages/sql/database_gossip.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database_gossip.c.s
 .PHONY : src/packages/sql/database_gossip.c.s
 
+src/packages/sql/gossip_peers.o: src/packages/sql/gossip_peers.c.o
+.PHONY : src/packages/sql/gossip_peers.o
+
+# target to build an object file
+src/packages/sql/gossip_peers.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.o
+.PHONY : src/packages/sql/gossip_peers.c.o
+
+src/packages/sql/gossip_peers.i: src/packages/sql/gossip_peers.c.i
+.PHONY : src/packages/sql/gossip_peers.i
+
+# target to preprocess a source file
+src/packages/sql/gossip_peers.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.i
+.PHONY : src/packages/sql/gossip_peers.c.i
+
+src/packages/sql/gossip_peers.s: src/packages/sql/gossip_peers.c.s
+.PHONY : src/packages/sql/gossip_peers.s
+
+# target to generate assembly for a file
+src/packages/sql/gossip_peers.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.s
+.PHONY : src/packages/sql/gossip_peers.c.s
+
 src/packages/sql/gossip_store.o: src/packages/sql/gossip_store.c.o
 .PHONY : src/packages/sql/gossip_store.o
 
@@ -845,6 +872,30 @@ src/tests/encryption_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/encryption_test.c.s
 .PHONY : src/tests/encryption_test.c.s
 
+src/tests/gossip_store_test.o: src/tests/gossip_store_test.c.o
+.PHONY : src/tests/gossip_store_test.o
+
+# target to build an object file
+src/tests/gossip_store_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/gossip_store_test.c.o
+.PHONY : src/tests/gossip_store_test.c.o
+
+src/tests/gossip_store_test.i: src/tests/gossip_store_test.c.i
+.PHONY : src/tests/gossip_store_test.i
+
+# target to preprocess a source file
+src/tests/gossip_store_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/gossip_store_test.c.i
+.PHONY : src/tests/gossip_store_test.c.i
+
+src/tests/gossip_store_test.s: src/tests/gossip_store_test.c.s
+.PHONY : src/tests/gossip_store_test.s
+
+# target to generate assembly for a file
+src/tests/gossip_store_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/gossip_store_test.c.s
+.PHONY : src/tests/gossip_store_test.c.s
+
 src/tests/mongoose_test.o: src/tests/mongoose_test.c.o
 .PHONY : src/tests/mongoose_test.o
 
@@ -970,6 +1021,9 @@ help:
 	@echo "... src/packages/sql/database_gossip.o"
 	@echo "... src/packages/sql/database_gossip.i"
 	@echo "... src/packages/sql/database_gossip.s"
+	@echo "... src/packages/sql/gossip_peers.o"
+	@echo "... src/packages/sql/gossip_peers.i"
+	@echo "... src/packages/sql/gossip_peers.s"
 	@echo "... src/packages/sql/gossip_store.o"
 	@echo "... src/packages/sql/gossip_store.i"
 	@echo "... src/packages/sql/gossip_store.s"
@@ -1003,6 +1057,9 @@ help:
 	@echo "... src/tests/encryption_test.o"
 	@echo "... src/tests/encryption_test.i"
 	@echo "... src/tests/encryption_test.s"
+	@echo "... src/tests/gossip_store_test.o"
+	@echo "... src/tests/gossip_store_test.i"
+	@echo "... src/tests/gossip_store_test.s"
 	@echo "... src/tests/mongoose_test.o"
 	@echo "... src/tests/mongoose_test.i"
 	@echo "... src/tests/mongoose_test.s"
