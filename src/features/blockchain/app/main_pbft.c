@@ -7,7 +7,6 @@
 #include <pthread.h>
 #include <sodium.h>
 #include "features/blockchain/pbft/pbft_node.h"
-#include "packages/comm/pbftApi.h"
 #include "packages/sql/database.h"
 #include "features/blockchain/core/blockchain.h"
 #include "features/blockchain/persistence/persistence_manager.h"

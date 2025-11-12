@@ -11,11 +11,8 @@ list(FILTER BLOCKCHAIN_CORE_SOURCES EXCLUDE REGEX "${PBFT_FEATURE_ROOT}/app/.*")
 
 set(PBFT_PACKAGE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/packages/transactions/transaction.c
-    ${CMAKE_SOURCE_DIR}/src/packages/comm/pbftApi.c
-    ${CMAKE_SOURCE_DIR}/src/packages/comm/blockChainQueryApi.c
     ${CMAKE_SOURCE_DIR}/src/packages/comm/accessApi.c
     ${CMAKE_SOURCE_DIR}/src/packages/comm/httpClient.c
-    ${CMAKE_SOURCE_DIR}/src/packages/comm/nodeApi.c
     ${CMAKE_SOURCE_DIR}/src/packages/sql/database.c
     ${CMAKE_SOURCE_DIR}/src/packages/sql/schema.c
     ${CMAKE_SOURCE_DIR}/src/packages/sql/queries.c
@@ -59,11 +56,6 @@ add_executable(tinyweb_pbft
     ${PBFT_FEATURE_ROOT}/app/main_pbft.c
 )
 target_link_libraries(tinyweb_pbft PRIVATE pbft_support)
-
-add_executable(pbft_node_runner
-    ${CMAKE_SOURCE_DIR}/pbft_node_runner.c
-)
-target_link_libraries(pbft_node_runner PRIVATE pbft_support)
 
 add_executable(init_tool
     ${CMAKE_SOURCE_DIR}/src/packages/initialization/init_tool.c

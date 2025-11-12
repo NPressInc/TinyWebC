@@ -29,6 +29,8 @@ HTTP endpoints:
 
 - `POST /gossip/transaction` – JSON body `{ "transaction_hex": "..." }` (serialized transaction in hex)
 - `GET /gossip/recent?limit=50` – recent messages with metadata
+- `GET /gossip/messages?user=<pubkey>&with=<pubkey>` – messages between two users
+- `GET /gossip/conversations?user=<pubkey>` – list of conversation partners with recent activity
 
 Gossip packets are validated locally (signature, timestamp, payload size) and persisted with automatic TTL cleanup (default 30 days).
 

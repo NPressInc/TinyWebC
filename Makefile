@@ -192,19 +192,6 @@ tinyweb_pbft/fast:
 .PHONY : tinyweb_pbft/fast
 
 #=============================================================================
-# Target rules for targets named pbft_node_runner
-
-# Build rule for target.
-pbft_node_runner: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pbft_node_runner
-.PHONY : pbft_node_runner
-
-# fast build rule for target.
-pbft_node_runner/fast:
-	$(MAKE) $(MAKESILENT) -f src/features/blockchain/CMakeFiles/pbft_node_runner.dir/build.make src/features/blockchain/CMakeFiles/pbft_node_runner.dir/build
-.PHONY : pbft_node_runner/fast
-
-#=============================================================================
 # Target rules for targets named init_tool
 
 # Build rule for target.
@@ -388,33 +375,6 @@ src/packages/comm/gossipApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/gossipApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/gossipApi.c.s
 .PHONY : src/packages/comm/gossipApi.c.s
-
-src/packages/comm/nodeApi.o: src/packages/comm/nodeApi.c.o
-.PHONY : src/packages/comm/nodeApi.o
-
-# target to build an object file
-src/packages/comm/nodeApi.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.o
-.PHONY : src/packages/comm/nodeApi.c.o
-
-src/packages/comm/nodeApi.i: src/packages/comm/nodeApi.c.i
-.PHONY : src/packages/comm/nodeApi.i
-
-# target to preprocess a source file
-src/packages/comm/nodeApi.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.i
-.PHONY : src/packages/comm/nodeApi.c.i
-
-src/packages/comm/nodeApi.s: src/packages/comm/nodeApi.c.s
-.PHONY : src/packages/comm/nodeApi.s
-
-# target to generate assembly for a file
-src/packages/comm/nodeApi.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/nodeApi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/nodeApi.c.s
-.PHONY : src/packages/comm/nodeApi.c.s
 
 src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
 .PHONY : src/packages/encryption/encryption.o
@@ -979,7 +939,6 @@ help:
 	@echo "... test"
 	@echo "... generate_proto"
 	@echo "... init_tool"
-	@echo "... pbft_node_runner"
 	@echo "... pbft_support"
 	@echo "... tinyweb"
 	@echo "... tinyweb_pbft"
@@ -1003,9 +962,6 @@ help:
 	@echo "... src/packages/comm/gossipApi.o"
 	@echo "... src/packages/comm/gossipApi.i"
 	@echo "... src/packages/comm/gossipApi.s"
-	@echo "... src/packages/comm/nodeApi.o"
-	@echo "... src/packages/comm/nodeApi.i"
-	@echo "... src/packages/comm/nodeApi.s"
 	@echo "... src/packages/encryption/encryption.o"
 	@echo "... src/packages/encryption/encryption.i"
 	@echo "... src/packages/encryption/encryption.s"

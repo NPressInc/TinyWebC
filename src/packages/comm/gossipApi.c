@@ -32,6 +32,8 @@ static void* gossip_api_loop(void* arg);
 static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data);
 static void handle_post_transaction(struct mg_connection* c, struct mg_http_message* hm);
 static void handle_get_recent(struct mg_connection* c, struct mg_http_message* hm);
+static void handle_get_messages(struct mg_connection* c, struct mg_http_message* hm);
+static void handle_get_conversations(struct mg_connection* c, struct mg_http_message* hm);
 static int hex_decode(const char* hex, unsigned char** out, size_t* out_len);
 static char* hex_encode(const unsigned char* data, size_t len);
 
@@ -212,6 +214,32 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
         } else if (mg_strcmp(hm->uri, mg_str("/gossip/recent")) == 0) {
             if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
                 handle_get_recent(c, hm);
+            } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
+                mg_http_reply(c, 200,
+                              "Access-Control-Allow-Origin: *\r\n"
+                              "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
+                              "Access-Control-Allow-Headers: Content-Type\r\n",
+                              "");
+            } else {
+                mg_http_reply(c, 405, "Content-Type: application/json\r\n",
+                              "{\"error\":\"Method Not Allowed\"}");
+            }
+        } else if (mg_strcmp(hm->uri, mg_str("/gossip/messages")) == 0) {
+            if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
+                handle_get_messages(c, hm);
+            } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
+                mg_http_reply(c, 200,
+                              "Access-Control-Allow-Origin: *\r\n"
+                              "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
+                              "Access-Control-Allow-Headers: Content-Type\r\n",
+                              "");
+            } else {
+                mg_http_reply(c, 405, "Content-Type: application/json\r\n",
+                              "{\"error\":\"Method Not Allowed\"}");
+            }
+        } else if (mg_strcmp(hm->uri, mg_str("/gossip/conversations")) == 0) {
+            if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
+                handle_get_conversations(c, hm);
             } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
                 mg_http_reply(c, 200,
                               "Access-Control-Allow-Origin: *\r\n"
@@ -421,5 +449,269 @@ static char* hex_encode(const unsigned char* data, size_t len) {
     }
     sodium_bin2hex(out, out_len, data, len);
     return out;
+}
+
+static void handle_get_messages(struct mg_connection* c, struct mg_http_message* hm) {
+    // Parse query parameters
+    char with_user[128] = {0};
+    char current_user[128] = {0};
+
+    if (mg_http_get_var(&hm->query, "with", with_user, sizeof(with_user)) <= 0) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                      "{\"error\":\"'with' parameter required (other user's public key)\"}");
+        return;
+    }
+
+    if (mg_http_get_var(&hm->query, "user", current_user, sizeof(current_user)) <= 0) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                      "{\"error\":\"'user' parameter required (current user's public key)\"}");
+        return;
+    }
+
+    // Query for messages between these two users
+    // This is a simplified implementation - in practice you'd want messages where
+    // (sender = current_user AND recipient = with_user) OR (sender = with_user AND recipient = current_user)
+    // For now, we'll use the existing query_messages_for_user and filter client-side
+
+    GossipStoredMessage* messages = NULL;
+    size_t count = 0;
+
+    // First try to get messages from current user to the other user
+    if (gossip_store_fetch_recent(1000, &messages, &count) != 0) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Failed to fetch messages\"}");
+        return;
+    }
+
+    cJSON* root = cJSON_CreateArray();
+    if (!root) {
+        gossip_store_free_messages(messages, count);
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Out of memory\"}");
+        return;
+    }
+
+    // Convert current_user and with_user to binary for comparison
+    unsigned char current_user_bin[PUBKEY_SIZE] = {0};
+    unsigned char with_user_bin[PUBKEY_SIZE] = {0};
+
+    if (sodium_hex2bin(current_user_bin, sizeof(current_user_bin),
+                       current_user, strlen(current_user), NULL, NULL, NULL) != 0) {
+        cJSON_Delete(root);
+        gossip_store_free_messages(messages, count);
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Invalid current user public key format\"}");
+        return;
+    }
+
+    if (sodium_hex2bin(with_user_bin, sizeof(with_user_bin),
+                       with_user, strlen(with_user), NULL, NULL, NULL) != 0) {
+        cJSON_Delete(root);
+        gossip_store_free_messages(messages, count);
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Invalid 'with' user public key format\"}");
+        return;
+    }
+
+    // Filter messages between these two users
+    for (size_t i = 0; i < count; ++i) {
+        // Check if this message is between the two users
+        int is_sender_current = memcmp(messages[i].sender, current_user_bin, PUBKEY_SIZE) == 0;
+        int is_sender_with = memcmp(messages[i].sender, with_user_bin, PUBKEY_SIZE) == 0;
+
+        if ((is_sender_current || is_sender_with) && messages[i].type == TW_TXN_MESSAGE) {
+            cJSON* item = cJSON_CreateObject();
+            if (!item) continue;
+
+            cJSON_AddNumberToObject(item, "id", (double)messages[i].id);
+            cJSON_AddNumberToObject(item, "type", messages[i].type);
+            cJSON_AddNumberToObject(item, "timestamp", (double)messages[i].timestamp);
+            cJSON_AddNumberToObject(item, "expiresAt", (double)messages[i].expires_at);
+
+            char sender_hex[PUBKEY_SIZE * 2 + 1];
+            sodium_bin2hex(sender_hex, sizeof(sender_hex), messages[i].sender, PUBKEY_SIZE);
+            cJSON_AddStringToObject(item, "sender", sender_hex);
+
+            // Determine if this is an outgoing or incoming message
+            cJSON_AddBoolToObject(item, "isOutgoing", is_sender_current);
+
+            if (messages[i].payload && messages[i].payload_size > 0) {
+                char* payload_hex = hex_encode(messages[i].payload, messages[i].payload_size);
+                if (payload_hex) {
+                    cJSON_AddStringToObject(item, "transaction_hex", payload_hex);
+                    free(payload_hex);
+                }
+            }
+
+            cJSON_AddItemToArray(root, item);
+        }
+    }
+
+    char* json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    gossip_store_free_messages(messages, count);
+
+    if (!json) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Failed to serialize response\"}");
+        return;
+    }
+
+    mg_http_reply(c, 200,
+                  "Content-Type: application/json\r\n"
+                  "Access-Control-Allow-Origin: *\r\n",
+                  "%s", json);
+    free(json);
+}
+
+static void handle_get_conversations(struct mg_connection* c, struct mg_http_message* hm) {
+    // Parse query parameter for current user
+    char current_user[128] = {0};
+
+    if (mg_http_get_var(&hm->query, "user", current_user, sizeof(current_user)) <= 0) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                      "{\"error\":\"'user' parameter required (current user's public key)\"}");
+        return;
+    }
+
+    // Get recent messages to find conversation partners
+    GossipStoredMessage* messages = NULL;
+    size_t count = 0;
+
+    if (gossip_store_fetch_recent(1000, &messages, &count) != 0) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Failed to fetch messages\"}");
+        return;
+    }
+
+    cJSON* root = cJSON_CreateArray();
+    if (!root) {
+        gossip_store_free_messages(messages, count);
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Out of memory\"}");
+        return;
+    }
+
+    // Convert current user to binary for comparison
+    unsigned char current_user_bin[PUBKEY_SIZE] = {0};
+    if (sodium_hex2bin(current_user_bin, sizeof(current_user_bin),
+                       current_user, strlen(current_user), NULL, NULL, NULL) != 0) {
+        cJSON_Delete(root);
+        gossip_store_free_messages(messages, count);
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Invalid user public key format\"}");
+        return;
+    }
+
+    // Use a simple set-like structure to track unique conversation partners
+    // In a real implementation, you'd want a proper hash set
+    #define MAX_CONVERSATIONS 100
+    struct {
+        unsigned char pubkey[PUBKEY_SIZE];
+        uint64_t last_message_time;
+        char last_message_preview[100];
+        int message_count;
+    } conversations[MAX_CONVERSATIONS];
+
+    int conversation_count = 0;
+
+    for (size_t i = 0; i < count; ++i) {
+        if (messages[i].type != TW_TXN_MESSAGE) continue;
+
+        // Check if current user is involved in this message
+        int is_sender = memcmp(messages[i].sender, current_user_bin, PUBKEY_SIZE) == 0;
+
+        unsigned char other_user[PUBKEY_SIZE];
+        if (is_sender) {
+            // For direct messages, we'd need to get recipients from the transaction
+            // For now, skip messages sent by current user (we can't easily determine recipients)
+            continue;
+        } else {
+            // Message received by current user - sender is the conversation partner
+            memcpy(other_user, messages[i].sender, PUBKEY_SIZE);
+        }
+
+        // Check if we already have this conversation
+        int found = 0;
+        for (int j = 0; j < conversation_count; ++j) {
+            if (memcmp(conversations[j].pubkey, other_user, PUBKEY_SIZE) == 0) {
+                found = 1;
+                // Update with newer message if this one is more recent
+                if (messages[i].timestamp > conversations[j].last_message_time) {
+                    conversations[j].last_message_time = messages[i].timestamp;
+                    conversations[j].message_count++;
+                    // Simple preview (first 96 chars of hex payload)
+                    if (messages[i].payload && messages[i].payload_size > 0) {
+                        size_t preview_len = messages[i].payload_size > 48 ? 48 : messages[i].payload_size;
+                        sodium_bin2hex(conversations[j].last_message_preview,
+                                     sizeof(conversations[j].last_message_preview),
+                                     messages[i].payload, preview_len);
+                    }
+                }
+                break;
+            }
+        }
+
+        // Add new conversation if not found and we have space
+        if (!found && conversation_count < MAX_CONVERSATIONS) {
+            memcpy(conversations[conversation_count].pubkey, other_user, PUBKEY_SIZE);
+            conversations[conversation_count].last_message_time = messages[i].timestamp;
+            conversations[conversation_count].message_count = 1;
+
+            // Simple preview (first 96 chars of hex payload)
+            if (messages[i].payload && messages[i].payload_size > 0) {
+                size_t preview_len = messages[i].payload_size > 48 ? 48 : messages[i].payload_size;
+                sodium_bin2hex(conversations[conversation_count].last_message_preview,
+                             sizeof(conversations[conversation_count].last_message_preview),
+                             messages[i].payload, preview_len);
+            }
+
+            conversation_count++;
+        }
+    }
+
+    // Sort conversations by last message time (most recent first)
+    for (int i = 0; i < conversation_count - 1; ++i) {
+        for (int j = 0; j < conversation_count - i - 1; ++j) {
+            if (conversations[j].last_message_time < conversations[j + 1].last_message_time) {
+                // Swap
+                typeof(conversations[0]) temp = conversations[j];
+                conversations[j] = conversations[j + 1];
+                conversations[j + 1] = temp;
+            }
+        }
+    }
+
+    // Build JSON response
+    for (int i = 0; i < conversation_count; ++i) {
+        cJSON* conv = cJSON_CreateObject();
+        if (!conv) continue;
+
+        char pubkey_hex[PUBKEY_SIZE * 2 + 1];
+        sodium_bin2hex(pubkey_hex, sizeof(pubkey_hex), conversations[i].pubkey, PUBKEY_SIZE);
+
+        cJSON_AddStringToObject(conv, "with", pubkey_hex);
+        cJSON_AddNumberToObject(conv, "lastMessageTime", (double)conversations[i].last_message_time);
+        cJSON_AddNumberToObject(conv, "messageCount", conversations[i].message_count);
+        cJSON_AddStringToObject(conv, "lastMessagePreview", conversations[i].last_message_preview);
+
+        cJSON_AddItemToArray(root, conv);
+    }
+
+    char* json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    gossip_store_free_messages(messages, count);
+
+    if (!json) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
+                      "{\"error\":\"Failed to serialize response\"}");
+        return;
+    }
+
+    mg_http_reply(c, 200,
+                  "Content-Type: application/json\r\n"
+                  "Access-Control-Allow-Origin: *\r\n",
+                  "%s", json);
+    free(json);
 }
 

@@ -4,7 +4,6 @@
 #include "packages/signing/signing.h"
 #include "packages/encryption/encryption.h"
 #include "packages/utils/jsonUtils.h"
-#include "packages/comm/pbftApi.h"
 #include <cjson/cJSON.h>
 #include <string.h>
 #include <time.h>

@@ -199,6 +199,7 @@ static int gossip_receive_handler(GossipService* service, TW_Transaction* transa
     unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE] = {0};
     TW_Transaction_hash(transaction, digest);
 
+    // BUG: Race condition between has_seen check and mark_seen - multiple threads could both pass here
     int seen = 0;
     if (db_is_initialized()) {
         if (gossip_store_has_seen(digest, &seen) != 0) {

@@ -189,6 +189,7 @@ static int gossip_service_send_transaction(GossipService* service,
         }
 
         for (struct addrinfo* ai = result; ai != NULL; ai = ai->ai_next) {
+            // BUG: Exclusion only by IP/port - doesn't handle NAT, multiple interfaces, or logical node identity
             if (exclude_source && ai->ai_family == AF_INET) {
                 const struct sockaddr_in* dest = (const struct sockaddr_in*)ai->ai_addr;
                 if (dest->sin_port == exclude_source->sin_port &&
@@ -239,6 +240,7 @@ static void* gossip_receive_loop(void* arg) {
     GossipService* service = (GossipService*)arg;
     unsigned char buffer[GOSSIP_MAX_MESSAGE_SIZE];
 
+    // BUG: No rate limiting - vulnerable to flood attacks from malicious peers
     while (service->running) {
         struct sockaddr_in source;
         socklen_t source_len = sizeof(source);
@@ -260,11 +262,15 @@ static void* gossip_receive_loop(void* arg) {
             continue;
         }
 
+        // BUG: No pre-validation of message size before deserialization attempt
         TW_Transaction* txn = TW_Transaction_deserialize(buffer, (size_t)bytes);
         if (!txn) {
+            fprintf(stderr, "gossip: failed to deserialize transaction from %s:%d (%zu bytes)\n",
+                    inet_ntoa(source.sin_addr), ntohs(source.sin_port), bytes);
             continue;
         }
 
+        // BUG: Inconsistent error handling - some failures reject, others warn, some silent
         if (service->handler) {
             if (service->handler(service, txn, &source, service->handler_context) != 0) {
                 fprintf(stderr, "gossip: handler rejected transaction type %d\n", txn->type);
