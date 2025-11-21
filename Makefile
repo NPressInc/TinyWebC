@@ -751,6 +751,36 @@ src/packages/utils/byteorder.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.s
 .PHONY : src/packages/utils/byteorder.c.s
 
+src/packages/utils/logger.o: src/packages/utils/logger.c.o
+.PHONY : src/packages/utils/logger.o
+
+# target to build an object file
+src/packages/utils/logger.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/logger.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/logger.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/logger.c.o
+.PHONY : src/packages/utils/logger.c.o
+
+src/packages/utils/logger.i: src/packages/utils/logger.c.i
+.PHONY : src/packages/utils/logger.i
+
+# target to preprocess a source file
+src/packages/utils/logger.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/logger.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/logger.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/logger.c.i
+.PHONY : src/packages/utils/logger.c.i
+
+src/packages/utils/logger.s: src/packages/utils/logger.c.s
+.PHONY : src/packages/utils/logger.s
+
+# target to generate assembly for a file
+src/packages/utils/logger.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/logger.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/logger.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/logger.c.s
+.PHONY : src/packages/utils/logger.c.s
+
 src/packages/utils/print.o: src/packages/utils/print.c.o
 .PHONY : src/packages/utils/print.o
 
@@ -1250,6 +1280,9 @@ help:
 	@echo "... src/packages/utils/byteorder.o"
 	@echo "... src/packages/utils/byteorder.i"
 	@echo "... src/packages/utils/byteorder.s"
+	@echo "... src/packages/utils/logger.o"
+	@echo "... src/packages/utils/logger.i"
+	@echo "... src/packages/utils/logger.s"
 	@echo "... src/packages/utils/print.o"
 	@echo "... src/packages/utils/print.i"
 	@echo "... src/packages/utils/print.s"

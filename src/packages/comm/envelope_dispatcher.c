@@ -8,6 +8,7 @@
 #include "packages/encryption/encryption.h"
 #include "packages/keystore/keystore.h"
 #include "packages/sql/permissions.h"
+#include "packages/utils/logger.h"
 #include "structs/permission/permission.h"
 
 #define MAX_HANDLERS 256
@@ -160,7 +161,7 @@ const char* envelope_content_type_name(uint32_t content_type) {
 
 int envelope_dispatch(const Tinyweb__Envelope* envelope, void* context) {
     if (!envelope || !envelope->header) {
-        fprintf(stderr, "envelope_dispatch: invalid envelope\n");
+        logger_error("envelope_dispatch", "invalid envelope");
         return -1;
     }
     
@@ -178,7 +179,7 @@ int envelope_dispatch(const Tinyweb__Envelope* envelope, void* context) {
     pthread_mutex_unlock(&g_handler_lock);
     
     if (!handler) {
-        fprintf(stderr, "envelope_dispatch: no handler for content type %u (%s)\n",
+        logger_error("envelope_dispatch", "no handler for content type %u (%s)",
                 content_type, envelope_content_type_name(content_type));
         return -1;
     }
@@ -201,7 +202,7 @@ int envelope_dispatch(const Tinyweb__Envelope* envelope, void* context) {
     }
     
     if (result != 0) {
-        fprintf(stderr, "envelope_dispatch: handler for %s failed\n",
+        logger_error("envelope_dispatch", "handler for %s failed",
                 envelope_content_type_name(content_type));
     }
     
@@ -217,7 +218,7 @@ static int handle_direct_message(const Tinyweb__Envelope* envelope,
     (void)context;
     
     if (!envelope || !envelope->header || !envelope->header->sender_pubkey.data) {
-        fprintf(stderr, "handle_direct_message: invalid envelope\n");
+        logger_error("envelope_dispatch", "handle_direct_message: invalid envelope");
         return -1;
     }
     
@@ -225,20 +226,20 @@ static int handle_direct_message(const Tinyweb__Envelope* envelope,
     if (envelope->header->sender_pubkey.len == 32) {
         if (!check_user_permission(envelope->header->sender_pubkey.data, 
                                    PERMISSION_SEND_MESSAGE, SCOPE_DIRECT)) {
-            fprintf(stderr, "handle_direct_message: user does not have permission to send direct messages\n");
+            logger_error("envelope_dispatch", "handle_direct_message: user does not have permission to send direct messages");
             return -1;
         }
     }
     
     if (!payload) {
-        fprintf(stderr, "handle_direct_message: payload decryption not yet implemented\n");
+        logger_error("envelope_dispatch", "handle_direct_message: payload decryption not yet implemented");
         return 0; // Not an error, just not implemented yet
     }
     
     // Parse DirectMessage from payload
     Tinyweb__DirectMessage* msg = tinyweb__direct_message__unpack(NULL, payload_len, payload);
     if (!msg) {
-        fprintf(stderr, "handle_direct_message: failed to parse DirectMessage\n");
+        logger_error("envelope_dispatch", "handle_direct_message: failed to parse DirectMessage");
         return -1;
     }
     
@@ -257,7 +258,7 @@ static int handle_group_message(const Tinyweb__Envelope* envelope,
     (void)context;
     
     if (!envelope || !envelope->header || !envelope->header->sender_pubkey.data) {
-        fprintf(stderr, "handle_group_message: invalid envelope\n");
+        logger_error("envelope_dispatch", "handle_group_message: invalid envelope");
         return -1;
     }
     
@@ -268,19 +269,19 @@ static int handle_group_message(const Tinyweb__Envelope* envelope,
                        check_user_permission(envelope->header->sender_pubkey.data, 
                                              PERMISSION_SEND_MESSAGE, SCOPE_EXTENDED_GROUP);
         if (!has_perm) {
-            fprintf(stderr, "handle_group_message: user does not have permission to send group messages\n");
+            logger_error("envelope_dispatch", "handle_group_message: user does not have permission to send group messages");
             return -1;
         }
     }
     
     if (!payload) {
-        fprintf(stderr, "handle_group_message: payload decryption not yet implemented\n");
+        logger_error("envelope_dispatch", "handle_group_message: payload decryption not yet implemented");
         return 0;
     }
     
     Tinyweb__GroupMessage* msg = tinyweb__group_message__unpack(NULL, payload_len, payload);
     if (!msg) {
-        fprintf(stderr, "handle_group_message: failed to parse GroupMessage\n");
+        logger_error("envelope_dispatch", "handle_group_message: failed to parse GroupMessage");
         return -1;
     }
     
@@ -299,13 +300,13 @@ static int handle_location_update(const Tinyweb__Envelope* envelope,
     (void)context;
     
     if (!payload) {
-        fprintf(stderr, "handle_location_update: payload decryption not yet implemented\n");
+        logger_error("envelope_dispatch", "handle_location_update: payload decryption not yet implemented");
         return 0;
     }
     
     Tinyweb__LocationUpdate* loc = tinyweb__location_update__unpack(NULL, payload_len, payload);
     if (!loc) {
-        fprintf(stderr, "handle_location_update: failed to parse LocationUpdate\n");
+        logger_error("envelope_dispatch", "handle_location_update: failed to parse LocationUpdate");
         return -1;
     }
     
@@ -324,13 +325,13 @@ static int handle_emergency_alert(const Tinyweb__Envelope* envelope,
     (void)context;
     
     if (!payload) {
-        fprintf(stderr, "handle_emergency_alert: payload decryption not yet implemented\n");
+        logger_error("envelope_dispatch", "handle_emergency_alert: payload decryption not yet implemented");
         return 0;
     }
     
     Tinyweb__EmergencyAlert* alert = tinyweb__emergency_alert__unpack(NULL, payload_len, payload);
     if (!alert) {
-        fprintf(stderr, "handle_emergency_alert: failed to parse EmergencyAlert\n");
+        logger_error("envelope_dispatch", "handle_emergency_alert: failed to parse EmergencyAlert");
         return -1;
     }
     

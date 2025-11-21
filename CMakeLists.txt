@@ -174,6 +174,7 @@ add_executable(init_tool
     src/packages/initialization/init.c
     src/packages/sql/gossip_store.c
     src/packages/sql/gossip_peers.c
+    src/packages/utils/logger.c
     src/structs/permission/permission.c
 )
 target_sources(init_tool PRIVATE ${GOSSIP_DB_SOURCES})

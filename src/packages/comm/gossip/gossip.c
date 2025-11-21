@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include "packages/utils/logger.h"
 
 typedef struct {
     GossipService* service;
@@ -181,7 +182,7 @@ static int gossip_service_send_envelope(GossipService* service,
         struct addrinfo* result = NULL;
         int rc = getaddrinfo(service->peers[i].address, port_str, &hints, &result);
         if (rc != 0) {
-            fprintf(stderr, "gossip: failed to resolve %s: %s\n", service->peers[i].address, gai_strerror(rc));
+            logger_error("gossip", "failed to resolve %s: %s", service->peers[i].address, gai_strerror(rc));
             continue;
         }
 
@@ -260,7 +261,7 @@ static void* gossip_receive_loop(void* arg) {
         // Deserialize envelope
         Tinyweb__Envelope* envelope = tinyweb__envelope__unpack(NULL, (size_t)bytes, buffer);
         if (!envelope) {
-            fprintf(stderr, "gossip: failed to deserialize envelope from %s:%d (%zd bytes)\n",
+            logger_error("gossip", "failed to deserialize envelope from %s:%d (%zd bytes)",
                     inet_ntoa(source.sin_addr), ntohs(source.sin_port), bytes);
             continue;
         }
@@ -268,7 +269,7 @@ static void* gossip_receive_loop(void* arg) {
         // Call handler
         if (service->handler) {
             if (service->handler(service, envelope, &source, service->handler_context) != 0) {
-                fprintf(stderr, "gossip: handler rejected envelope content_type %u\n",
+                logger_error("gossip", "handler rejected envelope content_type %u",
                         envelope->header ? envelope->header->content_type : 0);
             }
         }

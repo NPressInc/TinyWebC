@@ -13,6 +13,7 @@
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/permissions.h"
 #include "packages/transactions/envelope.h"
+#include "packages/utils/logger.h"
 #include "structs/permission/permission.h"
 #include "envelope.pb-c.h"
 #include "content.pb-c.h"
@@ -66,7 +67,7 @@ int gossip_api_start(uint16_t port,
     snprintf(addr, sizeof(addr), "http://0.0.0.0:%u", port);
     g_server.listener = mg_http_listen(&g_server.mgr, addr, gossip_api_handler, NULL);
     if (!g_server.listener) {
-        fprintf(stderr, "gossip_api: failed to listen on %s\n", addr);
+        logger_error("http_api", "failed to listen on %s", addr);
         mg_mgr_free(&g_server.mgr);
         memset(&g_server, 0, sizeof(g_server));
         return -1;
@@ -76,7 +77,7 @@ int gossip_api_start(uint16_t port,
     g_server.initialized = 1;
 
     if (pthread_create(&g_server.thread, NULL, gossip_api_loop, NULL) != 0) {
-        fprintf(stderr, "gossip_api: failed to start HTTP thread\n");
+        logger_error("http_api", "failed to start HTTP thread");
         g_server.running = 0;
         mg_mgr_free(&g_server.mgr);
         memset(&g_server, 0, sizeof(g_server));
@@ -196,7 +197,7 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                 int seen = 0;
                 if (db_is_initialized()) {
                     if (gossip_store_has_seen(digest, &seen) != 0) {
-                        fprintf(stderr, "gossip_api: failed to check envelope digest cache\n");
+                        logger_error("http_api", "failed to check envelope digest cache");
                     } else if (seen) {
                         free(ser);
                         tinyweb__envelope__free_unpacked(env, NULL);
@@ -231,13 +232,13 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
 
                 // Mark as seen
                 if (gossip_store_mark_seen(digest, expires_at) != 0) {
-                    fprintf(stderr, "gossip_api: failed to record envelope digest\n");
+                    logger_error("http_api", "failed to record envelope digest");
                 }
 
                 // Rebroadcast via UDP gossip
                 if (g_server.service) {
                     if (gossip_service_rebroadcast_envelope(g_server.service, env, NULL) != 0) {
-                        fprintf(stderr, "gossip_api: failed to rebroadcast envelope\n");
+                        logger_error("http_api", "failed to rebroadcast envelope");
                     }
                 }
 

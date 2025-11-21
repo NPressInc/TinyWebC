@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "database_gossip.h"
+#include "packages/utils/logger.h"
 
 #define GOSSIP_CREATE_TABLE_SQL \
     "CREATE TABLE IF NOT EXISTS gossip_messages (" \
@@ -152,7 +153,7 @@ int gossip_store_init(void) {
     char* error_msg = NULL;
     int rc = sqlite3_exec(db, GOSSIP_CREATE_TABLE_SQL, NULL, NULL, &error_msg);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "gossip_store: failed to create table: %s\n", error_msg);
+        logger_error("gossip_store", "failed to create table: %s", error_msg);
         sqlite3_free(error_msg);
         return -1;
     }

@@ -13,6 +13,7 @@
 #include "packages/sql/gossip_peers.h"
 #include "packages/sql/gossip_store.h"
 #include "packages/sql/schema.h"
+#include "packages/utils/logger.h"
 #include "structs/permission/permission.h"
 
 // ============================================================================
@@ -28,7 +29,7 @@ static int ensure_directory(const char* path) {
         return 0;
     }
     if (mkdir(path, 0755) == -1 && errno != EEXIST) {
-        fprintf(stderr, "Failed to create directory %s: %s\n", path, strerror(errno));
+        logger_error("init", "Failed to create directory %s: %s", path, strerror(errno));
         return -1;
     }
     return 0;
@@ -38,7 +39,7 @@ static int ensure_sodium_ready(void) {
     static int initialized = 0;
     if (!initialized) {
         if (sodium_init() < 0) {
-            fprintf(stderr, "Failed to initialize libsodium\n");
+            logger_error("init", "Failed to initialize libsodium");
             return -1;
         }
         initialized = 1;
@@ -144,24 +145,24 @@ int generate_user_keypair(const char* user_id, const char* base_path,
             memcpy(out_pubkey, pub, PUBKEY_SIZE);
             return 0;
         }
-        fprintf(stderr, "Warning: key file %s corrupted, regenerating.\n", key_path);
+        logger_error("init", "Warning: key file %s corrupted, regenerating", key_path);
     }
 
     // Generate new keypair
     if (crypto_sign_keypair(pub, secret) != 0) {
-        fprintf(stderr, "Failed to generate keypair for user %s\n", user_id);
+        logger_error("init", "Failed to generate keypair for user %s", user_id);
         return -1;
     }
 
     // Save secret key
     f = fopen(key_path, "wb");
     if (!f) {
-        fprintf(stderr, "Failed to write key file %s\n", key_path);
+        logger_error("init", "Failed to write key file %s", key_path);
         return -1;
     }
     if (fwrite(secret, 1, sizeof(secret), f) != sizeof(secret)) {
         fclose(f);
-        fprintf(stderr, "Failed to store key file %s\n", key_path);
+        logger_error("init", "Failed to store key file %s", key_path);
         return -1;
     }
     fclose(f);
@@ -184,7 +185,7 @@ int seed_basic_roles(sqlite3* db) {
     
     // Admin role
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
+        logger_error("init", "SQLite error: %s", sqlite3_errmsg(db));
         return -1;
     }
     sqlite3_bind_text(stmt, 1, "admin", -1, SQLITE_STATIC);
@@ -194,7 +195,7 @@ int seed_basic_roles(sqlite3* db) {
 
     // Member role
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
+        logger_error("init", "SQLite error: %s", sqlite3_errmsg(db));
         return -1;
     }
     sqlite3_bind_text(stmt, 1, "member", -1, SQLITE_STATIC);
@@ -204,7 +205,7 @@ int seed_basic_roles(sqlite3* db) {
 
     // Contact role
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
+        logger_error("init", "SQLite error: %s", sqlite3_errmsg(db));
         return -1;
     }
     sqlite3_bind_text(stmt, 1, "contact", -1, SQLITE_STATIC);
@@ -224,7 +225,7 @@ static int insert_permission(sqlite3* db, const char* name, uint64_t permission_
     
     sqlite3_stmt* stmt = NULL;
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
+        logger_error("init", "SQLite error: %s", sqlite3_errmsg(db));
         return -1;
     }
     
@@ -311,11 +312,11 @@ static int get_permission_id_by_flag(sqlite3* db, uint64_t permission_flag) {
         }
         sqlite3_finalize(stmt);
     } else {
-        fprintf(stderr, "get_permission_id_by_flag: SQL error: %s\n", sqlite3_errmsg(db));
+        logger_error("init", "get_permission_id_by_flag: SQL error: %s", sqlite3_errmsg(db));
     }
     
     if (perm_id < 0) {
-        fprintf(stderr, "get_permission_id_by_flag: No permission found for flag 0x%llx\n", 
+        logger_error("init", "get_permission_id_by_flag: No permission found for flag 0x%llx", 
                 (unsigned long long)permission_flag);
     }
     
@@ -330,7 +331,7 @@ static int map_permission_set_to_role(sqlite3* db, int role_id, const Permission
     sqlite3_stmt* stmt = NULL;
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
+        logger_error("init", "SQLite error: %s", sqlite3_errmsg(db));
         return -1;
     }
     
@@ -338,9 +339,6 @@ static int map_permission_set_to_role(sqlite3* db, int role_id, const Permission
     uint64_t remaining_perms = perm_set->permissions;
     uint64_t flag = 1ULL;
     int inserted_count = 0;
-    
-    printf("    Mapping PermissionSet to role_id=%d: permissions=0x%llx, scopes=0x%x\n",
-           role_id, (unsigned long long)perm_set->permissions, perm_set->scopes);
     
     while (remaining_perms > 0 && flag <= PERMISSION_VIEW_SETTINGS) {
         if (remaining_perms & flag) {
@@ -358,21 +356,19 @@ static int map_permission_set_to_role(sqlite3* db, int role_id, const Permission
                 sqlite3_bind_int64(stmt, 7, (int64_t)perm_set->time_end);
                 
                 if (sqlite3_step(stmt) != SQLITE_DONE) {
-                    fprintf(stderr, "Failed to insert role_permission: %s\n", sqlite3_errmsg(db));
+                    logger_error("init", "Failed to insert role_permission: %s", sqlite3_errmsg(db));
                     sqlite3_finalize(stmt);
                     return -1;
                 }
                 inserted_count++;
             } else {
-                fprintf(stderr, "    Warning: Permission flag 0x%llx not found in database\n", 
+                logger_error("init", "Warning: Permission flag 0x%llx not found in database", 
                         (unsigned long long)flag);
             }
             remaining_perms &= ~flag;
         }
         flag <<= 1;
     }
-    
-    printf("    Inserted %d role_permission mappings\n", inserted_count);
     
     sqlite3_finalize(stmt);
     return 0;
@@ -437,7 +433,7 @@ static int seed_users(sqlite3* db, const InitUserConfig* users, uint32_t user_co
         // Generate keypair
         unsigned char pubkey[PUBKEY_SIZE];
         if (generate_user_keypair(user->id, base_path, pubkey) != 0) {
-            fprintf(stderr, "Failed to generate key for user %s\n", user->id);
+            logger_error("init", "Failed to generate key for user %s", user->id);
             return -1;
         }
 
@@ -447,7 +443,7 @@ static int seed_users(sqlite3* db, const InitUserConfig* users, uint32_t user_co
 
         // Insert user
         if (sqlite3_prepare_v2(db, insert_user_sql, -1, &stmt, NULL) != SQLITE_OK) {
-            fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
+            logger_error("init", "SQLite error: %s", sqlite3_errmsg(db));
             return -1;
         }
         sqlite3_bind_text(stmt, 1, pubkey_hex, -1, SQLITE_TRANSIENT);
@@ -467,7 +463,7 @@ static int seed_users(sqlite3* db, const InitUserConfig* users, uint32_t user_co
         }
 
         if (user_id < 0) {
-            fprintf(stderr, "Failed to retrieve user_id for %s\n", user->id);
+            logger_error("init", "Failed to retrieve user_id for %s", user->id);
             return -1;
         }
 
@@ -483,7 +479,7 @@ static int seed_users(sqlite3* db, const InitUserConfig* users, uint32_t user_co
         }
 
         if (role_id < 0) {
-            fprintf(stderr, "Failed to retrieve role_id for role %s\n", role_name);
+            logger_error("init", "Failed to retrieve role_id for role %s", role_name);
             return -1;
         }
 
@@ -528,7 +524,7 @@ static int seed_peers(sqlite3* db, const char** peers, uint32_t peer_count) {
 
         if (host[0] != '\0') {
             if (gossip_peers_add_or_update(host, port, 0, NULL) != 0) {
-                fprintf(stderr, "Warning: failed to add peer %s\n", endpoint);
+                logger_error("init", "Warning: failed to add peer %s", endpoint);
             }
         }
     }
@@ -543,7 +539,7 @@ static int seed_peers(sqlite3* db, const char** peers, uint32_t peer_count) {
 int initialize_node(const InitNodeConfig* node, const InitUserConfig* users, 
                    uint32_t user_count, const char* base_path) {
     if (!node || !base_path) {
-        fprintf(stderr, "Invalid arguments to initialize_node\n");
+        logger_error("init", "Invalid arguments to initialize_node");
         return -1;
     }
 
@@ -552,7 +548,7 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     char db_path[PATH_MAX];
     snprintf(db_dir, sizeof(db_dir), "%s/database", base_path);
     if (build_db_path(base_path, db_path, sizeof(db_path)) != 0) {
-        fprintf(stderr, "Failed to build database path\n");
+        logger_error("init", "Failed to build database path");
         return -1;
     }
 
@@ -560,37 +556,37 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     char base_dir[PATH_MAX];
     snprintf(base_dir, sizeof(base_dir), "%s", base_path);
     if (ensure_directory(base_dir) != 0 || ensure_directory(db_dir) != 0) {
-        fprintf(stderr, "Failed to create directories for %s\n", base_path);
+        logger_error("init", "Failed to create directories for %s", base_path);
         return -1;
     }
 
     // Initialize database
     if (db_init_gossip(db_path) != 0) {
-        fprintf(stderr, "Failed to initialize gossip database at %s\n", db_path);
+        logger_error("init", "Failed to initialize gossip database at %s", db_path);
         return -1;
     }
 
     if (gossip_store_init() != 0) {
-        fprintf(stderr, "Failed to initialize gossip store schema\n");
+        logger_error("init", "Failed to initialize gossip store schema");
         db_close();
         return -1;
     }
 
     if (gossip_peers_init() != 0) {
-        fprintf(stderr, "Failed to initialize gossip peers schema\n");
+        logger_error("init", "Failed to initialize gossip peers schema");
         db_close();
         return -1;
     }
 
     sqlite3* db = db_get_handle();
     if (!db) {
-        fprintf(stderr, "Failed to get database handle\n");
+        logger_error("init", "Failed to get database handle");
         return -1;
     }
 
     // Create user/role/permission schema tables
     if (schema_create_all_tables(db) != 0) {
-        fprintf(stderr, "Failed to create schema tables\n");
+        logger_error("init", "Failed to create schema tables");
         db_close();
         return -1;
     }

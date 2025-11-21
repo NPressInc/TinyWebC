@@ -14,6 +14,7 @@
 #include "packages/sql/gossip_store.h"
 #include "packages/sql/gossip_peers.h"
 #include "packages/utils/statePaths.h"
+#include "packages/utils/logger.h"
 #include "packages/validation/gossip_validation.h"
 #include "packages/transactions/envelope.h"
 #include "packages/comm/gossipApi.h"
@@ -78,14 +79,14 @@ static int parse_arguments(int argc, char* argv[], AppConfig* config) {
         } else if ((strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--gossip-port") == 0) && i + 1 < argc) {
             uint32_t port = (uint32_t)atoi(argv[++i]);
             if (port < 1024 || port > 65535) {
-                fprintf(stderr, "Error: gossip port must be between 1024 and 65535\n");
+                logger_error("main", "gossip port must be between 1024 and 65535");
                 return -1;
             }
             config->gossip_port = (uint16_t)port;
         } else if ((strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--api-port") == 0) && i + 1 < argc) {
             uint32_t port = (uint32_t)atoi(argv[++i]);
             if (port < 1024 || port > 65535) {
-                fprintf(stderr, "Error: API port must be between 1024 and 65535\n");
+                logger_error("main", "API port must be between 1024 and 65535");
                 return -1;
             }
             config->api_port = (uint16_t)port;
@@ -95,7 +96,7 @@ static int parse_arguments(int argc, char* argv[], AppConfig* config) {
             print_usage(argv[0]);
             exit(0);
         } else {
-            fprintf(stderr, "Unknown option: %s\n", argv[i]);
+            logger_error("main", "Unknown option: %s", argv[i]);
             return -1;
         }
     }
@@ -105,27 +106,27 @@ static int parse_arguments(int argc, char* argv[], AppConfig* config) {
 
 static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len) {
     if (!state_paths_init(config->node_id, config->debug_mode, paths)) {
-        fprintf(stderr, "Failed to initialize state paths for node %u\n", config->node_id);
+        logger_error("main", "Failed to initialize state paths for node %u", config->node_id);
         return -1;
     }
 
     if (!state_paths_get_database_file(paths, db_path, db_path_len)) {
-        fprintf(stderr, "Failed to resolve database path for node %u\n", config->node_id);
+        logger_error("main", "Failed to resolve database path for node %u", config->node_id);
         return -1;
     }
     
     if (db_init_gossip(db_path) != 0) {
-        fprintf(stderr, "Failed to initialize database at %s\n", db_path);
+        logger_error("main", "Failed to initialize database at %s", db_path);
         return -1;
     }
     
     if (gossip_store_init() != 0) {
-        fprintf(stderr, "Failed to initialize gossip message store\n");
+        logger_error("main", "Failed to initialize gossip message store");
         return -1;
     }
 
     if (gossip_peers_init() != 0) {
-        fprintf(stderr, "Failed to initialize gossip peer store\n");
+        logger_error("main", "Failed to initialize gossip peer store");
         return -1;
     }
 
@@ -134,12 +135,12 @@ static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, ch
 
 static int start_gossip_service(uint16_t port) {
     if (gossip_service_init(&g_gossip_service, port, gossip_receive_handler, &g_validation_config) != 0) {
-        fprintf(stderr, "Failed to initialize gossip service\n");
+        logger_error("main", "Failed to initialize gossip service");
         return -1;
     }
 
     if (gossip_service_start(&g_gossip_service) != 0) {
-        fprintf(stderr, "Failed to start gossip service\n");
+        logger_error("main", "Failed to start gossip service");
         return -1;
     }
 
@@ -149,7 +150,7 @@ static int start_gossip_service(uint16_t port) {
     if (pthread_create(&g_cleanup_thread, NULL, cleanup_loop, NULL) == 0) {
         g_cleanup_thread_started = true;
     } else {
-        fprintf(stderr, "Warning: Failed to start gossip cleanup thread\n");
+        logger_error("main", "Failed to start gossip cleanup thread");
         g_cleanup_running = 0;
     }
 
@@ -195,7 +196,7 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
     // Validate envelope
     GossipValidationResult result = gossip_validate_envelope(envelope, config, now);
     if (result != GOSSIP_VALIDATION_OK) {
-        fprintf(stderr, "Rejected gossip envelope: %s\n", gossip_validation_error_string(result));
+        logger_error("gossip", "Rejected gossip envelope: %s", gossip_validation_error_string(result));
         return -1;
     }
 
@@ -203,7 +204,7 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
     unsigned char* ser = NULL;
     size_t ser_len = 0;
     if (tw_envelope_serialize(envelope, &ser, &ser_len) != 0) {
-        fprintf(stderr, "Failed to serialize envelope for digest\n");
+        logger_error("gossip", "Failed to serialize envelope for digest");
         return -1;
     }
 
@@ -214,7 +215,7 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
     int seen = 0;
     if (db_is_initialized()) {
         if (gossip_store_has_seen(digest, &seen) != 0) {
-            fprintf(stderr, "Warning: failed to check gossip digest cache\n");
+            logger_error("gossip", "failed to check gossip digest cache");
         } else if (seen) {
             free(ser);
             return 0;
@@ -227,12 +228,12 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
         if (gossip_store_save_envelope(hdr->version, hdr->content_type, hdr->schema_version,
                                        hdr->sender_pubkey.data, hdr->timestamp,
                                        ser, ser_len, expires_at) != 0) {
-            fprintf(stderr, "Failed to persist gossip envelope\n");
+            logger_error("gossip", "Failed to persist gossip envelope");
             free(ser);
             return -1;
         }
         if (gossip_store_mark_seen(digest, expires_at) != 0) {
-            fprintf(stderr, "Warning: failed to record gossip digest\n");
+            logger_error("gossip", "failed to record gossip digest");
         }
     }
 
@@ -240,12 +241,12 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
 
     // Dispatch to content-specific handlers
     if (envelope_dispatch(envelope, NULL) != 0) {
-        fprintf(stderr, "Warning: envelope dispatch failed, continuing anyway\n");
+        logger_error("gossip", "envelope dispatch failed, continuing anyway");
     }
 
     // Rebroadcast to other peers
     if (gossip_service_rebroadcast_envelope(service, envelope, source) != 0) {
-        fprintf(stderr, "Warning: failed to rebroadcast gossip envelope\n");
+        logger_error("gossip", "failed to rebroadcast gossip envelope");
     }
 
     return 0;
@@ -274,7 +275,7 @@ static void bootstrap_known_peers(GossipService* service) {
     GossipPeerInfo* peers = NULL;
     size_t count = 0;
     if (gossip_peers_fetch_all(&peers, &count) != 0) {
-        fprintf(stderr, "Failed to load bootstrap peers from database\n");
+        logger_error("main", "Failed to load bootstrap peers from database");
         return;
     }
 
@@ -305,6 +306,12 @@ int main(int argc, char* argv[]) {
     NodeStatePaths paths;
     char db_path[MAX_STATE_PATH_LEN];
 
+    // Initialize logger first
+    if (logger_init() != 0) {
+        fprintf(stderr, "Failed to initialize logger\n");
+        return 1;
+    }
+    
     if (parse_arguments(argc, argv, &config) != 0) {
         print_usage(argv[0]);
         return 1;
@@ -314,12 +321,12 @@ int main(int argc, char* argv[]) {
     signal(SIGTERM, handle_signal);
     
     if (sodium_init() < 0) {
-        fprintf(stderr, "Failed to initialize libsodium\n");
+        logger_error("main", "Failed to initialize libsodium");
         return 1;
     }
     
     if (envelope_dispatcher_init() != 0) {
-        fprintf(stderr, "Failed to initialize envelope dispatcher\n");
+        logger_error("main", "Failed to initialize envelope dispatcher");
         return 1;
     }
     
@@ -336,7 +343,7 @@ int main(int argc, char* argv[]) {
     }
     
     if (start_http_api(config.api_port) != 0) {
-        fprintf(stderr, "Failed to start HTTP API on port %u\n", config.api_port);
+        logger_error("main", "Failed to start HTTP API on port %u", config.api_port);
         stop_gossip_service();
         envelope_dispatcher_cleanup();
         db_close();
@@ -367,6 +374,7 @@ int main(int argc, char* argv[]) {
         db_close();
     }
 
+    logger_cleanup();
     printf("Shutdown complete. Goodbye!\n");
     return 0;
 }

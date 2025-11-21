@@ -7,6 +7,7 @@
 #include <sodium.h>
 #include "database_gossip.h"
 #include "schema.h"
+#include "packages/utils/logger.h"
 #include "structs/permission/permission.h"
 
 // Helper function to hex encode a public key
@@ -66,13 +67,13 @@ int load_role_permission_sets(int role_id, PermissionSet** out_sets, size_t* out
     
     sqlite3* db = db_get_handle();
     if (!db) {
-        fprintf(stderr, "load_role_permission_sets: database not initialized\n");
+        logger_error("permissions", "load_role_permission_sets: database not initialized");
         return -1;
     }
     
     sqlite3_stmt* stmt = NULL;
     if (sqlite3_prepare_v2(db, SQL_SELECT_ROLE_PERMISSIONS, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "load_role_permission_sets: SQL error: %s\n", sqlite3_errmsg(db));
+        logger_error("permissions", "load_role_permission_sets: SQL error: %s", sqlite3_errmsg(db));
         return -1;
     }
     
@@ -95,7 +96,7 @@ int load_role_permission_sets(int role_id, PermissionSet** out_sets, size_t* out
                                                       scope_flags, condition_flags,
                                                       time_start, time_end);
         if (!group) {
-            fprintf(stderr, "load_role_permission_sets: too many permission groups\n");
+            logger_error("permissions", "load_role_permission_sets: too many permission groups");
             sqlite3_finalize(stmt);
             return -1;
         }
@@ -116,7 +117,7 @@ int load_role_permission_sets(int role_id, PermissionSet** out_sets, size_t* out
     // Allocate PermissionSet array
     PermissionSet* sets = malloc(group_count * sizeof(PermissionSet));
     if (!sets) {
-        fprintf(stderr, "load_role_permission_sets: memory allocation failed\n");
+        logger_error("permissions", "load_role_permission_sets: memory allocation failed");
         return -1;
     }
     
@@ -139,23 +140,21 @@ int load_user_roles(const unsigned char* user_pubkey, Role** out_roles, size_t* 
     
     sqlite3* db = db_get_handle();
     if (!db) {
-        fprintf(stderr, "load_user_roles: database not initialized\n");
+        logger_error("permissions", "load_user_roles: database not initialized");
         return -1;
     }
     
     // Convert pubkey to hex
     char pubkey_hex[65];
     if (hex_encode_pubkey(user_pubkey, pubkey_hex, sizeof(pubkey_hex)) != 0) {
-        fprintf(stderr, "load_user_roles: failed to encode pubkey\n");
+        logger_error("permissions", "load_user_roles: failed to encode pubkey");
         return -1;
     }
-    
-    printf("    DEBUG: Looking up user with pubkey hex: %s\n", pubkey_hex);
     
     // Get user ID
     sqlite3_stmt* stmt = NULL;
     if (sqlite3_prepare_v2(db, SQL_SELECT_USER_BY_PUBKEY, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "load_user_roles: SQL error: %s\n", sqlite3_errmsg(db));
+        logger_error("permissions", "load_user_roles: SQL error: %s", sqlite3_errmsg(db));
         return -1;
     }
     
@@ -168,17 +167,15 @@ int load_user_roles(const unsigned char* user_pubkey, Role** out_roles, size_t* 
     sqlite3_finalize(stmt);
     
     if (user_id < 0) {
-        fprintf(stderr, "load_user_roles: User not found with pubkey: %s\n", pubkey_hex);
+        logger_error("permissions", "load_user_roles: User not found with pubkey: %s", pubkey_hex);
         *out_roles = NULL;
         *out_count = 0;
         return 0; // User not found, no roles
     }
     
-    printf("    DEBUG: Found user_id=%d for pubkey %s\n", user_id, pubkey_hex);
-    
     // Get user's roles
     if (sqlite3_prepare_v2(db, SQL_SELECT_USER_ROLES, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "load_user_roles: SQL error: %s\n", sqlite3_errmsg(db));
+        logger_error("permissions", "load_user_roles: SQL error: %s", sqlite3_errmsg(db));
         return -1;
     }
     
@@ -200,18 +197,16 @@ int load_user_roles(const unsigned char* user_pubkey, Role** out_roles, size_t* 
     sqlite3_finalize(stmt);
     
     if (role_count == 0) {
-        fprintf(stderr, "load_user_roles: User %d has no roles assigned\n", user_id);
+        logger_error("permissions", "load_user_roles: User %d has no roles assigned", user_id);
         *out_roles = NULL;
         *out_count = 0;
         return 0;
     }
     
-    printf("    DEBUG: User has %zu role(s)\n", role_count);
-    
     // Allocate role array
     Role* roles = malloc(role_count * sizeof(Role));
     if (!roles) {
-        fprintf(stderr, "load_user_roles: memory allocation failed\n");
+        logger_error("permissions", "load_user_roles: memory allocation failed");
         return -1;
     }
     

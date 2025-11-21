@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "packages/keystore/keystore.h"
+#include "packages/utils/logger.h"
 
 int encrypt_envelope_payload(
     const unsigned char* plaintext, size_t plaintext_len,
@@ -10,25 +11,25 @@ int encrypt_envelope_payload(
     Tinyweb__Envelope* envelope)
 {
     if (!plaintext || !envelope || num_recipients == 0) {
-        fprintf(stderr, "encrypt_envelope_payload: invalid arguments\n");
+        logger_error("encryption", "encrypt_envelope_payload: invalid arguments");
         return -1;
     }
 
     if (!keystore_is_keypair_loaded()) {
-        fprintf(stderr, "encrypt_envelope_payload: keypair not loaded\n");
+        logger_error("encryption", "encrypt_envelope_payload: keypair not loaded");
         return -1;
     }
 
     // Check if plaintext size exceeds the maximum allowed
     if (plaintext_len > MAX_PLAINTEXT_SIZE) {
-        fprintf(stderr, "Plaintext size (%zu bytes) exceeds maximum allowed size (%d bytes)\n", 
+        logger_error("encryption", "Plaintext size (%zu bytes) exceeds maximum allowed size (%d bytes)", 
                 plaintext_len, MAX_PLAINTEXT_SIZE);
         return -1;
     }
 
     // Check if number of recipients exceeds the maximum allowed
     if (num_recipients > MAX_RECIPIENTS) {
-        fprintf(stderr, "Number of recipients (%zu) exceeds maximum allowed (%d)\n", 
+        logger_error("encryption", "Number of recipients (%zu) exceeds maximum allowed (%d)", 
                 num_recipients, MAX_RECIPIENTS);
         return -1;
     }

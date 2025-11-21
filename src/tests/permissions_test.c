@@ -140,37 +140,14 @@ static int test_role_permissions_with_scopes(sqlite3* db) {
     uint32_t send_message_scope = 0;
     int row_count = 0;
     
-    printf("    DEBUG: Checking role_permissions for admin role (id=%d)...\n", admin_role_id);
-    
-    // First, check what permissions exist in the database
-    const char* check_perms_sql = "SELECT id, name, permission_flags FROM permissions WHERE name = 'send_message'";
-    sqlite3_stmt* check_stmt = NULL;
-    if (sqlite3_prepare_v2(db, check_perms_sql, -1, &check_stmt, NULL) == SQLITE_OK) {
-        if (sqlite3_step(check_stmt) == SQLITE_ROW) {
-            int perm_id = sqlite3_column_int(check_stmt, 0);
-            const char* name = (const char*)sqlite3_column_text(check_stmt, 1);
-            uint64_t flags = sqlite3_column_int64(check_stmt, 2);
-            printf("    DEBUG: send_message permission exists: id=%d, name=%s, flags=0x%llx\n", 
-                   perm_id, name ? name : "NULL", (unsigned long long)flags);
-        } else {
-            printf("    DEBUG: send_message permission NOT FOUND in permissions table!\n");
-        }
-        sqlite3_finalize(check_stmt);
-    }
-    
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         row_count++;
         // SQL_SELECT_ROLE_PERMISSIONS columns:
         // 0: rp.id, 1: rp.role_id, 2: rp.permission_id, 3: rp.granted_at, 4: rp.granted_by_user_id,
         // 5: rp.scope_flags, 6: rp.condition_flags, 7: rp.time_start, 8: rp.time_end,
         // 9: p.name as permission_name, 10: p.permission_flags, 11: p.category
-        int perm_id = sqlite3_column_int(stmt, 2); // rp.permission_id (for debugging)
         const char* perm_name = (const char*)sqlite3_column_text(stmt, 9); // permission_name (column 9, not 8)
         uint32_t scope_flags = sqlite3_column_int(stmt, 5); // rp.scope_flags
-        uint64_t perm_flags = sqlite3_column_int64(stmt, 10); // p.permission_flags (column 10, not 9)
-        
-        printf("    DEBUG: Row %d: permission_id=%d, name=%s, scope_flags=0x%x, permission_flags=0x%llx\n", 
-               row_count, perm_id, perm_name ? perm_name : "NULL", scope_flags, (unsigned long long)perm_flags);
         
         if (perm_name && strcmp(perm_name, "send_message") == 0) {
             found_send_message = 1;
@@ -179,8 +156,6 @@ static int test_role_permissions_with_scopes(sqlite3* db) {
     }
     
     sqlite3_finalize(stmt);
-    
-    printf("    DEBUG: Total role_permissions rows: %d, found_send_message: %d\n", row_count, found_send_message);
     
     if (row_count == 0) {
         fprintf(stderr, "    ERROR: No role_permissions found for admin role. Check if seed_role_permissions() ran successfully.\n");
@@ -266,8 +241,6 @@ static int test_load_user_roles(sqlite3* db) {
     user_pubkey_hex[64] = '\0';
     sqlite3_finalize(stmt);
     
-    printf("    DEBUG: Got pubkey from DB: %s (length: %zu)\n", user_pubkey_hex, strlen(user_pubkey_hex));
-    
     // Convert hex to binary
     unsigned char user_pubkey[32];
     if (strlen(user_pubkey_hex) < 64) {
@@ -278,19 +251,12 @@ static int test_load_user_roles(sqlite3* db) {
         char hex_byte[3] = {user_pubkey_hex[i*2], user_pubkey_hex[i*2+1], 0};
         user_pubkey[i] = (unsigned char)strtoul(hex_byte, NULL, 16);
     }
-    printf("    DEBUG: Converted to binary (first 8 bytes: ");
-    for (size_t i = 0; i < 8; i++) {
-        printf("%02x", user_pubkey[i]);
-    }
-    printf(")\n");
     
     // Load user roles
     Role* roles = NULL;
     size_t role_count = 0;
     
-    printf("    DEBUG: Loading roles for user with pubkey: %s\n", user_pubkey_hex);
     int result = load_user_roles(user_pubkey, &roles, &role_count);
-    printf("    DEBUG: load_user_roles returned: %d, role_count: %zu\n", result, role_count);
     
     if (result != 0) {
         fprintf(stderr, "    ERROR: load_user_roles failed with code %d\n", result);
@@ -351,8 +317,6 @@ static int test_permission_checks(sqlite3* db) {
     admin_pubkey_hex[64] = '\0'; // Ensure null termination
     sqlite3_finalize(stmt);
     
-    printf("    DEBUG: Got admin pubkey from DB: %s (length: %zu)\n", admin_pubkey_hex, strlen(admin_pubkey_hex));
-    
     // Convert hex to binary
     unsigned char admin_pubkey[32];
     if (strlen(admin_pubkey_hex) < 64) {
@@ -363,11 +327,6 @@ static int test_permission_checks(sqlite3* db) {
         char hex_byte[3] = {admin_pubkey_hex[i*2], admin_pubkey_hex[i*2+1], 0};
         admin_pubkey[i] = (unsigned char)strtoul(hex_byte, NULL, 16);
     }
-    printf("    DEBUG: Converted admin pubkey to binary (first 8 bytes: ");
-    for (size_t i = 0; i < 8; i++) {
-        printf("%02x", admin_pubkey[i]);
-    }
-    printf(")\n");
     
     // Verify hex conversion matches
     char reconverted_hex[65];
@@ -377,7 +336,6 @@ static int test_permission_checks(sqlite3* db) {
         reconverted_hex[i * 2 + 1] = hex[admin_pubkey[i] & 0xF];
     }
     reconverted_hex[64] = '\0';
-    printf("    DEBUG: Reconverted binary to hex: %s\n", reconverted_hex);
     if (strcmp(admin_pubkey_hex, reconverted_hex) != 0) {
         fprintf(stderr, "    ERROR: Hex conversion mismatch! DB: %s, Reconverted: %s\n", 
                 admin_pubkey_hex, reconverted_hex);
@@ -385,10 +343,7 @@ static int test_permission_checks(sqlite3* db) {
     }
     
     // Test admin should have SEND_MESSAGE in DIRECT scope
-    printf("    DEBUG: Checking permission for admin: PERMISSION_SEND_MESSAGE (0x%llx) in SCOPE_DIRECT\n", 
-           (unsigned long long)PERMISSION_SEND_MESSAGE);
     bool has_perm = check_user_permission(admin_pubkey, PERMISSION_SEND_MESSAGE, SCOPE_DIRECT);
-    printf("    DEBUG: Permission check result: %s\n", has_perm ? "ALLOWED" : "DENIED");
     ASSERT(has_perm, "Admin should have SEND_MESSAGE in DIRECT scope");
     
     // Test admin should have SEND_MESSAGE in PRIMARY_GROUP scope
