@@ -475,11 +475,11 @@ static int test_config_save_load_cycle(void) {
     config_free(&loaded_config);
     
     // Cleanup InitNodeConfig structure
-    if (node.id) free(node.id);
+    if (node.id) free(node.id);     
     if (node.name) free(node.name);
     if (node.hostname) free(node.hostname);
     if (node.peers) {
-        if (node.peers[0]) free(node.peers[0]);
+        if (node.peers[0]) free(node.peers[0]);  //testss
         if (node.peers[1]) free(node.peers[1]);
         free(node.peers);   
     }
