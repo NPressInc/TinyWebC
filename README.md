@@ -1,21 +1,23 @@
 # TinyWeb (C Edition)
 
-TinyWeb is a family-focused communication node that now ships with a **gossip-first runtime**. The default build gives you a lightweight, signed-and-encrypted message relay with local SQLite persistence. A complete PBFT blockchain stack still exists, but it lives under `src/features/blockchain` and is built only when you explicitly opt in.
+TinyWeb is a family-focused communication node built on a **gossip protocol** with **protobuf-based messaging**. It provides a lightweight, signed-and-encrypted message relay with local SQLite persistence, enabling private communication between family members and trusted contacts.
 
 ## Project Goals
 
 - Deliver a private, parent-controlled messaging and location channel for kids and trusted contacts.
-- Keep the default experience simple: gossip propagation + local validation + HTTP ingestion.
-- Preserve the earlier PBFT work as an optional module that can be re-enabled after launch.
+- Use a simple gossip protocol for message propagation across nodes.
+- Leverage protobuf for all message types, ensuring type safety and extensibility.
+- Provide local validation, HTTP ingestion, and automatic message expiry.
 
-## Runtime Modes
+## Architecture
 
-| Mode | Description | Entry Point |
-|------|-------------|-------------|
-| Gossip (default) | UDP gossip fan-out, HTTP ingestion, SQLite storage with TTL cleanup | `src/main.c` (`tinyweb`) |
-| PBFT (optional) | Full blockchain consensus, REST control plane, persistence manager | `src/features/blockchain/app/main_pbft.c` (`tinyweb_pbft`) |
+TinyWeb uses a **gossip protocol** for peer-to-peer message propagation:
+- **UDP-based gossip**: Messages are broadcast to known peers via UDP
+- **Protobuf serialization**: All message types are defined in protobuf schemas
+- **HTTP API**: RESTful endpoints for message ingestion and retrieval
+- **SQLite storage**: Local persistence with automatic TTL cleanup
 
-## Quick Start (Gossip Node)
+## Quick Start
 
 ```bash
 cmake -S . -B build
@@ -27,38 +29,43 @@ cd build
 
 HTTP endpoints:
 
-- `POST /gossip/transaction` – JSON body `{ "transaction_hex": "..." }` (serialized transaction in hex)
+- `POST /gossip/envelope` – Submit a protobuf-encoded envelope (hex or binary)
 - `GET /gossip/recent?limit=50` – recent messages with metadata
 - `GET /gossip/messages?user=<pubkey>&with=<pubkey>` – messages between two users
 - `GET /gossip/conversations?user=<pubkey>` – list of conversation partners with recent activity
 
 Gossip packets are validated locally (signature, timestamp, payload size) and persisted with automatic TTL cleanup (default 30 days).
 
-## Optional Blockchain Build
+## Protobuf Message Types
 
-```bash
-cmake --build build --target tinyweb_pbft
-cmake --build build --target tinyweb_pbft_tests
+All message types are defined using Protocol Buffers:
 
-# run optional tests
-ctest --tests-regex Pbft -C Release
-```
+- `src/proto/envelope.proto` – Envelope structure with encryption and signing
+- `src/proto/content.proto` – All content message types (40+ message types)
 
-The blockchain implementation, tests, and utilities reside under `src/features/blockchain`. They link against the shared `pbft_support` library and do not affect the gossip executable unless you build those targets.
+Content types include:
+- **User Management** (1-9): UserRegistration, RoleAssignment
+- **Communication** (10-19): DirectMessage, GroupMessage
+- **Group Management** (20-29): GroupCreate, GroupUpdate, MemberAdd/Remove
+- **Safety & Control** (30-39): Permissions, Parental Controls, Location, Emergency
+- **Network Management** (40-49): Node Registration, System Config
+- **Enhanced Features** (60+): Media, Voice Calls, Educational Resources, Games, Events
 
 ## Key Directories
 
 - `src/main.c` – gossip node entry point (UDP + HTTP)
-- `src/packages/comm/gossip/` – UDP transport
+- `src/proto/` – protobuf schema definitions
+- `src/packages/comm/gossip/` – UDP gossip transport
 - `src/packages/comm/gossipApi.*` – HTTP ingestion/extraction
+- `src/packages/comm/envelope_dispatcher.*` – protobuf envelope routing
 - `src/packages/sql/gossip_store.*` – SQLite persistence for gossip messages
-- `src/packages/transactions/` – shared transaction structures & serialization
-- `src/features/blockchain/` – legacy PBFT, persistence, and tests (opt-in)
+- `src/packages/transactions/envelope.*` – protobuf envelope utilities
+- `src/packages/validation/gossip_validation.*` – message validation
 
 ## Data Storage
 
-- Gossip mode initialises SQLite via `db_init_gossip`, enabling WAL but skipping PBFT schema.
-- Messages are stored in `gossip_messages` with hex-encoded payloads and expiry timestamps.
+- SQLite database initialized via `db_init_gossip`, enabling WAL mode.
+- Messages are stored in `gossip_messages` with protobuf-encoded payloads and expiry timestamps.
 - TTL cleanup runs every 60 seconds.
 
 ## Networking (Tailscale Optional)
@@ -85,7 +92,7 @@ Notes:
 
 ## Contributing
 
-Pull requests and discussions are welcome—especially around expanding the gossip API, refining validation rules, or reintroducing blockchain once the gossip MVP is battle-tested.
+Pull requests and discussions are welcome—especially around expanding the gossip protocol, adding new protobuf message types, refining validation rules, or improving the HTTP API.
 
 
 This project is still in MVP stage/proof of concept

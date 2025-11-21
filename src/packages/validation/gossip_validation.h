@@ -2,7 +2,7 @@
 #define TW_GOSSIP_VALIDATION_H
 
 #include <stdint.h>
-#include "packages/transactions/transaction.h"
+#include "envelope.pb-c.h"
 
 typedef enum {
     GOSSIP_VALIDATION_OK = 0,
@@ -19,13 +19,13 @@ typedef struct {
     size_t max_payload_bytes;
 } GossipValidationConfig;
 
-GossipValidationResult gossip_validate_transaction(
-    const TW_Transaction* transaction,
+GossipValidationResult gossip_validate_envelope(
+    const Tinyweb__Envelope* envelope,
     const GossipValidationConfig* config,
     uint64_t now_epoch
 );
 
-uint64_t gossip_validation_expiration(const TW_Transaction* transaction,
+uint64_t gossip_validation_expiration(const Tinyweb__Envelope* envelope,
                                       const GossipValidationConfig* config);
 
 const char* gossip_validation_error_string(GossipValidationResult result);

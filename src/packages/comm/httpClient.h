@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "features/blockchain/core/internalTransaction.h"
 
 // HTTP response structure
 typedef struct {
@@ -55,23 +54,9 @@ size_t http_response_get_size(const HttpResponse* response);
 HttpClientConfig* http_client_config_default(void);
 void http_client_config_free(HttpClientConfig* config);
 
-// Utility functions for PBFT
+// Utility functions
 int http_client_is_success_status(int status_code);
 char* http_client_extract_json_field(const char* json_response, const char* field_name);
-
-// PBFT-specific convenience functions (binary protocol)
-int pbft_send_internal_transaction(const char* peer_url, const char* endpoint, 
-                                   const unsigned char* binary_data, size_t data_size);
-int pbft_send_block_proposal_binary(const char* peer_url, TW_InternalTransaction* proposal);
-int pbft_send_vote_binary(const char* peer_url, TW_InternalTransaction* vote);
-int pbft_get_blockchain_length(const char* peer_url);
-
-// Legacy JSON functions (for client transactions only)
-int pbft_send_block_proposal(const char* peer_url, const char* block_hash, 
-                            const char* block_data, const char* sender_pubkey, 
-                            const char* signature);
-int pbft_send_verification_vote(const char* peer_url, const char* block_hash, 
-                               const char* sender_pubkey, const char* signature);
 
 // HTTP client initialization
 int http_client_init(void);

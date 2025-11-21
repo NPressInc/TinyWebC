@@ -7,13 +7,14 @@
 #include <sodium.h>
 #include <cjson/cJSON.h>
 #include <time.h>
+#include <openssl/sha.h>
 #include "external/mongoose/mongoose.h"
 #include "packages/sql/gossip_store.h"
-#include "packages/sql/database.h"
-#include "packages/transactions/transaction.h"
+#include "packages/sql/database_gossip.h"
 #include "packages/transactions/envelope.h"
 #include "envelope.pb-c.h"
 #include "content.pb-c.h"
+#include "api.pb-c.h"
 
 typedef struct {
     GossipService* service;
@@ -30,12 +31,16 @@ static GossipApiServer g_server = {0};
 
 static void* gossip_api_loop(void* arg);
 static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data);
-static void handle_post_transaction(struct mg_connection* c, struct mg_http_message* hm);
 static void handle_get_recent(struct mg_connection* c, struct mg_http_message* hm);
 static void handle_get_messages(struct mg_connection* c, struct mg_http_message* hm);
 static void handle_get_conversations(struct mg_connection* c, struct mg_http_message* hm);
 static int hex_decode(const char* hex, unsigned char** out, size_t* out_len);
 static char* hex_encode(const unsigned char* data, size_t len);
+static void compute_envelope_hash(const unsigned char* serialized, size_t len, unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE]);
+static Tinyweb__StoredEnvelope* gossip_stored_to_protobuf(const GossipStoredEnvelope* stored);
+static void gossip_stored_protobuf_free(Tinyweb__StoredEnvelope* env);
+static Tinyweb__EnvelopeList* gossip_create_envelope_list(const GossipStoredEnvelope* stored_envs, size_t count);
+static void gossip_envelope_list_free(Tinyweb__EnvelopeList* list);
 
 int gossip_api_start(uint16_t port,
                      GossipService* service,
@@ -108,20 +113,7 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message* hm = (struct mg_http_message*)ev_data;
 
-        if (mg_strcmp(hm->uri, mg_str("/gossip/transaction")) == 0) {
-            if (mg_strcmp(hm->method, mg_str("POST")) == 0) {
-                handle_post_transaction(c, hm);
-            } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
-                mg_http_reply(c, 200,
-                              "Access-Control-Allow-Origin: *\r\n"
-                              "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
-                              "Access-Control-Allow-Headers: Content-Type\r\n",
-                              "");
-            } else {
-                mg_http_reply(c, 405, "Content-Type: application/json\r\n",
-                              "{\"error\":\"Method Not Allowed\"}");
-            }
-        } else if (mg_strcmp(hm->uri, mg_str("/gossip/envelope")) == 0) {
+        if (mg_strcmp(hm->uri, mg_str("/gossip/envelope")) == 0) {
             if (mg_strcmp(hm->method, mg_str("POST")) == 0) {
                 // Accept protobuf envelope
                 cJSON* root = cJSON_ParseWithLength(hm->body.buf, hm->body.len);
@@ -154,12 +146,15 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                     return;
                 }
 
-                // Verify
-                if (tw_envelope_verify(env) != 0) {
+                // Validate envelope
+                uint64_t now = (uint64_t)time(NULL);
+                GossipValidationResult res = gossip_validate_envelope(env, g_server.config, now);
+                if (res != GOSSIP_VALIDATION_OK) {
+                    const char* msg = gossip_validation_error_string(res);
                     tinyweb__envelope__free_unpacked(env, NULL);
                     cJSON_Delete(root);
                     mg_http_reply(c, 422, "Content-Type: application/json\r\n",
-                                  "{\"error\":\"invalid signature\"}");
+                                  "{\"error\":\"%s\"}", msg);
                     return;
                 }
 
@@ -173,13 +168,33 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                     return;
                 }
 
-                // Use header timestamp for expiration base
-                uint64_t now = (uint64_t)time(NULL);
-                uint64_t expires_at = now + 60ULL * 60ULL * 24ULL * 30ULL;
+                // Compute digest for duplicate detection
+                unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE] = {0};
+                compute_envelope_hash(ser, ser_len, digest);
+
+                // Check if we've already seen this envelope
+                int seen = 0;
+                if (db_is_initialized()) {
+                    if (gossip_store_has_seen(digest, &seen) != 0) {
+                        fprintf(stderr, "gossip_api: failed to check envelope digest cache\n");
+                    } else if (seen) {
+                        free(ser);
+                        tinyweb__envelope__free_unpacked(env, NULL);
+                        cJSON_Delete(root);
+                        mg_http_reply(c, 200,
+                                      "Content-Type: application/json\r\n"
+                                      "Access-Control-Allow-Origin: *\r\n",
+                                      "{\"status\":\"duplicate\"}");
+                        return;
+                    }
+                }
+
+                // Calculate expiration using validation config
+                uint64_t expires_at = gossip_validation_expiration(env, g_server.config);
                 
                 // Store envelope using the new gossip_store API
                 if (db_is_initialized()) {
-                    const Tinyweb__EnvelopeHeader* hdr = &env->header;
+                    const Tinyweb__EnvelopeHeader* hdr = env->header;
                     if (gossip_store_save_envelope(hdr->version, hdr->content_type, hdr->schema_version,
                                                    hdr->sender_pubkey.data,
                                                    hdr->timestamp,
@@ -191,6 +206,18 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                         mg_http_reply(c, 500, "Content-Type: application/json\r\n",
                                       "{\"error\":\"store failed\"}");
                         return;
+                    }
+                }
+
+                // Mark as seen
+                if (gossip_store_mark_seen(digest, expires_at) != 0) {
+                    fprintf(stderr, "gossip_api: failed to record envelope digest\n");
+                }
+
+                // Rebroadcast via UDP gossip
+                if (g_server.service) {
+                    if (gossip_service_rebroadcast_envelope(g_server.service, env, NULL) != 0) {
+                        fprintf(stderr, "gossip_api: failed to rebroadcast envelope\n");
                     }
                 }
 
@@ -257,162 +284,209 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
     }
 }
 
-static void handle_post_transaction(struct mg_connection* c, struct mg_http_message* hm) {
-    cJSON* root = cJSON_ParseWithLength(hm->body.buf, hm->body.len);
-    if (!root) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Invalid JSON payload\"}");
-        return;
-    }
-
-    cJSON* hex_item = cJSON_GetObjectItem(root, "transaction_hex");
-    if (!cJSON_IsString(hex_item) || hex_item->valuestring == NULL) {
-        cJSON_Delete(root);
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"transaction_hex field required\"}");
-        return;
-    }
-
-    unsigned char* raw = NULL;
-    size_t raw_len = 0;
-    if (hex_decode(hex_item->valuestring, &raw, &raw_len) != 0 || raw_len == 0) {
-        cJSON_Delete(root);
-        free(raw);
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Invalid transaction_hex value\"}");
-        return;
-    }
-
-    TW_Transaction* txn = TW_Transaction_deserialize(raw, raw_len);
-    free(raw);
-
-    if (!txn) {
-        cJSON_Delete(root);
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Failed to parse transaction\"}");
-        return;
-    }
-
-    uint64_t now = (uint64_t)time(NULL);
-    GossipValidationResult res = gossip_validate_transaction(txn, g_server.config, now);
-    if (res != GOSSIP_VALIDATION_OK) {
-        const char* msg = gossip_validation_error_string(res);
-        TW_Transaction_destroy(txn);
-        cJSON_Delete(root);
-        mg_http_reply(c, 422, "Content-Type: application/json\r\n",
-                      "{\"error\":\"%s\"}", msg);
-        return;
-    }
-
-    unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE] = {0};
-    TW_Transaction_hash(txn, digest);
-
-    int seen = 0;
-    if (db_is_initialized()) {
-        if (gossip_store_has_seen(digest, &seen) != 0) {
-            fprintf(stderr, "gossip_api: failed to check digest cache\n");
-        } else if (seen) {
-            TW_Transaction_destroy(txn);
-            cJSON_Delete(root);
-            mg_http_reply(c, 200,
-                          "Content-Type: application/json\r\n"
-                          "Access-Control-Allow-Origin: *\r\n",
-                          "{\"status\":\"duplicate\"}");
-            return;
-        }
-    }
-
-    uint64_t expires_at = gossip_validation_expiration(txn, g_server.config);
-    if (gossip_store_save_transaction(txn, expires_at) != 0) {
-        TW_Transaction_destroy(txn);
-        cJSON_Delete(root);
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Failed to persist transaction\"}");
-        return;
-    }
-
-    if (gossip_store_mark_seen(digest, expires_at) != 0) {
-        fprintf(stderr, "gossip_api: failed to record digest\n");
-    }
-
-    if (gossip_service_rebroadcast_transaction(g_server.service, txn, NULL) != 0) {
-        fprintf(stderr, "gossip_api: failed to broadcast transaction\n");
-    }
-
-    TW_Transaction_destroy(txn);
-    cJSON_Delete(root);
-
-    mg_http_reply(c, 202,
-                  "Content-Type: application/json\r\n"
-                  "Access-Control-Allow-Origin: *\r\n",
-                  "{\"status\":\"accepted\"}");
-}
-
 static void handle_get_recent(struct mg_connection* c, struct mg_http_message* hm) {
-    char limit_buf[16];
-    int limit = 50;
-    if (mg_http_get_var(&hm->query, "limit", limit_buf, sizeof(limit_buf)) > 0) {
-        int parsed = atoi(limit_buf);
-        if (parsed > 0) {
-            limit = parsed;
-        }
-    }
-
-    GossipStoredMessage* messages = NULL;
-    size_t count = 0;
-    if (gossip_store_fetch_recent((uint32_t)limit, &messages, &count) != 0) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Failed to fetch messages\"}");
-        return;
-    }
-
-    cJSON* root = cJSON_CreateArray();
-    if (!root) {
-        gossip_store_free_messages(messages, count);
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Out of memory\"}");
-        return;
-    }
-
-    for (size_t i = 0; i < count; ++i) {
-        cJSON* item = cJSON_CreateObject();
-        if (!item) continue;
-
-        cJSON_AddNumberToObject(item, "id", (double)messages[i].id);
-        cJSON_AddNumberToObject(item, "type", messages[i].type);
-        cJSON_AddNumberToObject(item, "timestamp", (double)messages[i].timestamp);
-        cJSON_AddNumberToObject(item, "expiresAt", (double)messages[i].expires_at);
-
-        char sender_hex[PUBKEY_SIZE * 2 + 1];
-        sodium_bin2hex(sender_hex, sizeof(sender_hex), messages[i].sender, PUBKEY_SIZE);
-        cJSON_AddStringToObject(item, "sender", sender_hex);
-
-        if (messages[i].payload && messages[i].payload_size > 0) {
-            char* payload_hex = hex_encode(messages[i].payload, messages[i].payload_size);
-            if (payload_hex) {
-                cJSON_AddStringToObject(item, "transaction_hex", payload_hex);
-                free(payload_hex);
+    // Parse limit query parameter (default 50)
+    uint32_t limit = 50;
+    struct mg_str query = hm->query;
+    if (query.len > 0) {
+        char query_str[256];
+        size_t len = query.len < sizeof(query_str) - 1 ? query.len : sizeof(query_str) - 1;
+        memcpy(query_str, query.buf, len);
+        query_str[len] = '\0';
+        
+        char* limit_str = strstr(query_str, "limit=");
+        if (limit_str) {
+            limit_str += 6; // Skip "limit="
+            int parsed = atoi(limit_str);
+            if (parsed > 0 && parsed <= 1000) {
+                limit = (uint32_t)parsed;
             }
         }
-
-        cJSON_AddItemToArray(root, item);
     }
-
-    char* json = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    gossip_store_free_messages(messages, count);
-
-    if (!json) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Failed to serialize response\"}");
+    
+    // Fetch recent envelopes
+    GossipStoredEnvelope* stored_envs = NULL;
+    size_t count = 0;
+    
+    if (gossip_store_fetch_recent_envelopes(limit, &stored_envs, &count) != 0) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to fetch envelopes\"}");
         return;
     }
-
+    
+    // Convert to protobuf
+    Tinyweb__EnvelopeList* list = gossip_create_envelope_list(stored_envs, count);
+    gossip_store_free_envelopes(stored_envs, count);
+    
+    if (!list) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to create envelope list\"}");
+        return;
+    }
+    
+    // Serialize to protobuf
+    size_t packed_size = tinyweb__envelope_list__get_packed_size(list);
+    unsigned char* packed = malloc(packed_size);
+    if (!packed) {
+        gossip_envelope_list_free(list);
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to allocate memory\"}");
+        return;
+    }
+    
+    tinyweb__envelope_list__pack(list, packed);
+    gossip_envelope_list_free(list);
+    
+    // Encode as hex for JSON response
+    char* hex_encoded = hex_encode(packed, packed_size);
+    free(packed);
+    
+    if (!hex_encoded) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to encode response\"}");
+        return;
+    }
+    
+    // Create JSON response with hex-encoded protobuf
+    char* json_response = malloc(256 + strlen(hex_encoded));
+    if (!json_response) {
+        free(hex_encoded);
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to allocate memory\"}");
+        return;
+    }
+    
+    snprintf(json_response, 256 + strlen(hex_encoded),
+             "{\"envelope_list_hex\":\"%s\"}", hex_encoded);
+    
+    free(hex_encoded);
+    
     mg_http_reply(c, 200,
                   "Content-Type: application/json\r\n"
                   "Access-Control-Allow-Origin: *\r\n",
-                  "%s", json);
-    free(json);
+                  "%s", json_response);
+    
+    free(json_response);
+}
+
+static void compute_envelope_hash(const unsigned char* serialized, size_t len, unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE]) {
+    // Compute SHA256 hash of the serialized envelope for duplicate detection
+    unsigned char full_hash[SHA256_DIGEST_LENGTH];
+    SHA256(serialized, len, full_hash);
+    // Use first GOSSIP_SEEN_DIGEST_SIZE bytes (typically 32)
+    memcpy(digest, full_hash, GOSSIP_SEEN_DIGEST_SIZE);
+}
+
+// Convert GossipStoredEnvelope to protobuf StoredEnvelope
+static Tinyweb__StoredEnvelope* gossip_stored_to_protobuf(const GossipStoredEnvelope* stored) {
+    if (!stored) return NULL;
+    
+    Tinyweb__StoredEnvelope* proto = calloc(1, sizeof(Tinyweb__StoredEnvelope));
+    if (!proto) return NULL;
+    
+    tinyweb__stored_envelope__init(proto);
+    
+    proto->id = stored->id;
+    proto->version = stored->version;
+    proto->content_type = stored->content_type;
+    proto->schema_version = stored->schema_version;
+    proto->timestamp = stored->timestamp;
+    proto->expires_at = stored->expires_at;
+    
+    // Copy sender pubkey
+    proto->sender.data = malloc(PUBKEY_SIZE);
+    if (!proto->sender.data) {
+        free(proto);
+        return NULL;
+    }
+    proto->sender.len = PUBKEY_SIZE;
+    memcpy(proto->sender.data, stored->sender, PUBKEY_SIZE);
+    
+    // Copy envelope bytes
+    if (stored->envelope && stored->envelope_size > 0) {
+        proto->envelope.data = malloc(stored->envelope_size);
+        if (!proto->envelope.data) {
+            free(proto->sender.data);
+            free(proto);
+            return NULL;
+        }
+        proto->envelope.len = stored->envelope_size;
+        memcpy(proto->envelope.data, stored->envelope, stored->envelope_size);
+    }
+    
+    return proto;
+}
+
+// Free a protobuf StoredEnvelope
+static void gossip_stored_protobuf_free(Tinyweb__StoredEnvelope* env) {
+    if (env) {
+        tinyweb__stored_envelope__free_unpacked(env, NULL);
+    }
+}
+
+// Create EnvelopeList from array of GossipStoredEnvelope
+static Tinyweb__EnvelopeList* gossip_create_envelope_list(const GossipStoredEnvelope* stored_envs, size_t count) {
+    if (!stored_envs || count == 0) {
+        Tinyweb__EnvelopeList* list = calloc(1, sizeof(Tinyweb__EnvelopeList));
+        if (list) {
+            tinyweb__envelope_list__init(list);
+            list->n_envelopes = 0;
+            list->total_count = 0;
+        }
+        return list;
+    }
+    
+    Tinyweb__EnvelopeList* list = calloc(1, sizeof(Tinyweb__EnvelopeList));
+    if (!list) return NULL;
+    
+    tinyweb__envelope_list__init(list);
+    
+    list->n_envelopes = count;
+    list->envelopes = calloc(count, sizeof(Tinyweb__StoredEnvelope*));
+    if (!list->envelopes) {
+        free(list);
+        return NULL;
+    }
+    
+    list->total_count = (uint32_t)count;
+    
+    for (size_t i = 0; i < count; ++i) {
+        list->envelopes[i] = gossip_stored_to_protobuf(&stored_envs[i]);
+        if (!list->envelopes[i]) {
+            // Cleanup on error
+            for (size_t j = 0; j < i; ++j) {
+                gossip_stored_protobuf_free(list->envelopes[j]);
+            }
+            free(list->envelopes);
+            free(list);
+            return NULL;
+        }
+    }
+    
+    return list;
+}
+
+// Free EnvelopeList
+static void gossip_envelope_list_free(Tinyweb__EnvelopeList* list) {
+    if (list) {
+        if (list->envelopes) {
+            for (size_t i = 0; i < list->n_envelopes; ++i) {
+                gossip_stored_protobuf_free(list->envelopes[i]);
+            }
+            free(list->envelopes);
+        }
+        tinyweb__envelope_list__free_unpacked(list, NULL);
+    }
 }
 
 static int hex_decode(const char* hex, unsigned char** out, size_t* out_len) {
@@ -451,267 +525,441 @@ static char* hex_encode(const unsigned char* data, size_t len) {
     return out;
 }
 
+
+
 static void handle_get_messages(struct mg_connection* c, struct mg_http_message* hm) {
-    // Parse query parameters
-    char with_user[128] = {0};
-    char current_user[128] = {0};
-
-    if (mg_http_get_var(&hm->query, "with", with_user, sizeof(with_user)) <= 0) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"'with' parameter required (other user's public key)\"}");
-        return;
-    }
-
-    if (mg_http_get_var(&hm->query, "user", current_user, sizeof(current_user)) <= 0) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"'user' parameter required (current user's public key)\"}");
-        return;
-    }
-
-    // Query for messages between these two users
-    // This is a simplified implementation - in practice you'd want messages where
-    // (sender = current_user AND recipient = with_user) OR (sender = with_user AND recipient = current_user)
-    // For now, we'll use the existing query_messages_for_user and filter client-side
-
-    GossipStoredMessage* messages = NULL;
-    size_t count = 0;
-
-    // First try to get messages from current user to the other user
-    if (gossip_store_fetch_recent(1000, &messages, &count) != 0) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Failed to fetch messages\"}");
-        return;
-    }
-
-    cJSON* root = cJSON_CreateArray();
-    if (!root) {
-        gossip_store_free_messages(messages, count);
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Out of memory\"}");
-        return;
-    }
-
-    // Convert current_user and with_user to binary for comparison
-    unsigned char current_user_bin[PUBKEY_SIZE] = {0};
-    unsigned char with_user_bin[PUBKEY_SIZE] = {0};
-
-    if (sodium_hex2bin(current_user_bin, sizeof(current_user_bin),
-                       current_user, strlen(current_user), NULL, NULL, NULL) != 0) {
-        cJSON_Delete(root);
-        gossip_store_free_messages(messages, count);
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Invalid current user public key format\"}");
-        return;
-    }
-
-    if (sodium_hex2bin(with_user_bin, sizeof(with_user_bin),
-                       with_user, strlen(with_user), NULL, NULL, NULL) != 0) {
-        cJSON_Delete(root);
-        gossip_store_free_messages(messages, count);
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Invalid 'with' user public key format\"}");
-        return;
-    }
-
-    // Filter messages between these two users
-    for (size_t i = 0; i < count; ++i) {
-        // Check if this message is between the two users
-        int is_sender_current = memcmp(messages[i].sender, current_user_bin, PUBKEY_SIZE) == 0;
-        int is_sender_with = memcmp(messages[i].sender, with_user_bin, PUBKEY_SIZE) == 0;
-
-        if ((is_sender_current || is_sender_with) && messages[i].type == TW_TXN_MESSAGE) {
-            cJSON* item = cJSON_CreateObject();
-            if (!item) continue;
-
-            cJSON_AddNumberToObject(item, "id", (double)messages[i].id);
-            cJSON_AddNumberToObject(item, "type", messages[i].type);
-            cJSON_AddNumberToObject(item, "timestamp", (double)messages[i].timestamp);
-            cJSON_AddNumberToObject(item, "expiresAt", (double)messages[i].expires_at);
-
-            char sender_hex[PUBKEY_SIZE * 2 + 1];
-            sodium_bin2hex(sender_hex, sizeof(sender_hex), messages[i].sender, PUBKEY_SIZE);
-            cJSON_AddStringToObject(item, "sender", sender_hex);
-
-            // Determine if this is an outgoing or incoming message
-            cJSON_AddBoolToObject(item, "isOutgoing", is_sender_current);
-
-            if (messages[i].payload && messages[i].payload_size > 0) {
-                char* payload_hex = hex_encode(messages[i].payload, messages[i].payload_size);
-                if (payload_hex) {
-                    cJSON_AddStringToObject(item, "transaction_hex", payload_hex);
-                    free(payload_hex);
-                }
+    // Parse query parameters: user=<pubkey>&with=<pubkey>
+    unsigned char user_pubkey[PUBKEY_SIZE] = {0};
+    unsigned char with_pubkey[PUBKEY_SIZE] = {0};
+    bool has_user = false;
+    bool has_with = false;
+    
+    struct mg_str query = hm->query;
+    if (query.len > 0) {
+        char query_str[512];
+        size_t len = query.len < sizeof(query_str) - 1 ? query.len : sizeof(query_str) - 1;
+        memcpy(query_str, query.buf, len);
+        query_str[len] = '\0';
+        
+        // Parse user= parameter
+        char* user_str = strstr(query_str, "user=");
+        if (user_str) {
+            user_str += 5; // Skip "user="
+            char* end = strchr(user_str, '&');
+            if (end) *end = '\0';
+            
+            unsigned char* decoded = NULL;
+            size_t decoded_len = 0;
+            if (hex_decode(user_str, &decoded, &decoded_len) == 0 && decoded_len == PUBKEY_SIZE) {
+                memcpy(user_pubkey, decoded, PUBKEY_SIZE);
+                has_user = true;
+                free(decoded);
             }
-
-            cJSON_AddItemToArray(root, item);
+        }
+        
+        // Parse with= parameter
+        char* with_str = strstr(query_str, "with=");
+        if (with_str) {
+            with_str += 5; // Skip "with="
+            char* end = strchr(with_str, '&');
+            if (end) *end = '\0';
+            
+            unsigned char* decoded = NULL;
+            size_t decoded_len = 0;
+            if (hex_decode(with_str, &decoded, &decoded_len) == 0 && decoded_len == PUBKEY_SIZE) {
+                memcpy(with_pubkey, decoded, PUBKEY_SIZE);
+                has_with = true;
+                free(decoded);
+            }
         }
     }
-
-    char* json = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    gossip_store_free_messages(messages, count);
-
-    if (!json) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Failed to serialize response\"}");
+    
+    if (!has_user || !has_with) {
+        mg_http_reply(c, 400,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Missing required parameters: user and with\"}");
         return;
     }
-
+    
+    // Fetch recent envelopes (we'll filter them)
+    GossipStoredEnvelope* stored_envs = NULL;
+    size_t count = 0;
+    
+    if (gossip_store_fetch_recent_envelopes(1000, &stored_envs, &count) != 0) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to fetch envelopes\"}");
+        return;
+    }
+    
+    // Filter envelopes: must be between user and with
+    // Deserialize each envelope to check sender/recipients
+    GossipStoredEnvelope* filtered = calloc(count, sizeof(GossipStoredEnvelope));
+    size_t filtered_count = 0;
+    
+    for (size_t i = 0; i < count; ++i) {
+        if (!stored_envs[i].envelope || stored_envs[i].envelope_size == 0) continue;
+        
+        // Deserialize envelope
+        Tinyweb__Envelope* env = tinyweb__envelope__unpack(NULL, stored_envs[i].envelope_size, stored_envs[i].envelope);
+        if (!env || !env->header) {
+            continue;
+        }
+        
+        // Check if sender matches user or with
+        bool sender_matches = (env->header->sender_pubkey.len == PUBKEY_SIZE &&
+                               (memcmp(env->header->sender_pubkey.data, user_pubkey, PUBKEY_SIZE) == 0 ||
+                                memcmp(env->header->sender_pubkey.data, with_pubkey, PUBKEY_SIZE) == 0));
+        
+        // Check if recipients include the other party
+        bool recipient_matches = false;
+        if (env->header->n_recipients_pubkey > 0) {
+            for (size_t j = 0; j < env->header->n_recipients_pubkey; ++j) {
+                if (env->header->recipients_pubkey[j].len == PUBKEY_SIZE) {
+                    if (memcmp(env->header->recipients_pubkey[j].data, user_pubkey, PUBKEY_SIZE) == 0 ||
+                        memcmp(env->header->recipients_pubkey[j].data, with_pubkey, PUBKEY_SIZE) == 0) {
+                        recipient_matches = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Include if it's a message between user and with
+        if (sender_matches && recipient_matches) {
+            // Copy envelope to filtered list
+            filtered[filtered_count] = stored_envs[i];
+            filtered[filtered_count].envelope = malloc(stored_envs[i].envelope_size);
+            if (filtered[filtered_count].envelope) {
+                memcpy(filtered[filtered_count].envelope, stored_envs[i].envelope, stored_envs[i].envelope_size);
+                filtered_count++;
+            }
+        }
+        
+        tinyweb__envelope__free_unpacked(env, NULL);
+    }
+    
+    // Convert to protobuf
+    Tinyweb__EnvelopeList* list = gossip_create_envelope_list(filtered, filtered_count);
+    
+    // Free filtered envelopes (but not the envelope data, it's shared)
+    for (size_t i = 0; i < filtered_count; ++i) {
+        free(filtered[i].envelope);
+    }
+    free(filtered);
+    gossip_store_free_envelopes(stored_envs, count);
+    
+    if (!list) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to create envelope list\"}");
+        return;
+    }
+    
+    // Serialize to protobuf
+    size_t packed_size = tinyweb__envelope_list__get_packed_size(list);
+    unsigned char* packed = malloc(packed_size);
+    if (!packed) {
+        gossip_envelope_list_free(list);
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to allocate memory\"}");
+        return;
+    }
+    
+    tinyweb__envelope_list__pack(list, packed);
+    gossip_envelope_list_free(list);
+    
+    // Encode as hex for JSON response
+    char* hex_encoded = hex_encode(packed, packed_size);
+    free(packed);
+    
+    if (!hex_encoded) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to encode response\"}");
+        return;
+    }
+    
+    // Create JSON response with hex-encoded protobuf
+    char* json_response = malloc(256 + strlen(hex_encoded));
+    if (!json_response) {
+        free(hex_encoded);
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to allocate memory\"}");
+        return;
+    }
+    
+    snprintf(json_response, 256 + strlen(hex_encoded),
+             "{\"envelope_list_hex\":\"%s\"}", hex_encoded);
+    
+    free(hex_encoded);
+    
     mg_http_reply(c, 200,
                   "Content-Type: application/json\r\n"
                   "Access-Control-Allow-Origin: *\r\n",
-                  "%s", json);
-    free(json);
+                  "%s", json_response);
+    
+    free(json_response);
 }
 
 static void handle_get_conversations(struct mg_connection* c, struct mg_http_message* hm) {
-    // Parse query parameter for current user
-    char current_user[128] = {0};
-
-    if (mg_http_get_var(&hm->query, "user", current_user, sizeof(current_user)) <= 0) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"'user' parameter required (current user's public key)\"}");
+    // Parse query parameter: user=<pubkey>
+    unsigned char user_pubkey[PUBKEY_SIZE] = {0};
+    bool has_user = false;
+    
+    struct mg_str query = hm->query;
+    if (query.len > 0) {
+        char query_str[256];
+        size_t len = query.len < sizeof(query_str) - 1 ? query.len : sizeof(query_str) - 1;
+        memcpy(query_str, query.buf, len);
+        query_str[len] = '\0';
+        
+        // Parse user= parameter
+        char* user_str = strstr(query_str, "user=");
+        if (user_str) {
+            user_str += 5; // Skip "user="
+            char* end = strchr(user_str, '&');
+            if (end) *end = '\0';
+            
+            unsigned char* decoded = NULL;
+            size_t decoded_len = 0;
+            if (hex_decode(user_str, &decoded, &decoded_len) == 0 && decoded_len == PUBKEY_SIZE) {
+                memcpy(user_pubkey, decoded, PUBKEY_SIZE);
+                has_user = true;
+                free(decoded);
+            }
+        }
+    }
+    
+    if (!has_user) {
+        mg_http_reply(c, 400,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Missing required parameter: user\"}");
         return;
     }
-
-    // Get recent messages to find conversation partners
-    GossipStoredMessage* messages = NULL;
+    
+    // Fetch recent envelopes
+    GossipStoredEnvelope* stored_envs = NULL;
     size_t count = 0;
-
-    if (gossip_store_fetch_recent(1000, &messages, &count) != 0) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Failed to fetch messages\"}");
+    
+    if (gossip_store_fetch_recent_envelopes(1000, &stored_envs, &count) != 0) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to fetch envelopes\"}");
         return;
     }
-
-    cJSON* root = cJSON_CreateArray();
-    if (!root) {
-        gossip_store_free_messages(messages, count);
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Out of memory\"}");
-        return;
-    }
-
-    // Convert current user to binary for comparison
-    unsigned char current_user_bin[PUBKEY_SIZE] = {0};
-    if (sodium_hex2bin(current_user_bin, sizeof(current_user_bin),
-                       current_user, strlen(current_user), NULL, NULL, NULL) != 0) {
-        cJSON_Delete(root);
-        gossip_store_free_messages(messages, count);
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Invalid user public key format\"}");
-        return;
-    }
-
-    // Use a simple set-like structure to track unique conversation partners
-    // In a real implementation, you'd want a proper hash set
-    #define MAX_CONVERSATIONS 100
+    
+    // Group envelopes by conversation partner
+    // Use a simple approach: track last message timestamp per partner
+    #define MAX_PARTNERS 100
     struct {
         unsigned char pubkey[PUBKEY_SIZE];
-        uint64_t last_message_time;
-        char last_message_preview[100];
-        int message_count;
-    } conversations[MAX_CONVERSATIONS];
-
-    int conversation_count = 0;
-
+        uint64_t last_timestamp;
+    } partners[MAX_PARTNERS];
+    size_t partner_count = 0;
+    
     for (size_t i = 0; i < count; ++i) {
-        if (messages[i].type != TW_TXN_MESSAGE) continue;
-
-        // Check if current user is involved in this message
-        int is_sender = memcmp(messages[i].sender, current_user_bin, PUBKEY_SIZE) == 0;
-
-        unsigned char other_user[PUBKEY_SIZE];
-        if (is_sender) {
-            // For direct messages, we'd need to get recipients from the transaction
-            // For now, skip messages sent by current user (we can't easily determine recipients)
+        if (!stored_envs[i].envelope || stored_envs[i].envelope_size == 0) continue;
+        
+        // Deserialize envelope
+        Tinyweb__Envelope* env = tinyweb__envelope__unpack(NULL, stored_envs[i].envelope_size, stored_envs[i].envelope);
+        if (!env || !env->header) {
             continue;
-        } else {
-            // Message received by current user - sender is the conversation partner
-            memcpy(other_user, messages[i].sender, PUBKEY_SIZE);
         }
-
-        // Check if we already have this conversation
-        int found = 0;
-        for (int j = 0; j < conversation_count; ++j) {
-            if (memcmp(conversations[j].pubkey, other_user, PUBKEY_SIZE) == 0) {
-                found = 1;
-                // Update with newer message if this one is more recent
-                if (messages[i].timestamp > conversations[j].last_message_time) {
-                    conversations[j].last_message_time = messages[i].timestamp;
-                    conversations[j].message_count++;
-                    // Simple preview (first 96 chars of hex payload)
-                    if (messages[i].payload && messages[i].payload_size > 0) {
-                        size_t preview_len = messages[i].payload_size > 48 ? 48 : messages[i].payload_size;
-                        sodium_bin2hex(conversations[j].last_message_preview,
-                                     sizeof(conversations[j].last_message_preview),
-                                     messages[i].payload, preview_len);
+        
+        // Find the conversation partner (the other person in the conversation)
+        unsigned char partner[PUBKEY_SIZE] = {0};
+        bool found_partner = false;
+        
+        // If user is sender, partner is recipient
+        if (env->header->sender_pubkey.len == PUBKEY_SIZE &&
+            memcmp(env->header->sender_pubkey.data, user_pubkey, PUBKEY_SIZE) == 0) {
+            // User is sender, find first recipient
+            if (env->header->n_recipients_pubkey > 0 &&
+                env->header->recipients_pubkey[0].len == PUBKEY_SIZE) {
+                memcpy(partner, env->header->recipients_pubkey[0].data, PUBKEY_SIZE);
+                found_partner = true;
+            }
+        } else {
+            // User might be recipient, partner is sender
+            if (env->header->sender_pubkey.len == PUBKEY_SIZE) {
+                // Check if user is in recipients
+                bool user_is_recipient = false;
+                for (size_t j = 0; j < env->header->n_recipients_pubkey; ++j) {
+                    if (env->header->recipients_pubkey[j].len == PUBKEY_SIZE &&
+                        memcmp(env->header->recipients_pubkey[j].data, user_pubkey, PUBKEY_SIZE) == 0) {
+                        user_is_recipient = true;
+                        break;
                     }
                 }
-                break;
+                if (user_is_recipient) {
+                    memcpy(partner, env->header->sender_pubkey.data, PUBKEY_SIZE);
+                    found_partner = true;
+                }
             }
         }
-
-        // Add new conversation if not found and we have space
-        if (!found && conversation_count < MAX_CONVERSATIONS) {
-            memcpy(conversations[conversation_count].pubkey, other_user, PUBKEY_SIZE);
-            conversations[conversation_count].last_message_time = messages[i].timestamp;
-            conversations[conversation_count].message_count = 1;
-
-            // Simple preview (first 96 chars of hex payload)
-            if (messages[i].payload && messages[i].payload_size > 0) {
-                size_t preview_len = messages[i].payload_size > 48 ? 48 : messages[i].payload_size;
-                sodium_bin2hex(conversations[conversation_count].last_message_preview,
-                             sizeof(conversations[conversation_count].last_message_preview),
-                             messages[i].payload, preview_len);
+        
+        if (found_partner) {
+            // Find or add partner
+            size_t partner_idx = MAX_PARTNERS;
+            for (size_t j = 0; j < partner_count; ++j) {
+                if (memcmp(partners[j].pubkey, partner, PUBKEY_SIZE) == 0) {
+                    partner_idx = j;
+                    break;
+                }
             }
-
-            conversation_count++;
-        }
-    }
-
-    // Sort conversations by last message time (most recent first)
-    for (int i = 0; i < conversation_count - 1; ++i) {
-        for (int j = 0; j < conversation_count - i - 1; ++j) {
-            if (conversations[j].last_message_time < conversations[j + 1].last_message_time) {
-                // Swap
-                typeof(conversations[0]) temp = conversations[j];
-                conversations[j] = conversations[j + 1];
-                conversations[j + 1] = temp;
+            
+            if (partner_idx == MAX_PARTNERS && partner_count < MAX_PARTNERS) {
+                partner_idx = partner_count++;
+                memcpy(partners[partner_idx].pubkey, partner, PUBKEY_SIZE);
+                partners[partner_idx].last_timestamp = 0;
+            }
+            
+            // Update last timestamp if this message is newer
+            if (partner_idx < MAX_PARTNERS && stored_envs[i].timestamp > partners[partner_idx].last_timestamp) {
+                partners[partner_idx].last_timestamp = stored_envs[i].timestamp;
             }
         }
+        
+        tinyweb__envelope__free_unpacked(env, NULL);
     }
-
-    // Build JSON response
-    for (int i = 0; i < conversation_count; ++i) {
-        cJSON* conv = cJSON_CreateObject();
-        if (!conv) continue;
-
-        char pubkey_hex[PUBKEY_SIZE * 2 + 1];
-        sodium_bin2hex(pubkey_hex, sizeof(pubkey_hex), conversations[i].pubkey, PUBKEY_SIZE);
-
-        cJSON_AddStringToObject(conv, "with", pubkey_hex);
-        cJSON_AddNumberToObject(conv, "lastMessageTime", (double)conversations[i].last_message_time);
-        cJSON_AddNumberToObject(conv, "messageCount", conversations[i].message_count);
-        cJSON_AddStringToObject(conv, "lastMessagePreview", conversations[i].last_message_preview);
-
-        cJSON_AddItemToArray(root, conv);
-    }
-
-    char* json = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    gossip_store_free_messages(messages, count);
-
-    if (!json) {
-        mg_http_reply(c, 500, "Content-Type: application/json\r\n",
-                      "{\"error\":\"Failed to serialize response\"}");
+    
+    gossip_store_free_envelopes(stored_envs, count);
+    
+    // Create ConversationList protobuf
+    Tinyweb__ConversationList* list = calloc(1, sizeof(Tinyweb__ConversationList));
+    if (!list) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to allocate memory\"}");
         return;
     }
-
+    
+    tinyweb__conversation_list__init(list);
+    list->n_conversations = partner_count;
+    list->conversations = calloc(partner_count, sizeof(Tinyweb__ConversationSummary*));
+    list->total_count = (uint32_t)partner_count;
+    
+    if (!list->conversations) {
+        free(list);
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to allocate memory\"}");
+        return;
+    }
+    
+    for (size_t i = 0; i < partner_count; ++i) {
+        Tinyweb__ConversationSummary* summary = calloc(1, sizeof(Tinyweb__ConversationSummary));
+        if (!summary) {
+            // Cleanup on error
+            for (size_t j = 0; j < i; ++j) {
+                tinyweb__conversation_summary__free_unpacked(list->conversations[j], NULL);
+            }
+            free(list->conversations);
+            free(list);
+            mg_http_reply(c, 500,
+                          "Content-Type: application/json\r\n"
+                          "Access-Control-Allow-Origin: *\r\n",
+                          "{\"error\":\"Failed to allocate memory\"}");
+            return;
+        }
+        
+        tinyweb__conversation_summary__init(summary);
+        
+        summary->partner_pubkey.data = malloc(PUBKEY_SIZE);
+        if (!summary->partner_pubkey.data) {
+            free(summary);
+            // Cleanup
+            for (size_t j = 0; j < i; ++j) {
+                tinyweb__conversation_summary__free_unpacked(list->conversations[j], NULL);
+            }
+            free(list->conversations);
+            free(list);
+            mg_http_reply(c, 500,
+                          "Content-Type: application/json\r\n"
+                          "Access-Control-Allow-Origin: *\r\n",
+                          "{\"error\":\"Failed to allocate memory\"}");
+            return;
+        }
+        
+        summary->partner_pubkey.len = PUBKEY_SIZE;
+        memcpy(summary->partner_pubkey.data, partners[i].pubkey, PUBKEY_SIZE);
+        summary->last_message_timestamp = partners[i].last_timestamp;
+        summary->unread_count = 0; // TODO: Implement unread count tracking
+        
+        list->conversations[i] = summary;
+    }
+    
+    // Serialize to protobuf
+    size_t packed_size = tinyweb__conversation_list__get_packed_size(list);
+    unsigned char* packed = malloc(packed_size);
+    if (!packed) {
+        // Cleanup
+        for (size_t i = 0; i < list->n_conversations; ++i) {
+            tinyweb__conversation_summary__free_unpacked(list->conversations[i], NULL);
+        }
+        free(list->conversations);
+        tinyweb__conversation_list__free_unpacked(list, NULL);
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to allocate memory\"}");
+        return;
+    }
+    
+    tinyweb__conversation_list__pack(list, packed);
+    
+    // Cleanup
+    for (size_t i = 0; i < list->n_conversations; ++i) {
+        tinyweb__conversation_summary__free_unpacked(list->conversations[i], NULL);
+    }
+    free(list->conversations);
+    tinyweb__conversation_list__free_unpacked(list, NULL);
+    
+    // Encode as hex for JSON response
+    char* hex_encoded = hex_encode(packed, packed_size);
+    free(packed);
+    
+    if (!hex_encoded) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to encode response\"}");
+        return;
+    }
+    
+    // Create JSON response with hex-encoded protobuf
+    char* json_response = malloc(256 + strlen(hex_encoded));
+    if (!json_response) {
+        free(hex_encoded);
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to allocate memory\"}");
+        return;
+    }
+    
+    snprintf(json_response, 256 + strlen(hex_encoded),
+             "{\"conversation_list_hex\":\"%s\"}", hex_encoded);
+    
+    free(hex_encoded);
+    
     mg_http_reply(c, 200,
                   "Content-Type: application/json\r\n"
                   "Access-Control-Allow-Origin: *\r\n",
-                  "%s", json);
-    free(json);
+                  "%s", json_response);
+    
+    free(json_response);
 }
-

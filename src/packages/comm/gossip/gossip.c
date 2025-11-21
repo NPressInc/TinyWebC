@@ -18,7 +18,7 @@ static void gossip_service_clear_peers(GossipService* service);
 
 int gossip_service_init(GossipService* service,
                         uint16_t listen_port,
-                        GossipMessageHandler handler,
+                        GossipEnvelopeHandler handler,
                         void* handler_context) {
     if (!service) {
         return -1;
@@ -146,14 +146,15 @@ void gossip_service_stop(GossipService* service) {
     pthread_mutex_destroy(&service->peer_lock);
 }
 
-static int gossip_service_send_transaction(GossipService* service,
-                                            TW_Transaction* transaction,
-                                            const struct sockaddr_in* exclude_source) {
-    if (!service || service->socket_fd < 0 || !transaction) {
+static int gossip_service_send_envelope(GossipService* service,
+                                         Tinyweb__Envelope* envelope,
+                                         const struct sockaddr_in* exclude_source) {
+    if (!service || service->socket_fd < 0 || !envelope) {
         return -1;
     }
 
-    size_t serialized_size = TW_Transaction_get_size(transaction);
+    // Serialize envelope
+    size_t serialized_size = tinyweb__envelope__get_packed_size(envelope);
     if (serialized_size == 0 || serialized_size > GOSSIP_MAX_MESSAGE_SIZE) {
         return -1;
     }
@@ -163,11 +164,7 @@ static int gossip_service_send_transaction(GossipService* service,
         return -1;
     }
 
-    unsigned char* write_ptr = buffer;
-    if (TW_Transaction_serialize(transaction, &write_ptr) != 0) {
-        free(buffer);
-        return -1;
-    }
+    tinyweb__envelope__pack(envelope, buffer);
 
     pthread_mutex_lock(&service->peer_lock);
 
@@ -189,7 +186,6 @@ static int gossip_service_send_transaction(GossipService* service,
         }
 
         for (struct addrinfo* ai = result; ai != NULL; ai = ai->ai_next) {
-            // BUG: Exclusion only by IP/port - doesn't handle NAT, multiple interfaces, or logical node identity
             if (exclude_source && ai->ai_family == AF_INET) {
                 const struct sockaddr_in* dest = (const struct sockaddr_in*)ai->ai_addr;
                 if (dest->sin_port == exclude_source->sin_port &&
@@ -218,15 +214,15 @@ static int gossip_service_send_transaction(GossipService* service,
     return 0;
 }
 
-int gossip_service_broadcast_transaction(GossipService* service,
-                                         TW_Transaction* transaction) {
-    return gossip_service_send_transaction(service, transaction, NULL);
+int gossip_service_broadcast_envelope(GossipService* service,
+                                      Tinyweb__Envelope* envelope) {
+    return gossip_service_send_envelope(service, envelope, NULL);
 }
 
-int gossip_service_rebroadcast_transaction(GossipService* service,
-                                           TW_Transaction* transaction,
-                                           const struct sockaddr_in* source) {
-    return gossip_service_send_transaction(service, transaction, source);
+int gossip_service_rebroadcast_envelope(GossipService* service,
+                                        Tinyweb__Envelope* envelope,
+                                        const struct sockaddr_in* source) {
+    return gossip_service_send_envelope(service, envelope, source);
 }
 
 size_t gossip_service_peer_count(const GossipService* service) {
@@ -240,7 +236,6 @@ static void* gossip_receive_loop(void* arg) {
     GossipService* service = (GossipService*)arg;
     unsigned char buffer[GOSSIP_MAX_MESSAGE_SIZE];
 
-    // BUG: No rate limiting - vulnerable to flood attacks from malicious peers
     while (service->running) {
         struct sockaddr_in source;
         socklen_t source_len = sizeof(source);
@@ -262,22 +257,23 @@ static void* gossip_receive_loop(void* arg) {
             continue;
         }
 
-        // BUG: No pre-validation of message size before deserialization attempt
-        TW_Transaction* txn = TW_Transaction_deserialize(buffer, (size_t)bytes);
-        if (!txn) {
-            fprintf(stderr, "gossip: failed to deserialize transaction from %s:%d (%zu bytes)\n",
+        // Deserialize envelope
+        Tinyweb__Envelope* envelope = tinyweb__envelope__unpack(NULL, (size_t)bytes, buffer);
+        if (!envelope) {
+            fprintf(stderr, "gossip: failed to deserialize envelope from %s:%d (%zd bytes)\n",
                     inet_ntoa(source.sin_addr), ntohs(source.sin_port), bytes);
             continue;
         }
 
-        // BUG: Inconsistent error handling - some failures reject, others warn, some silent
+        // Call handler
         if (service->handler) {
-            if (service->handler(service, txn, &source, service->handler_context) != 0) {
-                fprintf(stderr, "gossip: handler rejected transaction type %d\n", txn->type);
+            if (service->handler(service, envelope, &source, service->handler_context) != 0) {
+                fprintf(stderr, "gossip: handler rejected envelope content_type %u\n",
+                        envelope->header ? envelope->header->content_type : 0);
             }
         }
 
-        TW_Transaction_destroy(txn);
+        tinyweb__envelope__free_unpacked(envelope, NULL);
     }
 
     return NULL;

@@ -3,387 +3,339 @@
 #include <stdlib.h>
 #include <string.h>
 #include "packages/keystore/keystore.h"
-#include "packages/utils/byteorder.h"
 
-EncryptedPayload *encrypt_payload_multi(const unsigned char *plaintext, size_t plaintext_len,
-                                        const unsigned char *recipient_pubkeys, size_t num_recipients)
+int encrypt_envelope_payload(
+    const unsigned char* plaintext, size_t plaintext_len,
+    const unsigned char* recipient_pubkeys, size_t num_recipients,
+    Tinyweb__Envelope* envelope)
 {
-    if (!keystore_is_keypair_loaded() || num_recipients == 0)
-        return NULL;
+    if (!plaintext || !envelope || num_recipients == 0) {
+        fprintf(stderr, "encrypt_envelope_payload: invalid arguments\n");
+        return -1;
+    }
+
+    if (!keystore_is_keypair_loaded()) {
+        fprintf(stderr, "encrypt_envelope_payload: keypair not loaded\n");
+        return -1;
+    }
 
     // Check if plaintext size exceeds the maximum allowed
     if (plaintext_len > MAX_PLAINTEXT_SIZE) {
         fprintf(stderr, "Plaintext size (%zu bytes) exceeds maximum allowed size (%d bytes)\n", 
                 plaintext_len, MAX_PLAINTEXT_SIZE);
-        return NULL;
+        return -1;
     }
 
     // Check if number of recipients exceeds the maximum allowed
     if (num_recipients > MAX_RECIPIENTS) {
         fprintf(stderr, "Number of recipients (%zu) exceeds maximum allowed (%d)\n", 
                 num_recipients, MAX_RECIPIENTS);
-        return NULL;
+        return -1;
     }
 
-    EncryptedPayload *encrypted = malloc(sizeof(EncryptedPayload));
-    if (!encrypted)
-        return NULL;
-
-    // Initialize fields
-    memset(encrypted, 0, sizeof(EncryptedPayload));
-    encrypted->num_recipients = num_recipients;
-
     // Generate ephemeral keypair
+    unsigned char ephemeral_pubkey[PUBKEY_SIZE];
     unsigned char ephemeral_privkey[SECRET_SIZE];
-    crypto_box_keypair(encrypted->ephemeral_pubkey, ephemeral_privkey);
+    crypto_box_keypair(ephemeral_pubkey, ephemeral_privkey);
 
     // Generate a random symmetric key
     unsigned char symmetric_key[crypto_secretbox_KEYBYTES];
     randombytes_buf(symmetric_key, crypto_secretbox_KEYBYTES);
 
-    // Encrypt the plaintext with the symmetric key
-    encrypted->ciphertext_len = plaintext_len + crypto_secretbox_MACBYTES;
-
-    encrypted->ciphertext = malloc(encrypted->ciphertext_len);
-    if (!encrypted->ciphertext) {
-        free(encrypted);
+    // Allocate and encrypt the plaintext with the symmetric key
+    size_t ciphertext_len = plaintext_len + crypto_secretbox_MACBYTES;
+    unsigned char* ciphertext = malloc(ciphertext_len);
+    if (!ciphertext) {
         sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
         sodium_memzero(ephemeral_privkey, SECRET_SIZE);
-        return NULL;
+        return -1;
     }
 
-    randombytes_buf(encrypted->nonce, NONCE_SIZE);
-    if (crypto_secretbox_easy(encrypted->ciphertext, plaintext, plaintext_len,
-                              encrypted->nonce, symmetric_key) != 0)
+    unsigned char nonce[NONCE_SIZE];
+    randombytes_buf(nonce, NONCE_SIZE);
+    
+    if (crypto_secretbox_easy(ciphertext, plaintext, plaintext_len,
+                              nonce, symmetric_key) != 0)
     {
-        free(encrypted->ciphertext);
-        free(encrypted);
+        free(ciphertext);
         sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
         sodium_memzero(ephemeral_privkey, SECRET_SIZE);
-        return NULL;
+        return -1;
     }
 
-    // Encrypt the symmetric key for each recipient
-    if (num_recipients > 0) {
-        encrypted->key_nonces = malloc(NONCE_SIZE * num_recipients);
-        if (!encrypted->key_nonces) {
-            free(encrypted->ciphertext);
-            free(encrypted);
-            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
-            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
-            return NULL;
-        }
-        encrypted->encrypted_keys = malloc(ENCRYPTED_KEY_SIZE * num_recipients);
-        if (!encrypted->encrypted_keys) {
-            free(encrypted->key_nonces);
-            free(encrypted->ciphertext);
-            free(encrypted);
-            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
-            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
-            return NULL;
-        }
-    } else {
-        encrypted->key_nonces = NULL;
-        encrypted->encrypted_keys = NULL;
+    // Convert Ed25519 recipient public keys to X25519 for encryption
+    // and encrypt the symmetric key for each recipient
+    Tinyweb__RecipientKeyWrap** keywraps = calloc(num_recipients, sizeof(Tinyweb__RecipientKeyWrap*));
+    if (!keywraps) {
+        free(ciphertext);
+        sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+        sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+        return -1;
     }
 
-    for (size_t i = 0; i < num_recipients; i++)
-    {
-        randombytes_buf(&encrypted->key_nonces[i * NONCE_SIZE], NONCE_SIZE);
-        if (crypto_box_easy(&encrypted->encrypted_keys[i * ENCRYPTED_KEY_SIZE],
-                            symmetric_key, crypto_secretbox_KEYBYTES,
-                            &encrypted->key_nonces[i * NONCE_SIZE],
-                            &recipient_pubkeys[i * PUBKEY_SIZE],
-                            ephemeral_privkey) != 0)
+    for (size_t i = 0; i < num_recipients; i++) {
+        Tinyweb__RecipientKeyWrap* wrap = malloc(sizeof(Tinyweb__RecipientKeyWrap));
+        if (!wrap) {
+            // Cleanup on failure
+            for (size_t j = 0; j < i; j++) {
+                free(keywraps[j]->key_nonce.data);
+                free(keywraps[j]->wrapped_key.data);
+                free(keywraps[j]);
+            }
+            free(keywraps);
+            free(ciphertext);
+            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+            return -1;
+        }
+
+        tinyweb__recipient_key_wrap__init(wrap);
+
+        // Copy recipient pubkey (Ed25519)
+        wrap->recipient_pubkey.len = PUBKEY_SIZE;
+        wrap->recipient_pubkey.data = malloc(PUBKEY_SIZE);
+        if (!wrap->recipient_pubkey.data) {
+            free(wrap);
+            for (size_t j = 0; j < i; j++) {
+                free(keywraps[j]->recipient_pubkey.data);
+                free(keywraps[j]->key_nonce.data);
+                free(keywraps[j]->wrapped_key.data);
+                free(keywraps[j]);
+            }
+            free(keywraps);
+            free(ciphertext);
+            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+            return -1;
+        }
+        memcpy(wrap->recipient_pubkey.data, &recipient_pubkeys[i * PUBKEY_SIZE], PUBKEY_SIZE);
+
+        // Convert Ed25519 public key to X25519 for encryption
+        unsigned char x25519_pubkey[PUBKEY_SIZE];
+        if (crypto_sign_ed25519_pk_to_curve25519(x25519_pubkey, &recipient_pubkeys[i * PUBKEY_SIZE]) != 0) {
+            fprintf(stderr, "Failed to convert Ed25519 to X25519 for recipient %zu\n", i);
+            free(wrap->recipient_pubkey.data);
+            free(wrap);
+            for (size_t j = 0; j < i; j++) {
+                free(keywraps[j]->recipient_pubkey.data);
+                free(keywraps[j]->key_nonce.data);
+                free(keywraps[j]->wrapped_key.data);
+                free(keywraps[j]);
+            }
+            free(keywraps);
+            free(ciphertext);
+            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+            return -1;
+        }
+
+        // Generate nonce for this key wrap
+        wrap->key_nonce.len = NONCE_SIZE;
+        wrap->key_nonce.data = malloc(NONCE_SIZE);
+        if (!wrap->key_nonce.data) {
+            free(wrap->recipient_pubkey.data);
+            free(wrap);
+            for (size_t j = 0; j < i; j++) {
+                free(keywraps[j]->recipient_pubkey.data);
+                free(keywraps[j]->key_nonce.data);
+                free(keywraps[j]->wrapped_key.data);
+                free(keywraps[j]);
+            }
+            free(keywraps);
+            free(ciphertext);
+            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+            return -1;
+        }
+        randombytes_buf(wrap->key_nonce.data, NONCE_SIZE);
+
+        // Encrypt the symmetric key for this recipient
+        wrap->wrapped_key.len = ENCRYPTED_KEY_SIZE;
+        wrap->wrapped_key.data = malloc(ENCRYPTED_KEY_SIZE);
+        if (!wrap->wrapped_key.data) {
+            free(wrap->key_nonce.data);
+            free(wrap->recipient_pubkey.data);
+            free(wrap);
+            for (size_t j = 0; j < i; j++) {
+                free(keywraps[j]->recipient_pubkey.data);
+                free(keywraps[j]->key_nonce.data);
+                free(keywraps[j]->wrapped_key.data);
+                free(keywraps[j]);
+            }
+            free(keywraps);
+            free(ciphertext);
+            sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+            sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+            return -1;
+        }
+
+        if (crypto_box_easy(wrap->wrapped_key.data,
+                           symmetric_key, crypto_secretbox_KEYBYTES,
+                           wrap->key_nonce.data,
+                           x25519_pubkey,
+                           ephemeral_privkey) != 0)
         {
-            if (encrypted->key_nonces) free(encrypted->key_nonces);
-            if (encrypted->encrypted_keys) free(encrypted->encrypted_keys);
-            if (encrypted->ciphertext) free(encrypted->ciphertext);
-            free(encrypted);
+            free(wrap->wrapped_key.data);
+            free(wrap->key_nonce.data);
+            free(wrap->recipient_pubkey.data);
+            free(wrap);
+            for (size_t j = 0; j < i; j++) {
+                free(keywraps[j]->recipient_pubkey.data);
+                free(keywraps[j]->key_nonce.data);
+                free(keywraps[j]->wrapped_key.data);
+                free(keywraps[j]);
+            }
+            free(keywraps);
+            free(ciphertext);
             sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
             sodium_memzero(ephemeral_privkey, SECRET_SIZE);
-            return NULL;
+            sodium_memzero(x25519_pubkey, PUBKEY_SIZE);
+            return -1;
         }
+
+        sodium_memzero(x25519_pubkey, PUBKEY_SIZE);
+        keywraps[i] = wrap;
     }
+
+    // Populate envelope fields
+    envelope->payload_nonce.len = NONCE_SIZE;
+    envelope->payload_nonce.data = malloc(NONCE_SIZE);
+    if (!envelope->payload_nonce.data) {
+        for (size_t j = 0; j < num_recipients; j++) {
+            free(keywraps[j]->recipient_pubkey.data);
+            free(keywraps[j]->key_nonce.data);
+            free(keywraps[j]->wrapped_key.data);
+            free(keywraps[j]);
+        }
+        free(keywraps);
+        free(ciphertext);
+        sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+        sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+        return -1;
+    }
+    memcpy(envelope->payload_nonce.data, nonce, NONCE_SIZE);
+
+    envelope->ephemeral_pubkey.len = PUBKEY_SIZE;
+    envelope->ephemeral_pubkey.data = malloc(PUBKEY_SIZE);
+    if (!envelope->ephemeral_pubkey.data) {
+        free(envelope->payload_nonce.data);
+        for (size_t j = 0; j < num_recipients; j++) {
+            free(keywraps[j]->recipient_pubkey.data);
+            free(keywraps[j]->key_nonce.data);
+            free(keywraps[j]->wrapped_key.data);
+            free(keywraps[j]);
+        }
+        free(keywraps);
+        free(ciphertext);
+        sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+        sodium_memzero(ephemeral_privkey, SECRET_SIZE);
+        return -1;
+    }
+    memcpy(envelope->ephemeral_pubkey.data, ephemeral_pubkey, PUBKEY_SIZE);
+
+    envelope->payload_ciphertext.len = ciphertext_len;
+    envelope->payload_ciphertext.data = ciphertext;  // Transfer ownership
+
+    envelope->n_keywraps = num_recipients;
+    envelope->keywraps = keywraps;  // Transfer ownership
 
     // Clean up sensitive data
     sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
     sodium_memzero(ephemeral_privkey, SECRET_SIZE);
 
-    return encrypted;
+    return 0;
 }
 
-void free_encrypted_payload(EncryptedPayload *encrypted)
+int decrypt_envelope_payload(
+    const Tinyweb__Envelope* envelope,
+    unsigned char** plaintext, size_t* plaintext_len)
 {
-    if (!encrypted) return;
-    
-    if (encrypted->ciphertext) {
-        free(encrypted->ciphertext);
-        encrypted->ciphertext = NULL;
-    }
-    
-    if (encrypted->key_nonces) {
-        free(encrypted->key_nonces);
-        encrypted->key_nonces = NULL;
-    }
-    
-    if (encrypted->encrypted_keys) {
-        free(encrypted->encrypted_keys);
-        encrypted->encrypted_keys = NULL;
-    }
-    
-    free(encrypted);
-}
-
-unsigned char *decrypt_payload(const EncryptedPayload *encrypted, const unsigned char *recipient_pubkeys)
-{
-
-    unsigned char recipient_publickey[PUBKEY_SIZE];
-    keystore_get_encryption_public_key(recipient_publickey);
-
-    unsigned char recipient_privkey[SECRET_SIZE];
-    _keystore_get_encryption_private_key(recipient_privkey);
-
-    if (!encrypted || !recipient_privkey || !recipient_publickey || !recipient_pubkeys)
-    {
-        fprintf(stderr, "Invalid encrypted payload or keys\n");
-        return NULL;
+    if (!envelope || !plaintext || !plaintext_len) {
+        fprintf(stderr, "decrypt_envelope_payload: invalid arguments\n");
+        return -1;
     }
 
-    // Check if ciphertext size exceeds the maximum allowed
-    if (encrypted->ciphertext_len > MAX_CIPHERTEXT_SIZE) {
-        fprintf(stderr, "Ciphertext size (%zu bytes) exceeds maximum allowed size (%d bytes)\n", 
-                encrypted->ciphertext_len, MAX_CIPHERTEXT_SIZE);
-        return NULL;
+    if (!keystore_is_keypair_loaded()) {
+        fprintf(stderr, "decrypt_envelope_payload: keypair not loaded\n");
+        return -1;
     }
 
-    // Step 1: Find the index of the matching recipient public key
-    size_t recipient_index = 0;
-    int found = 0;
-    for (size_t i = 0; i < encrypted->num_recipients; i++)
-    {
-        if (memcmp(recipient_publickey, &recipient_pubkeys[i * PUBKEY_SIZE], PUBKEY_SIZE) == 0)
-        {
-            recipient_index = i;
-            found = 1;
+    // Get our public key (Ed25519)
+    unsigned char our_ed25519_pubkey[PUBKEY_SIZE];
+    keystore_get_encryption_public_key(our_ed25519_pubkey);
+
+    // Get our private key (X25519)
+    unsigned char our_x25519_privkey[SECRET_SIZE];
+    _keystore_get_encryption_private_key(our_x25519_privkey);
+
+    // Find our key wrap
+    Tinyweb__RecipientKeyWrap* our_wrap = NULL;
+    for (size_t i = 0; i < envelope->n_keywraps; i++) {
+        if (envelope->keywraps[i]->recipient_pubkey.len == PUBKEY_SIZE &&
+            memcmp(envelope->keywraps[i]->recipient_pubkey.data, our_ed25519_pubkey, PUBKEY_SIZE) == 0) {
+            our_wrap = envelope->keywraps[i];
             break;
         }
     }
 
-    if (!found)
-    {
-        fprintf(stderr, "Recipient public key not found in the list\n");
-        return NULL;
+    if (!our_wrap) {
+        fprintf(stderr, "decrypt_envelope_payload: not a recipient of this envelope\n");
+        sodium_memzero(our_x25519_privkey, SECRET_SIZE);
+        return -1;
     }
 
-    // Step 2: Decrypt the symmetric key using the recipient's private key at the matched index
+    // Decrypt the symmetric key
     unsigned char symmetric_key[crypto_secretbox_KEYBYTES];
-    if (crypto_box_open_easy(symmetric_key, &encrypted->encrypted_keys[recipient_index * ENCRYPTED_KEY_SIZE], 
-                             ENCRYPTED_KEY_SIZE,
-                             &encrypted->key_nonces[recipient_index * NONCE_SIZE], 
-                             encrypted->ephemeral_pubkey, 
-                             recipient_privkey) != 0)
+    if (crypto_box_open_easy(symmetric_key,
+                            our_wrap->wrapped_key.data, our_wrap->wrapped_key.len,
+                            our_wrap->key_nonce.data,
+                            envelope->ephemeral_pubkey.data,
+                            our_x25519_privkey) != 0)
     {
-        fprintf(stderr, "Failed to decrypt symmetric key\n");
+        fprintf(stderr, "decrypt_envelope_payload: failed to decrypt symmetric key\n");
         sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
-        sodium_memzero(recipient_publickey, PUBKEY_SIZE);
-        sodium_memzero(recipient_privkey, SECRET_SIZE);
-        return NULL;
+        sodium_memzero(our_x25519_privkey, SECRET_SIZE);
+        return -1;
     }
 
-    // Step 3: Decrypt the ciphertext using the symmetric key
-    unsigned char *plaintext = malloc(encrypted->ciphertext_len - crypto_secretbox_MACBYTES);
-    if (!plaintext)
-    {
-        fprintf(stderr, "Memory allocation failed\n");
+    // Check ciphertext size
+    if (envelope->payload_ciphertext.len < crypto_secretbox_MACBYTES ||
+        envelope->payload_ciphertext.len > MAX_CIPHERTEXT_SIZE) {
+        fprintf(stderr, "decrypt_envelope_payload: invalid ciphertext size %zu\n",
+                envelope->payload_ciphertext.len);
         sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
-        sodium_memzero(recipient_publickey, PUBKEY_SIZE);
-        sodium_memzero(recipient_privkey, SECRET_SIZE);
-        return NULL;
+        sodium_memzero(our_x25519_privkey, SECRET_SIZE);
+        return -1;
     }
 
-    if (crypto_secretbox_open_easy(plaintext, encrypted->ciphertext, encrypted->ciphertext_len,
-                                   encrypted->nonce, symmetric_key) != 0)
-    {
-        fprintf(stderr, "Decryption of payload failed\n");
-        free(plaintext);
+    // Decrypt the payload
+    *plaintext_len = envelope->payload_ciphertext.len - crypto_secretbox_MACBYTES;
+    *plaintext = malloc(*plaintext_len);
+    if (!*plaintext) {
+        fprintf(stderr, "decrypt_envelope_payload: memory allocation failed\n");
         sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
-        sodium_memzero(recipient_publickey, PUBKEY_SIZE);
-        sodium_memzero(recipient_privkey, SECRET_SIZE);
-        return NULL;
+        sodium_memzero(our_x25519_privkey, SECRET_SIZE);
+        return -1;
+    }
+
+    if (crypto_secretbox_open_easy(*plaintext,
+                                   envelope->payload_ciphertext.data,
+                                   envelope->payload_ciphertext.len,
+                                   envelope->payload_nonce.data,
+                                   symmetric_key) != 0)
+    {
+        fprintf(stderr, "decrypt_envelope_payload: decryption failed\n");
+        free(*plaintext);
+        *plaintext = NULL;
+        *plaintext_len = 0;
+        sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
+        sodium_memzero(our_x25519_privkey, SECRET_SIZE);
+        return -1;
     }
 
     // Clean up sensitive data
     sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
-    sodium_memzero(recipient_publickey, PUBKEY_SIZE);
-    sodium_memzero(recipient_privkey, SECRET_SIZE);
-
-    return plaintext;
-}
-
-size_t encrypted_payload_get_size(EncryptedPayload* payload){
-    if (!payload) {
-        return 0;
-    }
-    
-    if (!payload->ciphertext) {
-        return 0;
-    }
-           
-    size_t mem_size = 0;
-
-    mem_size += payload->ciphertext_len;               // Ciphertext
-    mem_size += sizeof(size_t);                        // Ciphertext length
-    mem_size += NONCE_SIZE;                            // Nonce
-    mem_size += payload->num_recipients * ENCRYPTED_KEY_SIZE;  // Encrypted keys
-    mem_size += payload->num_recipients * NONCE_SIZE;  // Key nonces
-    mem_size += PUBKEY_SIZE;                           // Ephemeral pubkey
-    mem_size += sizeof(size_t);                        // Num recipients
-
-    return mem_size;
-}
-
-
-int encrypted_payload_serialize(EncryptedPayload* payload, unsigned char** out_buffer){
-
-    if(!payload){
-        printf("payload is empty \n");
-        return 1;
-    }
-    if (!out_buffer) {
-        printf("output buffer is NULL \n");
-        return 1;
-    }
-
-    unsigned char* ptr = *out_buffer;
-
-    // Convert num_recipients to network byte order and copy it
-    size_t num_recipients_net = htonll(payload->num_recipients);
-    memcpy(ptr, &num_recipients_net, sizeof(size_t));
-    ptr += sizeof(size_t);
-
-    // Convert ciphertext_len to network byte order and copy it
-    size_t ciphertext_len_net = htonll(payload->ciphertext_len);
-    memcpy(ptr, &ciphertext_len_net, sizeof(size_t));
-    ptr += sizeof(size_t);
-
-    // Copy ephemeral_pubkey
-    memcpy(ptr, payload->ephemeral_pubkey, PUBKEY_SIZE);
-    ptr += PUBKEY_SIZE;
-
-    // Copy the nonce
-    memcpy(ptr, payload->nonce, NONCE_SIZE);
-    ptr += NONCE_SIZE;
-
-    // Copy the ciphertext
-    memcpy(ptr, payload->ciphertext, payload->ciphertext_len);
-    ptr += payload->ciphertext_len;
-
-    // Encrypt keys
-    size_t key_bytes = payload->num_recipients * ENCRYPTED_KEY_SIZE;
-    memcpy(ptr, payload->encrypted_keys, key_bytes);
-    ptr += key_bytes;
-
-    // Encrypt key nonces
-    size_t nonce_bytes = payload->num_recipients * NONCE_SIZE;
-    memcpy(ptr, payload->key_nonces, nonce_bytes);
-    ptr += nonce_bytes;
-
-    *out_buffer = ptr;
+    sodium_memzero(our_x25519_privkey, SECRET_SIZE);
 
     return 0;
 }
-
-EncryptedPayload* encrypted_payload_deserialize(const char** buffer) {
-    if (!buffer || !*buffer) {
-        printf("Invalid buffer\n");
-        return NULL;
-    }
-
-    const char* ptr = *buffer;
-
-    // Allocate memory for the EncryptedPayload
-    EncryptedPayload* payload = (EncryptedPayload*)malloc(sizeof(EncryptedPayload));
-    if (!payload) {
-        printf("Failed to allocate memory for EncryptedPayload\n");
-        return NULL;
-    }
-    // Initialize to avoid undefined behavior
-    memset(payload, 0, sizeof(EncryptedPayload));
-
-    // Deserialize num_recipients (convert from network byte order)
-    size_t num_recipients_net;
-    memcpy(&num_recipients_net, ptr, sizeof(size_t));
-    payload->num_recipients = ntohll(num_recipients_net);
-    ptr += sizeof(size_t);
-
-    // Deserialize ciphertext_len (convert from network byte order)
-    size_t ciphertext_len_net;
-    memcpy(&ciphertext_len_net, ptr, sizeof(size_t));
-    payload->ciphertext_len = ntohll(ciphertext_len_net);
-    ptr += sizeof(size_t);
-
-    // Deserialize ephemeral_pubkey
-    memcpy(payload->ephemeral_pubkey, ptr, PUBKEY_SIZE);
-    ptr += PUBKEY_SIZE;
-
-    // Deserialize the nonce
-    memcpy(payload->nonce, ptr, NONCE_SIZE);
-    ptr += NONCE_SIZE;
-
-    // Deserialize the ciphertext
-    if (payload->ciphertext_len > 0) {
-        payload->ciphertext = (char*)malloc(payload->ciphertext_len);
-        if (!payload->ciphertext) {
-            printf("Failed to allocate memory for ciphertext\n");
-            free(payload);
-            return NULL;
-        }
-        memcpy(payload->ciphertext, ptr, payload->ciphertext_len);
-        ptr += payload->ciphertext_len;
-    } else {
-        payload->ciphertext = NULL;
-    }
-
-    // Deserialize encrypted_keys
-    if (payload->num_recipients > 0) {
-        payload->encrypted_keys = (char*)malloc(payload->num_recipients * ENCRYPTED_KEY_SIZE);
-        if (!payload->encrypted_keys) {
-            printf("Failed to allocate memory for encrypted_keys\n");
-            if (payload->ciphertext) {
-                free(payload->ciphertext);
-            }
-            free(payload);
-            return NULL;
-        }
-        memcpy(payload->encrypted_keys, ptr, payload->num_recipients * ENCRYPTED_KEY_SIZE);
-        ptr += payload->num_recipients * ENCRYPTED_KEY_SIZE;
-    } else {
-        payload->encrypted_keys = NULL;
-    }
-
-    // Deserialize key_nonces
-    if (payload->num_recipients > 0) {
-        payload->key_nonces = (char*)malloc(payload->num_recipients * NONCE_SIZE);
-        if (!payload->key_nonces) {
-            printf("Failed to allocate memory for key_nonces\n");
-            if (payload->ciphertext) {
-                free(payload->ciphertext);
-            }
-            if (payload->encrypted_keys) {
-                free(payload->encrypted_keys);
-            }
-            free(payload);
-            return NULL;
-        }
-        memcpy(payload->key_nonces, ptr, payload->num_recipients * NONCE_SIZE);
-        ptr += payload->num_recipients * NONCE_SIZE;
-    } else {
-        payload->key_nonces = NULL;
-    }
-
-    // Update the caller's buffer pointer
-    *buffer = ptr;
-    return payload;
-}
-

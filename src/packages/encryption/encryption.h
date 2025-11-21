@@ -3,6 +3,7 @@
 
 #include <sodium.h>
 #include "packages/keystore/keystore.h"
+#include "envelope.pb-c.h"
 
 #define PUBKEY_SIZE crypto_box_PUBLICKEYBYTES    /* 32 */
 #define SECRET_SIZE crypto_box_SECRETKEYBYTES    /* 32 */
@@ -18,27 +19,20 @@
 // Size of each encrypted symmetric key (key + MAC)
 #define ENCRYPTED_KEY_SIZE (crypto_secretbox_KEYBYTES + MAC_SIZE)
 
-typedef struct {
-    unsigned char* ciphertext;      // Encrypted message (2KB + MAC)
-    size_t ciphertext_len;                              // Length of encrypted message
-    unsigned char nonce[NONCE_SIZE];                    // Nonce for symmetric encryption
-    unsigned char* encrypted_keys; // Encrypted symmetric keys (one per recipient) size is MAX_RECIPIENTS * ENCRYPTED_KEY_SIZE
-    unsigned char* key_nonces; // Nonces for encrypted keys, size is MAX_RECIPIENTS * NONCE_SIZE
-    unsigned char ephemeral_pubkey[PUBKEY_SIZE];        // Ephemeral public key
-    size_t num_recipients;                             // Number of recipients (up to 25)
-} EncryptedPayload;
+// New API: Encrypt plaintext and populate envelope fields directly
+// This replaces the old EncryptedPayload-based API
+int encrypt_envelope_payload(
+    const unsigned char* plaintext, size_t plaintext_len,
+    const unsigned char* recipient_pubkeys, size_t num_recipients,
+    Tinyweb__Envelope* envelope  // Envelope to populate (must be initialized)
+);
 
-EncryptedPayload* encrypt_payload_multi(const unsigned char* plaintext, size_t plaintext_len,
-                                        const unsigned char* recipient_pubkeys, size_t num_recipients);
-
-unsigned char *decrypt_payload(const EncryptedPayload *encrypted, const unsigned char *recipient_pubkeys);
-
-void free_encrypted_payload(EncryptedPayload* payload);
-
-size_t encrypted_payload_get_size(EncryptedPayload* payload);
-
-int encrypted_payload_serialize(EncryptedPayload* payload, unsigned char** out_buffer);
-
-EncryptedPayload* encrypted_payload_deserialize(const char** buffer);
+// Decrypt envelope payload for current user
+// Returns 0 on success, -1 on error
+// Caller must free *plaintext with sodium_free()
+int decrypt_envelope_payload(
+    const Tinyweb__Envelope* envelope,
+    unsigned char** plaintext, size_t* plaintext_len
+);
 
 #endif /* ENCRYPTION_H */

@@ -7,15 +7,17 @@
 #include <pthread.h>
 #include <sodium.h>
 #include <time.h>
+#include <openssl/sha.h>
 
 #include "packages/comm/gossip/gossip.h"
-#include "packages/sql/database.h"
+#include "packages/sql/database_gossip.h"
 #include "packages/sql/gossip_store.h"
 #include "packages/sql/gossip_peers.h"
 #include "packages/utils/statePaths.h"
 #include "packages/validation/gossip_validation.h"
-#include "packages/transactions/transaction.h"
+#include "packages/transactions/envelope.h"
 #include "packages/comm/gossipApi.h"
+#include "packages/comm/envelope_dispatcher.h"
 
 typedef struct {
     uint32_t node_id;
@@ -29,7 +31,7 @@ static GossipService g_gossip_service;
 static GossipValidationConfig g_validation_config = {
     .max_clock_skew_seconds = 300,
     .message_ttl_seconds = 60ULL * 60ULL * 24ULL * 30ULL,
-    .max_payload_bytes = MAX_PAYLOAD_SIZE_EXTERNAL
+    .max_payload_bytes = 1024 * 1024  // 1MB max payload
 };
 static volatile int g_cleanup_running = 0;
 static pthread_t g_cleanup_thread;
@@ -44,7 +46,7 @@ static void bootstrap_known_peers(GossipService* service);
 static void stop_gossip_service(void);
 static int start_http_api(uint16_t port);
 static void stop_http_api(void);
-static int gossip_receive_handler(GossipService* service, TW_Transaction* transaction, const struct sockaddr_in* source, void* context);
+static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* envelope, const struct sockaddr_in* source, void* context);
 static void* cleanup_loop(void* arg);
 
 static void handle_signal(int sig) {
@@ -185,34 +187,48 @@ static void stop_http_api(void) {
     g_http_server_running = false;
 }
 
-static int gossip_receive_handler(GossipService* service, TW_Transaction* transaction, const struct sockaddr_in* source, void* context) {
+static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* envelope, const struct sockaddr_in* source, void* context) {
 
     const GossipValidationConfig* config = (const GossipValidationConfig*)context;
     uint64_t now = (uint64_t)time(NULL);
 
-    GossipValidationResult result = gossip_validate_transaction(transaction, config, now);
+    // Validate envelope
+    GossipValidationResult result = gossip_validate_envelope(envelope, config, now);
     if (result != GOSSIP_VALIDATION_OK) {
-        fprintf(stderr, "Rejected gossip transaction: %s\n", gossip_validation_error_string(result));
+        fprintf(stderr, "Rejected gossip envelope: %s\n", gossip_validation_error_string(result));
+        return -1;
+    }
+
+    // Serialize envelope to compute digest
+    unsigned char* ser = NULL;
+    size_t ser_len = 0;
+    if (tw_envelope_serialize(envelope, &ser, &ser_len) != 0) {
+        fprintf(stderr, "Failed to serialize envelope for digest\n");
         return -1;
     }
 
     unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE] = {0};
-    TW_Transaction_hash(transaction, digest);
+    SHA256(ser, ser_len, digest);
 
-    // BUG: Race condition between has_seen check and mark_seen - multiple threads could both pass here
+    // Check if we've already seen this envelope
     int seen = 0;
     if (db_is_initialized()) {
         if (gossip_store_has_seen(digest, &seen) != 0) {
             fprintf(stderr, "Warning: failed to check gossip digest cache\n");
         } else if (seen) {
+            free(ser);
             return 0;
         }
     }
 
-    uint64_t expires_at = gossip_validation_expiration(transaction, config);
+    uint64_t expires_at = gossip_validation_expiration(envelope, config);
     if (db_is_initialized()) {
-        if (gossip_store_save_transaction(transaction, expires_at) != 0) {
-            fprintf(stderr, "Failed to persist gossip transaction\n");
+        const Tinyweb__EnvelopeHeader* hdr = envelope->header;
+        if (gossip_store_save_envelope(hdr->version, hdr->content_type, hdr->schema_version,
+                                       hdr->sender_pubkey.data, hdr->timestamp,
+                                       ser, ser_len, expires_at) != 0) {
+            fprintf(stderr, "Failed to persist gossip envelope\n");
+            free(ser);
             return -1;
         }
         if (gossip_store_mark_seen(digest, expires_at) != 0) {
@@ -220,8 +236,16 @@ static int gossip_receive_handler(GossipService* service, TW_Transaction* transa
         }
     }
 
-    if (gossip_service_rebroadcast_transaction(service, transaction, source) != 0) {
-        fprintf(stderr, "Warning: failed to rebroadcast gossip transaction\n");
+    free(ser);
+
+    // Dispatch to content-specific handlers
+    if (envelope_dispatch(envelope, NULL) != 0) {
+        fprintf(stderr, "Warning: envelope dispatch failed, continuing anyway\n");
+    }
+
+    // Rebroadcast to other peers
+    if (gossip_service_rebroadcast_envelope(service, envelope, source) != 0) {
+        fprintf(stderr, "Warning: failed to rebroadcast gossip envelope\n");
     }
 
     return 0;
@@ -294,12 +318,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    if (envelope_dispatcher_init() != 0) {
+        fprintf(stderr, "Failed to initialize envelope dispatcher\n");
+        return 1;
+    }
+    
     if (initialize_storage(&config, &paths, db_path, sizeof(db_path)) != 0) {
+        envelope_dispatcher_cleanup();
         return 1;
     }
     
     if (start_gossip_service(config.gossip_port) != 0) {
         stop_gossip_service();
+        envelope_dispatcher_cleanup();
         db_close();
         return 1;
     }
@@ -307,6 +338,7 @@ int main(int argc, char* argv[]) {
     if (start_http_api(config.api_port) != 0) {
         fprintf(stderr, "Failed to start HTTP API on port %u\n", config.api_port);
         stop_gossip_service();
+        envelope_dispatcher_cleanup();
         db_close();
         return 1;
     }
@@ -327,6 +359,8 @@ int main(int argc, char* argv[]) {
 
     stop_http_api();
     stop_gossip_service();
+
+    envelope_dispatcher_cleanup();
 
     if (db_is_initialized()) {
         gossip_store_cleanup((uint64_t)time(NULL));

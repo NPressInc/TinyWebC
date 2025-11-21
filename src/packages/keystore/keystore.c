@@ -134,6 +134,36 @@ int keystore_load_private_key(const char* filename, const char* passphrase) {
     return 1;
 }
 
+int keystore_load_user_key(const char* base_keys_path, const char* user_id) {
+    if (!base_keys_path || !user_id) {
+        fprintf(stderr, "Null base_keys_path or user_id provided\n");
+        return 0;
+    }
+
+    char key_path[512];
+    snprintf(key_path, sizeof(key_path), "%s/users/%s/key.bin", base_keys_path, user_id);
+
+    FILE* f = fopen(key_path, "rb");
+    if (!f) {
+        fprintf(stderr, "Failed to open key file: %s\n", key_path);
+        return 0;
+    }
+
+    size_t read = fread(sign_secret_key, 1, SIGN_SECRET_SIZE, f);
+    fclose(f);
+
+    if (read != SIGN_SECRET_SIZE) {
+        fprintf(stderr, "Failed to read complete key from %s\n", key_path);
+        return 0;
+    }
+
+    // Extract public key from secret key
+    crypto_sign_ed25519_sk_to_pk(sign_public_key, sign_secret_key);
+    
+    keypair_loaded = 1;
+    return 1;
+}
+
 int keystore_get_public_key(unsigned char* pubkey_out) {
     if (!keypair_loaded) {
         fprintf(stderr, "No keypair loaded\n");

@@ -2,9 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://tinyweb.network/schemas/network-config.json",
   "title": "Network Configuration",
-  "description": "Configuration schema for initializing a TinyWeb blockchain network",
+  "description": "Configuration schema for initializing a TinyWeb gossip network",
   "type": "object",
-  "required": ["network", "storage", "nodes", "users"],
+  "required": ["network", "nodes", "users"],
   "properties": {
     "network": {
       "type": "object",
@@ -39,28 +39,6 @@
           "maximum": 100,
           "default": 10,
           "description": "Maximum number of peer connections"
-        }
-      }
-    },
-    "storage": {
-      "type": "object",
-      "required": ["keystore_path", "blockchain_path", "passphrase"],
-      "properties": {
-        "keystore_path": {
-          "type": "string",
-          "pattern": "^[^\\0]+/$",
-          "description": "Directory path for storing cryptographic keys"
-        },
-        "blockchain_path": {
-          "type": "string", 
-          "pattern": "^[^\\0]+/$",
-          "description": "Directory path for storing blockchain data"
-        },
-        "passphrase": {
-          "type": "string",
-          "minLength": 8,
-          "maxLength": 128,
-          "description": "Passphrase for encrypting stored keys"
         }
       }
     },
@@ -117,11 +95,6 @@
           "tags": {
             "type": "string",
             "description": "Optional metadata such as Tailscale tags"
-          },
-          "is_validator": {
-            "type": "boolean",
-            "default": true,
-            "description": "Whether this node participates in consensus"
           }
         }
       }

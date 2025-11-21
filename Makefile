@@ -166,32 +166,6 @@ tinyweb_tests/fast:
 .PHONY : tinyweb_tests/fast
 
 #=============================================================================
-# Target rules for targets named pbft_support
-
-# Build rule for target.
-pbft_support: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pbft_support
-.PHONY : pbft_support
-
-# fast build rule for target.
-pbft_support/fast:
-	$(MAKE) $(MAKESILENT) -f src/features/blockchain/CMakeFiles/pbft_support.dir/build.make src/features/blockchain/CMakeFiles/pbft_support.dir/build
-.PHONY : pbft_support/fast
-
-#=============================================================================
-# Target rules for targets named tinyweb_pbft
-
-# Build rule for target.
-tinyweb_pbft: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tinyweb_pbft
-.PHONY : tinyweb_pbft
-
-# fast build rule for target.
-tinyweb_pbft/fast:
-	$(MAKE) $(MAKESILENT) -f src/features/blockchain/CMakeFiles/tinyweb_pbft.dir/build.make src/features/blockchain/CMakeFiles/tinyweb_pbft.dir/build
-.PHONY : tinyweb_pbft/fast
-
-#=============================================================================
 # Target rules for targets named init_tool
 
 # Build rule for target.
@@ -201,21 +175,35 @@ init_tool: cmake_check_build_system
 
 # fast build rule for target.
 init_tool/fast:
-	$(MAKE) $(MAKESILENT) -f src/features/blockchain/CMakeFiles/init_tool.dir/build.make src/features/blockchain/CMakeFiles/init_tool.dir/build
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/build
 .PHONY : init_tool/fast
 
-#=============================================================================
-# Target rules for targets named tinyweb_pbft_tests
+generated/api.pb-c.o: generated/api.pb-c.c.o
+.PHONY : generated/api.pb-c.o
 
-# Build rule for target.
-tinyweb_pbft_tests: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tinyweb_pbft_tests
-.PHONY : tinyweb_pbft_tests
+# target to build an object file
+generated/api.pb-c.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/api.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/api.pb-c.c.o
+.PHONY : generated/api.pb-c.c.o
 
-# fast build rule for target.
-tinyweb_pbft_tests/fast:
-	$(MAKE) $(MAKESILENT) -f src/features/blockchain/CMakeFiles/tinyweb_pbft_tests.dir/build.make src/features/blockchain/CMakeFiles/tinyweb_pbft_tests.dir/build
-.PHONY : tinyweb_pbft_tests/fast
+generated/api.pb-c.i: generated/api.pb-c.c.i
+.PHONY : generated/api.pb-c.i
+
+# target to preprocess a source file
+generated/api.pb-c.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/api.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/api.pb-c.c.i
+.PHONY : generated/api.pb-c.c.i
+
+generated/api.pb-c.s: generated/api.pb-c.c.s
+.PHONY : generated/api.pb-c.s
+
+# target to generate assembly for a file
+generated/api.pb-c.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/api.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/api.pb-c.c.s
+.PHONY : generated/api.pb-c.c.s
 
 generated/content.pb-c.o: generated/content.pb-c.c.o
 .PHONY : generated/content.pb-c.o
@@ -322,6 +310,33 @@ src/main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/main.c.s
 .PHONY : src/main.c.s
 
+src/packages/comm/envelope_dispatcher.o: src/packages/comm/envelope_dispatcher.c.o
+.PHONY : src/packages/comm/envelope_dispatcher.o
+
+# target to build an object file
+src/packages/comm/envelope_dispatcher.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/envelope_dispatcher.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/envelope_dispatcher.c.o
+.PHONY : src/packages/comm/envelope_dispatcher.c.o
+
+src/packages/comm/envelope_dispatcher.i: src/packages/comm/envelope_dispatcher.c.i
+.PHONY : src/packages/comm/envelope_dispatcher.i
+
+# target to preprocess a source file
+src/packages/comm/envelope_dispatcher.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/envelope_dispatcher.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/envelope_dispatcher.c.i
+.PHONY : src/packages/comm/envelope_dispatcher.c.i
+
+src/packages/comm/envelope_dispatcher.s: src/packages/comm/envelope_dispatcher.c.s
+.PHONY : src/packages/comm/envelope_dispatcher.s
+
+# target to generate assembly for a file
+src/packages/comm/envelope_dispatcher.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/envelope_dispatcher.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/envelope_dispatcher.c.s
+.PHONY : src/packages/comm/envelope_dispatcher.c.s
+
 src/packages/comm/gossip/gossip.o: src/packages/comm/gossip/gossip.c.o
 .PHONY : src/packages/comm/gossip/gossip.o
 
@@ -376,6 +391,30 @@ src/packages/comm/gossipApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/gossipApi.c.s
 .PHONY : src/packages/comm/gossipApi.c.s
 
+src/packages/comm/httpClient.o: src/packages/comm/httpClient.c.o
+.PHONY : src/packages/comm/httpClient.o
+
+# target to build an object file
+src/packages/comm/httpClient.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.o
+.PHONY : src/packages/comm/httpClient.c.o
+
+src/packages/comm/httpClient.i: src/packages/comm/httpClient.c.i
+.PHONY : src/packages/comm/httpClient.i
+
+# target to preprocess a source file
+src/packages/comm/httpClient.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.i
+.PHONY : src/packages/comm/httpClient.c.i
+
+src/packages/comm/httpClient.s: src/packages/comm/httpClient.c.s
+.PHONY : src/packages/comm/httpClient.s
+
+# target to generate assembly for a file
+src/packages/comm/httpClient.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.s
+.PHONY : src/packages/comm/httpClient.c.s
+
 src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
 .PHONY : src/packages/encryption/encryption.o
 
@@ -403,32 +442,56 @@ src/packages/encryption/encryption.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.s
 .PHONY : src/packages/encryption/encryption.c.s
 
-src/packages/fileIO/compression.o: src/packages/fileIO/compression.c.o
-.PHONY : src/packages/fileIO/compression.o
+src/packages/initialization/init.o: src/packages/initialization/init.c.o
+.PHONY : src/packages/initialization/init.o
 
 # target to build an object file
-src/packages/fileIO/compression.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.o
-.PHONY : src/packages/fileIO/compression.c.o
+src/packages/initialization/init.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.o
+.PHONY : src/packages/initialization/init.c.o
 
-src/packages/fileIO/compression.i: src/packages/fileIO/compression.c.i
-.PHONY : src/packages/fileIO/compression.i
+src/packages/initialization/init.i: src/packages/initialization/init.c.i
+.PHONY : src/packages/initialization/init.i
 
 # target to preprocess a source file
-src/packages/fileIO/compression.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.i
-.PHONY : src/packages/fileIO/compression.c.i
+src/packages/initialization/init.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.i
+.PHONY : src/packages/initialization/init.c.i
 
-src/packages/fileIO/compression.s: src/packages/fileIO/compression.c.s
-.PHONY : src/packages/fileIO/compression.s
+src/packages/initialization/init.s: src/packages/initialization/init.c.s
+.PHONY : src/packages/initialization/init.s
 
 # target to generate assembly for a file
-src/packages/fileIO/compression.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/fileIO/compression.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/fileIO/compression.c.s
-.PHONY : src/packages/fileIO/compression.c.s
+src/packages/initialization/init.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/initialization/init.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init.c.s
+.PHONY : src/packages/initialization/init.c.s
+
+src/packages/initialization/init_tool.o: src/packages/initialization/init_tool.c.o
+.PHONY : src/packages/initialization/init_tool.o
+
+# target to build an object file
+src/packages/initialization/init_tool.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init_tool.c.o
+.PHONY : src/packages/initialization/init_tool.c.o
+
+src/packages/initialization/init_tool.i: src/packages/initialization/init_tool.c.i
+.PHONY : src/packages/initialization/init_tool.i
+
+# target to preprocess a source file
+src/packages/initialization/init_tool.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init_tool.c.i
+.PHONY : src/packages/initialization/init_tool.c.i
+
+src/packages/initialization/init_tool.s: src/packages/initialization/init_tool.c.s
+.PHONY : src/packages/initialization/init_tool.s
+
+# target to generate assembly for a file
+src/packages/initialization/init_tool.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/initialization/init_tool.c.s
+.PHONY : src/packages/initialization/init_tool.c.s
 
 src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.o
@@ -491,6 +554,7 @@ src/packages/sql/database_gossip.o: src/packages/sql/database_gossip.c.o
 src/packages/sql/database_gossip.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database_gossip.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database_gossip.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database_gossip.c.o
 .PHONY : src/packages/sql/database_gossip.c.o
 
 src/packages/sql/database_gossip.i: src/packages/sql/database_gossip.c.i
@@ -500,6 +564,7 @@ src/packages/sql/database_gossip.i: src/packages/sql/database_gossip.c.i
 src/packages/sql/database_gossip.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database_gossip.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database_gossip.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database_gossip.c.i
 .PHONY : src/packages/sql/database_gossip.c.i
 
 src/packages/sql/database_gossip.s: src/packages/sql/database_gossip.c.s
@@ -509,6 +574,7 @@ src/packages/sql/database_gossip.s: src/packages/sql/database_gossip.c.s
 src/packages/sql/database_gossip.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database_gossip.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database_gossip.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database_gossip.c.s
 .PHONY : src/packages/sql/database_gossip.c.s
 
 src/packages/sql/gossip_peers.o: src/packages/sql/gossip_peers.c.o
@@ -518,6 +584,7 @@ src/packages/sql/gossip_peers.o: src/packages/sql/gossip_peers.c.o
 src/packages/sql/gossip_peers.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_peers.c.o
 .PHONY : src/packages/sql/gossip_peers.c.o
 
 src/packages/sql/gossip_peers.i: src/packages/sql/gossip_peers.c.i
@@ -527,6 +594,7 @@ src/packages/sql/gossip_peers.i: src/packages/sql/gossip_peers.c.i
 src/packages/sql/gossip_peers.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_peers.c.i
 .PHONY : src/packages/sql/gossip_peers.c.i
 
 src/packages/sql/gossip_peers.s: src/packages/sql/gossip_peers.c.s
@@ -536,6 +604,7 @@ src/packages/sql/gossip_peers.s: src/packages/sql/gossip_peers.c.s
 src/packages/sql/gossip_peers.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_peers.c.s
 .PHONY : src/packages/sql/gossip_peers.c.s
 
 src/packages/sql/gossip_store.o: src/packages/sql/gossip_store.c.o
@@ -545,6 +614,7 @@ src/packages/sql/gossip_store.o: src/packages/sql/gossip_store.c.o
 src/packages/sql/gossip_store.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_store.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_store.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_store.c.o
 .PHONY : src/packages/sql/gossip_store.c.o
 
 src/packages/sql/gossip_store.i: src/packages/sql/gossip_store.c.i
@@ -554,6 +624,7 @@ src/packages/sql/gossip_store.i: src/packages/sql/gossip_store.c.i
 src/packages/sql/gossip_store.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_store.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_store.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_store.c.i
 .PHONY : src/packages/sql/gossip_store.c.i
 
 src/packages/sql/gossip_store.s: src/packages/sql/gossip_store.c.s
@@ -563,34 +634,32 @@ src/packages/sql/gossip_store.s: src/packages/sql/gossip_store.c.s
 src/packages/sql/gossip_store.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_store.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_store.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_store.c.s
 .PHONY : src/packages/sql/gossip_store.c.s
 
-src/packages/transactions/codec.o: src/packages/transactions/codec.c.o
-.PHONY : src/packages/transactions/codec.o
+src/packages/sql/schema.o: src/packages/sql/schema.c.o
+.PHONY : src/packages/sql/schema.o
 
 # target to build an object file
-src/packages/transactions/codec.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/codec.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/codec.c.o
-.PHONY : src/packages/transactions/codec.c.o
+src/packages/sql/schema.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.o
+.PHONY : src/packages/sql/schema.c.o
 
-src/packages/transactions/codec.i: src/packages/transactions/codec.c.i
-.PHONY : src/packages/transactions/codec.i
+src/packages/sql/schema.i: src/packages/sql/schema.c.i
+.PHONY : src/packages/sql/schema.i
 
 # target to preprocess a source file
-src/packages/transactions/codec.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/codec.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/codec.c.i
-.PHONY : src/packages/transactions/codec.c.i
+src/packages/sql/schema.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.i
+.PHONY : src/packages/sql/schema.c.i
 
-src/packages/transactions/codec.s: src/packages/transactions/codec.c.s
-.PHONY : src/packages/transactions/codec.s
+src/packages/sql/schema.s: src/packages/sql/schema.c.s
+.PHONY : src/packages/sql/schema.s
 
 # target to generate assembly for a file
-src/packages/transactions/codec.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/codec.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/codec.c.s
-.PHONY : src/packages/transactions/codec.c.s
+src/packages/sql/schema.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.s
+.PHONY : src/packages/sql/schema.c.s
 
 src/packages/transactions/envelope.o: src/packages/transactions/envelope.c.o
 .PHONY : src/packages/transactions/envelope.o
@@ -619,33 +688,6 @@ src/packages/transactions/envelope.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/envelope.c.s
 .PHONY : src/packages/transactions/envelope.c.s
 
-src/packages/transactions/transaction.o: src/packages/transactions/transaction.c.o
-.PHONY : src/packages/transactions/transaction.o
-
-# target to build an object file
-src/packages/transactions/transaction.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/transaction.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/transaction.c.o
-.PHONY : src/packages/transactions/transaction.c.o
-
-src/packages/transactions/transaction.i: src/packages/transactions/transaction.c.i
-.PHONY : src/packages/transactions/transaction.i
-
-# target to preprocess a source file
-src/packages/transactions/transaction.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/transaction.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/transaction.c.i
-.PHONY : src/packages/transactions/transaction.c.i
-
-src/packages/transactions/transaction.s: src/packages/transactions/transaction.c.s
-.PHONY : src/packages/transactions/transaction.s
-
-# target to generate assembly for a file
-src/packages/transactions/transaction.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/transaction.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/transaction.c.s
-.PHONY : src/packages/transactions/transaction.c.s
-
 src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o
 .PHONY : src/packages/utils/byteorder.o
 
@@ -672,33 +714,6 @@ src/packages/utils/byteorder.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/byteorder.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.s
 .PHONY : src/packages/utils/byteorder.c.s
-
-src/packages/utils/jsonUtils.o: src/packages/utils/jsonUtils.c.o
-.PHONY : src/packages/utils/jsonUtils.o
-
-# target to build an object file
-src/packages/utils/jsonUtils.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/jsonUtils.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/jsonUtils.c.o
-.PHONY : src/packages/utils/jsonUtils.c.o
-
-src/packages/utils/jsonUtils.i: src/packages/utils/jsonUtils.c.i
-.PHONY : src/packages/utils/jsonUtils.i
-
-# target to preprocess a source file
-src/packages/utils/jsonUtils.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/jsonUtils.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/jsonUtils.c.i
-.PHONY : src/packages/utils/jsonUtils.c.i
-
-src/packages/utils/jsonUtils.s: src/packages/utils/jsonUtils.c.s
-.PHONY : src/packages/utils/jsonUtils.s
-
-# target to generate assembly for a file
-src/packages/utils/jsonUtils.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/jsonUtils.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/jsonUtils.c.s
-.PHONY : src/packages/utils/jsonUtils.c.s
 
 src/packages/utils/print.o: src/packages/utils/print.c.o
 .PHONY : src/packages/utils/print.o
@@ -808,6 +823,30 @@ src/structs/permission/permission.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.s
 .PHONY : src/structs/permission/permission.c.s
 
+src/tests/api_protobuf_test.o: src/tests/api_protobuf_test.c.o
+.PHONY : src/tests/api_protobuf_test.o
+
+# target to build an object file
+src/tests/api_protobuf_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/api_protobuf_test.c.o
+.PHONY : src/tests/api_protobuf_test.c.o
+
+src/tests/api_protobuf_test.i: src/tests/api_protobuf_test.c.i
+.PHONY : src/tests/api_protobuf_test.i
+
+# target to preprocess a source file
+src/tests/api_protobuf_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/api_protobuf_test.c.i
+.PHONY : src/tests/api_protobuf_test.c.i
+
+src/tests/api_protobuf_test.s: src/tests/api_protobuf_test.c.s
+.PHONY : src/tests/api_protobuf_test.s
+
+# target to generate assembly for a file
+src/tests/api_protobuf_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/api_protobuf_test.c.s
+.PHONY : src/tests/api_protobuf_test.c.s
+
 src/tests/encryption_test.o: src/tests/encryption_test.c.o
 .PHONY : src/tests/encryption_test.o
 
@@ -831,6 +870,54 @@ src/tests/encryption_test.s: src/tests/encryption_test.c.s
 src/tests/encryption_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/encryption_test.c.s
 .PHONY : src/tests/encryption_test.c.s
+
+src/tests/envelope_dispatcher_test.o: src/tests/envelope_dispatcher_test.c.o
+.PHONY : src/tests/envelope_dispatcher_test.o
+
+# target to build an object file
+src/tests/envelope_dispatcher_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/envelope_dispatcher_test.c.o
+.PHONY : src/tests/envelope_dispatcher_test.c.o
+
+src/tests/envelope_dispatcher_test.i: src/tests/envelope_dispatcher_test.c.i
+.PHONY : src/tests/envelope_dispatcher_test.i
+
+# target to preprocess a source file
+src/tests/envelope_dispatcher_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/envelope_dispatcher_test.c.i
+.PHONY : src/tests/envelope_dispatcher_test.c.i
+
+src/tests/envelope_dispatcher_test.s: src/tests/envelope_dispatcher_test.c.s
+.PHONY : src/tests/envelope_dispatcher_test.s
+
+# target to generate assembly for a file
+src/tests/envelope_dispatcher_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/envelope_dispatcher_test.c.s
+.PHONY : src/tests/envelope_dispatcher_test.c.s
+
+src/tests/envelope_test.o: src/tests/envelope_test.c.o
+.PHONY : src/tests/envelope_test.o
+
+# target to build an object file
+src/tests/envelope_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/envelope_test.c.o
+.PHONY : src/tests/envelope_test.c.o
+
+src/tests/envelope_test.i: src/tests/envelope_test.c.i
+.PHONY : src/tests/envelope_test.i
+
+# target to preprocess a source file
+src/tests/envelope_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/envelope_test.c.i
+.PHONY : src/tests/envelope_test.c.i
+
+src/tests/envelope_test.s: src/tests/envelope_test.c.s
+.PHONY : src/tests/envelope_test.s
+
+# target to generate assembly for a file
+src/tests/envelope_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/envelope_test.c.s
+.PHONY : src/tests/envelope_test.c.s
 
 src/tests/gossip_store_test.o: src/tests/gossip_store_test.c.o
 .PHONY : src/tests/gossip_store_test.o
@@ -856,6 +943,54 @@ src/tests/gossip_store_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/gossip_store_test.c.s
 .PHONY : src/tests/gossip_store_test.c.s
 
+src/tests/gossip_validation_test.o: src/tests/gossip_validation_test.c.o
+.PHONY : src/tests/gossip_validation_test.o
+
+# target to build an object file
+src/tests/gossip_validation_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/gossip_validation_test.c.o
+.PHONY : src/tests/gossip_validation_test.c.o
+
+src/tests/gossip_validation_test.i: src/tests/gossip_validation_test.c.i
+.PHONY : src/tests/gossip_validation_test.i
+
+# target to preprocess a source file
+src/tests/gossip_validation_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/gossip_validation_test.c.i
+.PHONY : src/tests/gossip_validation_test.c.i
+
+src/tests/gossip_validation_test.s: src/tests/gossip_validation_test.c.s
+.PHONY : src/tests/gossip_validation_test.s
+
+# target to generate assembly for a file
+src/tests/gossip_validation_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/gossip_validation_test.c.s
+.PHONY : src/tests/gossip_validation_test.c.s
+
+src/tests/httpclient_test.o: src/tests/httpclient_test.c.o
+.PHONY : src/tests/httpclient_test.o
+
+# target to build an object file
+src/tests/httpclient_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/httpclient_test.c.o
+.PHONY : src/tests/httpclient_test.c.o
+
+src/tests/httpclient_test.i: src/tests/httpclient_test.c.i
+.PHONY : src/tests/httpclient_test.i
+
+# target to preprocess a source file
+src/tests/httpclient_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/httpclient_test.c.i
+.PHONY : src/tests/httpclient_test.c.i
+
+src/tests/httpclient_test.s: src/tests/httpclient_test.c.s
+.PHONY : src/tests/httpclient_test.s
+
+# target to generate assembly for a file
+src/tests/httpclient_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/httpclient_test.c.s
+.PHONY : src/tests/httpclient_test.c.s
+
 src/tests/mongoose_test.o: src/tests/mongoose_test.c.o
 .PHONY : src/tests/mongoose_test.o
 
@@ -880,6 +1015,30 @@ src/tests/mongoose_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/mongoose_test.c.s
 .PHONY : src/tests/mongoose_test.c.s
 
+src/tests/schema_test.o: src/tests/schema_test.c.o
+.PHONY : src/tests/schema_test.o
+
+# target to build an object file
+src/tests/schema_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/schema_test.c.o
+.PHONY : src/tests/schema_test.c.o
+
+src/tests/schema_test.i: src/tests/schema_test.c.i
+.PHONY : src/tests/schema_test.i
+
+# target to preprocess a source file
+src/tests/schema_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/schema_test.c.i
+.PHONY : src/tests/schema_test.c.i
+
+src/tests/schema_test.s: src/tests/schema_test.c.s
+.PHONY : src/tests/schema_test.s
+
+# target to generate assembly for a file
+src/tests/schema_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/schema_test.c.s
+.PHONY : src/tests/schema_test.c.s
+
 src/tests/signing_test.o: src/tests/signing_test.c.o
 .PHONY : src/tests/signing_test.o
 
@@ -903,6 +1062,30 @@ src/tests/signing_test.s: src/tests/signing_test.c.s
 src/tests/signing_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/signing_test.c.s
 .PHONY : src/tests/signing_test.c.s
+
+src/tests/test_init.o: src/tests/test_init.c.o
+.PHONY : src/tests/test_init.o
+
+# target to build an object file
+src/tests/test_init.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/test_init.c.o
+.PHONY : src/tests/test_init.c.o
+
+src/tests/test_init.i: src/tests/test_init.c.i
+.PHONY : src/tests/test_init.i
+
+# target to preprocess a source file
+src/tests/test_init.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/test_init.c.i
+.PHONY : src/tests/test_init.c.i
+
+src/tests/test_init.s: src/tests/test_init.c.s
+.PHONY : src/tests/test_init.s
+
+# target to generate assembly for a file
+src/tests/test_init.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/test_init.c.s
+.PHONY : src/tests/test_init.c.s
 
 src/tests/test_runner.o: src/tests/test_runner.c.o
 .PHONY : src/tests/test_runner.o
@@ -939,11 +1122,11 @@ help:
 	@echo "... test"
 	@echo "... generate_proto"
 	@echo "... init_tool"
-	@echo "... pbft_support"
 	@echo "... tinyweb"
-	@echo "... tinyweb_pbft"
-	@echo "... tinyweb_pbft_tests"
 	@echo "... tinyweb_tests"
+	@echo "... generated/api.pb-c.o"
+	@echo "... generated/api.pb-c.i"
+	@echo "... generated/api.pb-c.s"
 	@echo "... generated/content.pb-c.o"
 	@echo "... generated/content.pb-c.i"
 	@echo "... generated/content.pb-c.s"
@@ -956,18 +1139,27 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/packages/comm/envelope_dispatcher.o"
+	@echo "... src/packages/comm/envelope_dispatcher.i"
+	@echo "... src/packages/comm/envelope_dispatcher.s"
 	@echo "... src/packages/comm/gossip/gossip.o"
 	@echo "... src/packages/comm/gossip/gossip.i"
 	@echo "... src/packages/comm/gossip/gossip.s"
 	@echo "... src/packages/comm/gossipApi.o"
 	@echo "... src/packages/comm/gossipApi.i"
 	@echo "... src/packages/comm/gossipApi.s"
+	@echo "... src/packages/comm/httpClient.o"
+	@echo "... src/packages/comm/httpClient.i"
+	@echo "... src/packages/comm/httpClient.s"
 	@echo "... src/packages/encryption/encryption.o"
 	@echo "... src/packages/encryption/encryption.i"
 	@echo "... src/packages/encryption/encryption.s"
-	@echo "... src/packages/fileIO/compression.o"
-	@echo "... src/packages/fileIO/compression.i"
-	@echo "... src/packages/fileIO/compression.s"
+	@echo "... src/packages/initialization/init.o"
+	@echo "... src/packages/initialization/init.i"
+	@echo "... src/packages/initialization/init.s"
+	@echo "... src/packages/initialization/init_tool.o"
+	@echo "... src/packages/initialization/init_tool.i"
+	@echo "... src/packages/initialization/init_tool.s"
 	@echo "... src/packages/keystore/keystore.o"
 	@echo "... src/packages/keystore/keystore.i"
 	@echo "... src/packages/keystore/keystore.s"
@@ -983,21 +1175,15 @@ help:
 	@echo "... src/packages/sql/gossip_store.o"
 	@echo "... src/packages/sql/gossip_store.i"
 	@echo "... src/packages/sql/gossip_store.s"
-	@echo "... src/packages/transactions/codec.o"
-	@echo "... src/packages/transactions/codec.i"
-	@echo "... src/packages/transactions/codec.s"
+	@echo "... src/packages/sql/schema.o"
+	@echo "... src/packages/sql/schema.i"
+	@echo "... src/packages/sql/schema.s"
 	@echo "... src/packages/transactions/envelope.o"
 	@echo "... src/packages/transactions/envelope.i"
 	@echo "... src/packages/transactions/envelope.s"
-	@echo "... src/packages/transactions/transaction.o"
-	@echo "... src/packages/transactions/transaction.i"
-	@echo "... src/packages/transactions/transaction.s"
 	@echo "... src/packages/utils/byteorder.o"
 	@echo "... src/packages/utils/byteorder.i"
 	@echo "... src/packages/utils/byteorder.s"
-	@echo "... src/packages/utils/jsonUtils.o"
-	@echo "... src/packages/utils/jsonUtils.i"
-	@echo "... src/packages/utils/jsonUtils.s"
 	@echo "... src/packages/utils/print.o"
 	@echo "... src/packages/utils/print.i"
 	@echo "... src/packages/utils/print.s"
@@ -1010,18 +1196,39 @@ help:
 	@echo "... src/structs/permission/permission.o"
 	@echo "... src/structs/permission/permission.i"
 	@echo "... src/structs/permission/permission.s"
+	@echo "... src/tests/api_protobuf_test.o"
+	@echo "... src/tests/api_protobuf_test.i"
+	@echo "... src/tests/api_protobuf_test.s"
 	@echo "... src/tests/encryption_test.o"
 	@echo "... src/tests/encryption_test.i"
 	@echo "... src/tests/encryption_test.s"
+	@echo "... src/tests/envelope_dispatcher_test.o"
+	@echo "... src/tests/envelope_dispatcher_test.i"
+	@echo "... src/tests/envelope_dispatcher_test.s"
+	@echo "... src/tests/envelope_test.o"
+	@echo "... src/tests/envelope_test.i"
+	@echo "... src/tests/envelope_test.s"
 	@echo "... src/tests/gossip_store_test.o"
 	@echo "... src/tests/gossip_store_test.i"
 	@echo "... src/tests/gossip_store_test.s"
+	@echo "... src/tests/gossip_validation_test.o"
+	@echo "... src/tests/gossip_validation_test.i"
+	@echo "... src/tests/gossip_validation_test.s"
+	@echo "... src/tests/httpclient_test.o"
+	@echo "... src/tests/httpclient_test.i"
+	@echo "... src/tests/httpclient_test.s"
 	@echo "... src/tests/mongoose_test.o"
 	@echo "... src/tests/mongoose_test.i"
 	@echo "... src/tests/mongoose_test.s"
+	@echo "... src/tests/schema_test.o"
+	@echo "... src/tests/schema_test.i"
+	@echo "... src/tests/schema_test.s"
 	@echo "... src/tests/signing_test.o"
 	@echo "... src/tests/signing_test.i"
 	@echo "... src/tests/signing_test.s"
+	@echo "... src/tests/test_init.o"
+	@echo "... src/tests/test_init.i"
+	@echo "... src/tests/test_init.s"
 	@echo "... src/tests/test_runner.o"
 	@echo "... src/tests/test_runner.i"
 	@echo "... src/tests/test_runner.s"

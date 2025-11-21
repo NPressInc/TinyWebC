@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "external/mongoose/mongoose.h"
-#include "features/blockchain/core/internalTransaction.h"
 
 // Global HTTP client manager
 static struct mg_mgr http_client_mgr;
@@ -258,7 +257,7 @@ HttpClientConfig* http_client_config_default(void) {
     if (config) {
         config->timeout_seconds = 30;
         config->max_redirects = 5;
-        config->user_agent = strdup("TinyWeb-PBFT/1.0");
+        config->user_agent = strdup("TinyWeb/1.0");
         config->verify_ssl = 1;
     }
     return config;
@@ -346,167 +345,4 @@ void http_async_request_cancel(HttpAsyncRequest* request) {
 
 void http_async_request_free(HttpAsyncRequest* request) {
     free(request);
-}
-
-// PBFT-specific binary protocol functions
-int pbft_send_internal_transaction(const char* peer_url, const char* endpoint, 
-                                   const unsigned char* binary_data, size_t data_size) {
-    if (!peer_url || !endpoint || !binary_data || data_size == 0) {
-        return 0;
-    }
-    
-    // Construct full URL
-    char full_url[512];
-    snprintf(full_url, sizeof(full_url), "%s%s", peer_url, endpoint);
-    
-    // Use explicit binary headers for internal transactions
-    const char* headers[] = {"Content-Type: application/octet-stream", NULL};
-    
-    // Send binary data via POST with proper headers
-    HttpResponse* response = http_client_post(full_url, (const char*)binary_data, data_size, headers, NULL);
-    
-    int success = 0;
-    if (response && http_client_is_success_status(response->status_code)) {
-        success = 1;
-        printf("Binary HTTP request to %s successful (status: %d)\n", full_url, response->status_code);
-    } else {
-        printf("Binary HTTP request to %s failed (status: %d)\n", full_url, 
-               response ? response->status_code : 0);
-    }
-    
-    if (response) {
-        http_response_free(response);
-    }
-    
-    return success;
-}
-
-int pbft_send_block_proposal_binary(const char* peer_url, TW_InternalTransaction* proposal) {
-    if (!peer_url || !proposal) {
-        return 0;
-    }
-    
-    // Serialize the internal transaction to binary
-    unsigned char* binary_data = NULL;
-    size_t data_size = TW_InternalTransaction_serialize(proposal, &binary_data);
-    
-    if (!binary_data || data_size == 0) {
-        return 0;
-    }
-    
-    // Send to ProposeBlock endpoint
-    int result = pbft_send_internal_transaction(peer_url, "/ProposeBlock", binary_data, data_size);
-    
-    free(binary_data);
-    return result;
-}
-
-int pbft_send_vote_binary(const char* peer_url, TW_InternalTransaction* vote) {
-    if (!peer_url || !vote) {
-        return 0;
-    }
-    
-    // Serialize the internal transaction to binary
-    unsigned char* binary_data = NULL;
-    size_t data_size = TW_InternalTransaction_serialize(vote, &binary_data);
-    
-    if (!binary_data || data_size == 0) {
-        return 0;
-    }
-    
-    // Determine endpoint based on vote type
-    const char* endpoint;
-    switch (vote->type) {
-        case TW_INT_TXN_VOTE_VERIFY:
-            endpoint = "/VerificationVote";
-            break;
-        case TW_INT_TXN_VOTE_COMMIT:
-            endpoint = "/CommitVote";
-            break;
-        case TW_INT_TXN_VOTE_NEW_ROUND:
-            endpoint = "/NewRound";
-            break;
-        default:
-            free(binary_data);
-            return 0;
-    }
-    
-    int result = pbft_send_internal_transaction(peer_url, endpoint, binary_data, data_size);
-    
-    free(binary_data);
-    return result;
-}
-
-// Legacy JSON functions (for client transactions only)
-int pbft_send_block_proposal(const char* peer_url, const char* block_hash, 
-                            const char* block_data, const char* sender_pubkey, 
-                            const char* signature) {
-    char url[512];
-    snprintf(url, sizeof(url), "%s/ProposeBlock", peer_url);
-    
-    char json_payload[2048];
-    snprintf(json_payload, sizeof(json_payload),
-        "{"
-        "\"blockHash\":\"%s\","
-        "\"blockData\":\"%s\","
-        "\"sender\":\"%s\","
-        "\"signature\":\"%s\""
-        "}",
-        block_hash, block_data, sender_pubkey, signature);
-    
-    HttpResponse* response = http_client_post_json(url, json_payload, NULL);
-    
-    int success = 0;
-    if (response) {
-        success = http_client_is_success_status(response->status_code);
-        printf("Block proposal to %s: status %d\n", peer_url, response->status_code);
-        http_response_free(response);
-    }
-    
-    return success;
-}
-
-int pbft_send_verification_vote(const char* peer_url, const char* block_hash, 
-                               const char* sender_pubkey, const char* signature) {
-    char url[512];
-    snprintf(url, sizeof(url), "%s/VerificationVote", peer_url);
-    
-    char json_payload[1024];
-    snprintf(json_payload, sizeof(json_payload),
-        "{"
-        "\"blockHash\":\"%s\","
-        "\"sender\":\"%s\","
-        "\"signature\":\"%s\""
-        "}",
-        block_hash, sender_pubkey, signature);
-    
-    HttpResponse* response = http_client_post_json(url, json_payload, NULL);
-    
-    int success = 0;
-    if (response) {
-        success = http_client_is_success_status(response->status_code);
-        printf("Verification vote to %s: status %d\n", peer_url, response->status_code);
-        http_response_free(response);
-    }
-    
-    return success;
-}
-
-int pbft_get_blockchain_length(const char* peer_url) {
-    char url[512];
-    snprintf(url, sizeof(url), "%s/GetBlockChainLength", peer_url);
-    
-    HttpResponse* response = http_client_get(url, NULL, NULL);
-    
-    int chain_length = -1;
-    if (response && http_client_is_success_status(response->status_code)) {
-        char* length_str = http_client_extract_json_field(response->data, "chainLength");
-        if (length_str) {
-            chain_length = atoi(length_str);
-            free(length_str);
-        }
-        http_response_free(response);
-    }
-    
-    return chain_length;
 } 

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "database.h"
+#include "database_gossip.h"
 
 #define GOSSIP_CREATE_TABLE_SQL \
     "CREATE TABLE IF NOT EXISTS gossip_messages (" \
@@ -219,125 +219,6 @@ int gossip_store_init(void) {
     return 0;
 }
 
-int gossip_store_save_transaction(const TW_Transaction* transaction,
-                                  uint64_t expires_at) {
-    if (!transaction || !db_is_initialized()) {
-        return -1;
-    }
-
-    sqlite3* db = db_get_handle();
-    if (!db) {
-        return -1;
-    }
-
-    size_t serialized_size = TW_Transaction_get_size(transaction);
-    if (serialized_size == 0) {
-        return -1;
-    }
-
-    unsigned char* buffer = malloc(serialized_size);
-    if (!buffer) {
-        return -1;
-    }
-
-    unsigned char* write_ptr = buffer;
-    if (TW_Transaction_serialize((TW_Transaction*)transaction, &write_ptr) != 0) {
-        free(buffer);
-        return -1;
-    }
-
-    const char* insert_sql =
-        "INSERT INTO gossip_messages (type, sender, timestamp, payload, payload_size, expires_at) "
-        "VALUES (?, ?, ?, ?, ?, ?);";
-
-    sqlite3_stmt* stmt = NULL;
-    int rc = sqlite3_prepare_v2(db, insert_sql, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        free(buffer);
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, transaction->type);
-    sqlite3_bind_blob(stmt, 2, transaction->sender, PUBKEY_SIZE, SQLITE_STATIC);
-    sqlite3_bind_int64(stmt, 3, transaction->timestamp);
-    sqlite3_bind_blob(stmt, 4, buffer, (int)serialized_size, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 5, (int)serialized_size);
-    sqlite3_bind_int64(stmt, 6, expires_at);
-
-    rc = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-    free(buffer);
-
-    return (rc == SQLITE_DONE) ? 0 : -1;
-}
-
-int gossip_store_fetch_recent(uint32_t limit,
-                              GossipStoredMessage** messages,
-                              size_t* count) {
-    if (!messages || !count || !db_is_initialized()) {
-        return -1;
-    }
-
-    *messages = NULL;
-    *count = 0;
-
-    sqlite3* db = db_get_handle();
-    if (!db) {
-        return -1;
-    }
-
-    const char* select_sql =
-        "SELECT id, type, sender, timestamp, payload, payload_size, expires_at "
-        "FROM gossip_messages ORDER BY timestamp DESC LIMIT ?;";
-
-    sqlite3_stmt* stmt = NULL;
-    int rc = sqlite3_prepare_v2(db, select_sql, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, (int)limit);
-
-    GossipStoredMessage* results = calloc(limit ? limit : 1, sizeof(GossipStoredMessage));
-    if (!results) {
-        sqlite3_finalize(stmt);
-        return -1;
-    }
-
-    size_t index = 0;
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        results[index].id = sqlite3_column_int64(stmt, 0);
-        results[index].type = sqlite3_column_int(stmt, 1);
-
-        const void* sender_blob = sqlite3_column_blob(stmt, 2);
-        int sender_size = sqlite3_column_bytes(stmt, 2);
-        if (sender_blob && sender_size == PUBKEY_SIZE) {
-            memcpy(results[index].sender, sender_blob, PUBKEY_SIZE);
-        }
-
-        results[index].timestamp = sqlite3_column_int64(stmt, 3);
-
-        const void* payload_blob = sqlite3_column_blob(stmt, 4);
-        int payload_size = sqlite3_column_bytes(stmt, 4);
-        if (payload_blob && payload_size > 0) {
-            results[index].payload = malloc(payload_size);
-            if (results[index].payload) {
-                memcpy(results[index].payload, payload_blob, payload_size);
-                results[index].payload_size = (size_t)payload_size;
-            }
-        }
-
-        results[index].expires_at = sqlite3_column_int64(stmt, 6);
-        index++;
-    }
-
-    sqlite3_finalize(stmt);
-
-    *messages = results;
-    *count = index;
-    return 0;
-}
-
 int gossip_store_cleanup(uint64_t now_epoch) {
     if (!db_is_initialized()) {
         return -1;
@@ -348,13 +229,13 @@ int gossip_store_cleanup(uint64_t now_epoch) {
         return -1;
     }
 
-    const char* delete_messages_sql =
-        "DELETE FROM gossip_messages WHERE expires_at <= ?;";
+    const char* delete_envelopes_sql =
+        "DELETE FROM gossip_envelopes WHERE expires_at <= ?;";
     const char* delete_seen_sql =
         "DELETE FROM gossip_seen WHERE expires_at <= ?;";
 
     sqlite3_stmt* stmt = NULL;
-    int rc = sqlite3_prepare_v2(db, delete_messages_sql, -1, &stmt, NULL);
+    int rc = sqlite3_prepare_v2(db, delete_envelopes_sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
         return -1;
     }
@@ -376,19 +257,6 @@ int gossip_store_cleanup(uint64_t now_epoch) {
     sqlite3_finalize(stmt);
 
     return (rc == SQLITE_DONE) ? 0 : -1;
-}
-
-void gossip_store_free_messages(GossipStoredMessage* messages,
-                                size_t count) {
-    if (!messages) {
-        return;
-    }
-
-    for (size_t i = 0; i < count; ++i) {
-        free(messages[i].payload);
-    }
-
-    free(messages);
 }
 
 int gossip_store_has_seen(const unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE], int* is_seen) {

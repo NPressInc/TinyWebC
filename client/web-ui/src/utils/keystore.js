@@ -5,11 +5,11 @@ import sodium from 'libsodium-wrappers';
  * Manages Ed25519 keys for signing and converts to X25519 for encryption
  */
 
-// Key sizes (matching backend)
-const SIGN_PUBKEY_SIZE = sodium.crypto_sign_PUBLICKEYBYTES;    // 32
-const SIGN_SECRET_SIZE = sodium.crypto_sign_SECRETKEYBYTES;    // 64
-const PUBKEY_SIZE = sodium.crypto_box_PUBLICKEYBYTES;          // 32
-const SECRET_SIZE = sodium.crypto_box_SECRETKEYBYTES;          // 32
+// Key sizes (matching backend) - these are all 32 bytes
+const SIGN_PUBKEY_SIZE = 32;    // crypto_sign_PUBLICKEYBYTES
+const SIGN_SECRET_SIZE = 64;    // crypto_sign_SECRETKEYBYTES
+const PUBKEY_SIZE = 32;         // crypto_box_PUBLICKEYBYTES
+const SECRET_SIZE = 32;         // crypto_box_SECRETKEYBYTES
 
 class KeyStore {
   constructor() {
@@ -201,12 +201,17 @@ class KeyStore {
 
   /**
    * Clear the keystore
+   * Matches C implementation: keystore.c::keystore_cleanup
    */
   cleanup() {
+    if (this.signPublicKey) {
+      sodium.memzero(this.signPublicKey);
+    }
+    if (this.signSecretKey) {
+      sodium.memzero(this.signSecretKey);
+    }
     this.signPublicKey = null;
     this.signSecretKey = null;
-    sodium.memzero(this.signPublicKey);
-    sodium.memzero(this.signSecretKey);
   }
 
   /**
@@ -220,7 +225,18 @@ class KeyStore {
   // Demo/testing helper methods (not for production use)
   async _generateKeypairForDemo() {
     if (!this.initialized) await this.init();
-    return sodium.crypto_sign_keypair();
+    const keypair = sodium.crypto_sign_keypair();
+    
+    // Also convert Ed25519 keys to X25519 for encryption
+    const encryptionPublicKey = sodium.crypto_sign_ed25519_pk_to_curve25519(keypair.publicKey);
+    const encryptionPrivateKey = sodium.crypto_sign_ed25519_sk_to_curve25519(keypair.privateKey);
+    
+    return {
+      publicKey: keypair.publicKey,
+      privateKey: keypair.privateKey,
+      encryptionPublicKey,
+      encryptionPrivateKey
+    };
   }
 
   async _keyToHex(key) {
@@ -235,21 +251,30 @@ class KeyStore {
 
   async _payloadToHex(payload) {
     if (!this.initialized) await this.init();
-    return sodium.to_hex(this._serializePayload(payload));
+    // Use proper serialization from encryption.js
+    const { serializeEncryptedPayload } = await import('./encryption.js');
+    return sodium.to_hex(serializeEncryptedPayload(payload));
   }
 
   async _hexToPayload(hexString) {
     if (!this.initialized) await this.init();
+    // Use proper deserialization from encryption.js
+    const { deserializeEncryptedPayload } = await import('./encryption.js');
     const bytes = sodium.from_hex(hexString);
-    return this._deserializePayload(bytes);
+    return deserializeEncryptedPayload(bytes);
   }
 
   async _envelopeToHex(envelope) {
     if (!this.initialized) await this.init();
-    // Simplified envelope serialization for demo
+    // Use proper serialization from encryption.js
+    const { serializeEncryptedPayload } = await import('./encryption.js');
     const envelopeData = {
-      header: envelope.header,
-      encryptedPayloadHex: sodium.to_hex(this._serializePayload(envelope.encryptedPayload)),
+      header: {
+        ...envelope.header,
+        senderPubkey: Array.from(envelope.header.senderPubkey), // Convert Uint8Array to regular array
+        recipientPubkeys: envelope.header.recipientPubkeys.map(pk => Array.from(pk))
+      },
+      encryptedPayloadHex: sodium.to_hex(serializeEncryptedPayload(envelope.encryptedPayload)),
       signatureHex: sodium.to_hex(envelope.signature)
     };
     return btoa(JSON.stringify(envelopeData));
@@ -257,34 +282,21 @@ class KeyStore {
 
   async _hexToEnvelope(envelopeHex) {
     if (!this.initialized) await this.init();
+    // Use proper deserialization from encryption.js
+    const { deserializeEncryptedPayload } = await import('./encryption.js');
     const envelopeData = JSON.parse(atob(envelopeHex));
+
+    // Convert header fields back to Uint8Arrays
+    const header = {
+      ...envelopeData.header,
+      senderPubkey: new Uint8Array(envelopeData.header.senderPubkey),
+      recipientPubkeys: envelopeData.header.recipientPubkeys.map(pk => new Uint8Array(pk))
+    };
+
     return {
-      header: envelopeData.header,
-      encryptedPayload: this._deserializePayload(sodium.from_hex(envelopeData.encryptedPayloadHex)),
+      header: header,
+      encryptedPayload: deserializeEncryptedPayload(sodium.from_hex(envelopeData.encryptedPayloadHex)),
       signature: sodium.from_hex(envelopeData.signatureHex)
-    };
-  }
-
-  _serializePayload(payload) {
-    // Simplified payload serialization for demo
-    const data = {
-      ciphertext: Array.from(payload.ciphertext),
-      nonce: Array.from(payload.nonce),
-      ephemeralPubkey: Array.from(payload.ephemeralPubkey),
-      numRecipients: payload.numRecipients
-    };
-    return new TextEncoder().encode(JSON.stringify(data));
-  }
-
-  _deserializePayload(bytes) {
-    const data = JSON.parse(new TextDecoder().decode(bytes));
-    return {
-      ciphertext: new Uint8Array(data.ciphertext),
-      nonce: new Uint8Array(data.nonce),
-      ephemeralPubkey: new Uint8Array(data.ephemeralPubkey),
-      numRecipients: data.numRecipients,
-      encryptedKeys: [], // Simplified for demo
-      keyNonces: []
     };
   }
 }

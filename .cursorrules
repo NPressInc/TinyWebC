@@ -1,0 +1,35 @@
+# Badger MCP Tools Usage Rules
+
+Before making any code changes, use badger MCP tools to gather context:
+
+## Before Editing a File
+1. Use `mcp_badger_get_include_dependencies` on the file(s) you're modifying to see what includes it
+2. Use `mcp_badger_check_affected_files` with the file(s) to see what will be affected by changes
+3. For any functions/structs/variables being modified, use `mcp_badger_find_symbol_usages` to find all usages
+
+## Before Refactoring
+- **Functions**: Use `mcp_badger_get_function_callers` (with `include_indirect=true`) + `mcp_badger_find_symbol_usages`
+- **Structs**: Use `mcp_badger_find_struct_field_access` for each field being changed + `mcp_badger_find_symbol_usages` for the struct
+- **Files**: Use `mcp_badger_get_include_dependencies` + `mcp_badger_check_affected_files` with all files being changed
+
+## For Discovery/Exploration
+- Use `mcp_badger_semantic_code_search` to find related code by meaning when you don't know exact function names or need to explore similar patterns
+
+## Tool Quick Reference
+- `mcp_badger_find_symbol_usages` - Find all usages of a function/struct/variable/macro/typedef
+- `mcp_badger_get_include_dependencies` - Find all files that include/include this file (transitive)
+- `mcp_badger_find_struct_field_access` - Find all places a struct field is accessed (C/C++ only)
+- `mcp_badger_get_function_callers` - Find all callers of a function (direct and indirect)
+- `mcp_badger_semantic_code_search` - Search code by meaning/semantics
+- `mcp_badger_check_affected_files` - Find all files affected by changes to given files
+
+## Minimum Context Checklist
+Before making changes, ensure you have:
+- [ ] Checked include dependencies
+- [ ] Checked affected files
+- [ ] Found all usages of modified symbols
+- [ ] Found all callers (if modifying functions)
+- [ ] Found all field accesses (if modifying structs)
+
+Never make changes without first understanding the full impact using these tools.
+

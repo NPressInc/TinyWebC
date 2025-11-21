@@ -98,7 +98,7 @@ int signing_test_main(void) {
         return 1;
     }
 
-    // Hash the message first (this is what blockchain applications do)
+    // Hash the message first
     unsigned char message_hash[SHA256_DIGEST_LENGTH];
     SHA256((unsigned char*)test_message, message_len, message_hash);
 

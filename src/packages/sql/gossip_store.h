@@ -4,19 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "packages/transactions/transaction.h"
-
 #define GOSSIP_SEEN_DIGEST_SIZE 32
-
-typedef struct {
-    uint64_t id;
-    TW_TransactionType type;
-    unsigned char sender[PUBKEY_SIZE];
-    uint64_t timestamp;
-    unsigned char* payload;
-    size_t payload_size;
-    uint64_t expires_at;
-} GossipStoredMessage;
+#ifndef PUBKEY_SIZE
+#define PUBKEY_SIZE 32  // Ed25519 public key size
+#endif
 
 typedef struct {
     uint64_t id;
@@ -32,17 +23,7 @@ typedef struct {
 
 int gossip_store_init(void);
 
-int gossip_store_save_transaction(const TW_Transaction* transaction,
-                                  uint64_t expires_at);
-
-int gossip_store_fetch_recent(uint32_t limit,
-                              GossipStoredMessage** messages,
-                              size_t* count);
-
 int gossip_store_cleanup(uint64_t now_epoch);
-
-void gossip_store_free_messages(GossipStoredMessage* messages,
-                                size_t count);
 
 int gossip_store_has_seen(const unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE], int* is_seen);
 int gossip_store_mark_seen(const unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE], uint64_t expires_at);

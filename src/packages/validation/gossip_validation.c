@@ -1,75 +1,58 @@
 #include "gossip_validation.h"
 
-#include <openssl/sha.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 
-#include "packages/signing/signing.h"
+#include "packages/transactions/envelope.h"
 
-static bool gossip_is_supported_type(TW_TransactionType type) {
-    switch (type) {
-        case TW_TXN_MESSAGE:
-        case TW_TXN_GROUP_MESSAGE:
-        case TW_TXN_LOCATION_UPDATE:
-        case TW_TXN_EMERGENCY_ALERT:
-            return true;
-        default:
-            return false;
-    }
-}
-
-GossipValidationResult gossip_validate_transaction(
-    const TW_Transaction* transaction,
+GossipValidationResult gossip_validate_envelope(
+    const Tinyweb__Envelope* envelope,
     const GossipValidationConfig* config,
     uint64_t now_epoch
 ) {
-    if (!transaction || !config) {
+    if (!envelope || !config) {
         return GOSSIP_VALIDATION_ERROR_NULL;
     }
 
-    if (!gossip_is_supported_type(transaction->type)) {
-        return GOSSIP_VALIDATION_ERROR_TYPE;
+    if (!envelope->header) {
+        return GOSSIP_VALIDATION_ERROR_NULL;
     }
 
-    if (transaction->payload && transaction->payload_size > config->max_payload_bytes) {
+    // Check payload size
+    if (envelope->payload_ciphertext.len > config->max_payload_bytes) {
         return GOSSIP_VALIDATION_ERROR_PAYLOAD;
     }
 
-    if (now_epoch < transaction->timestamp) {
-        uint64_t skew = transaction->timestamp - now_epoch;
+    // Check timestamp
+    uint64_t timestamp = envelope->header->timestamp;
+    if (now_epoch < timestamp) {
+        uint64_t skew = timestamp - now_epoch;
         if (skew > config->max_clock_skew_seconds) {
             return GOSSIP_VALIDATION_ERROR_TIMESTAMP;
         }
     } else {
-        uint64_t age = now_epoch - transaction->timestamp;
+        uint64_t age = now_epoch - timestamp;
         if (age > (config->message_ttl_seconds + config->max_clock_skew_seconds)) {
             return GOSSIP_VALIDATION_ERROR_TIMESTAMP;
         }
     }
 
-    unsigned char txn_hash[SHA256_DIGEST_LENGTH];
-    memset(txn_hash, 0, sizeof(txn_hash));
-    TW_Transaction_hash((TW_Transaction*)transaction, txn_hash);
-
-    if (verify_signature(transaction->signature,
-                         txn_hash,
-                         sizeof(txn_hash),
-                         transaction->sender) != 0) {
+    // Verify signature
+    if (tw_envelope_verify(envelope) != 0) {
         return GOSSIP_VALIDATION_ERROR_SIGNATURE;
     }
 
     return GOSSIP_VALIDATION_OK;
 }
 
-uint64_t gossip_validation_expiration(const TW_Transaction* transaction,
+uint64_t gossip_validation_expiration(const Tinyweb__Envelope* envelope,
                                       const GossipValidationConfig* config) {
-    if (!transaction || !config) {
+    if (!envelope || !config || !envelope->header) {
         return 0;
     }
 
-    return transaction->timestamp + config->message_ttl_seconds;
+    return envelope->header->timestamp + config->message_ttl_seconds;
 }
 
 const char* gossip_validation_error_string(GossipValidationResult result) {
@@ -77,9 +60,9 @@ const char* gossip_validation_error_string(GossipValidationResult result) {
         case GOSSIP_VALIDATION_OK:
             return "ok";
         case GOSSIP_VALIDATION_ERROR_NULL:
-            return "null transaction or config";
+            return "null envelope or config";
         case GOSSIP_VALIDATION_ERROR_TYPE:
-            return "unsupported transaction type";
+            return "unsupported content type";
         case GOSSIP_VALIDATION_ERROR_SIGNATURE:
             return "invalid signature";
         case GOSSIP_VALIDATION_ERROR_TIMESTAMP:
@@ -90,4 +73,3 @@ const char* gossip_validation_error_string(GossipValidationResult result) {
             return "unknown error";
     }
 }
-

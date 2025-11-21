@@ -14,7 +14,6 @@ add_compile_definitions(
 file(GLOB_RECURSE SOURCES "src/*.c")
 list(FILTER SOURCES EXCLUDE REGEX "src/tests/.*")
 list(FILTER SOURCES EXCLUDE REGEX "src/packages/initialization/.*")
-list(FILTER SOURCES EXCLUDE REGEX "src/features/blockchain/.*")
 list(FILTER SOURCES EXCLUDE REGEX "src/packages/comm/pbft.*")
 list(FILTER SOURCES EXCLUDE REGEX "src/packages/comm/blockChainQueryApi.c")
 list(FILTER SOURCES EXCLUDE REGEX "src/packages/comm/accessApi.c")
@@ -49,6 +48,7 @@ file(MAKE_DIRECTORY ${GEN_DIR})
 set(PROTO_FILES
     ${PROTO_DIR}/envelope.proto
     ${PROTO_DIR}/content.proto
+    ${PROTO_DIR}/api.proto
 )
 
 set(GENERATED_SOURCES)
@@ -114,7 +114,6 @@ file(GLOB_RECURSE LIB_SOURCES "src/*.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/main.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/tests/.*")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/initialization/.*")
-list(FILTER LIB_SOURCES EXCLUDE REGEX "src/features/blockchain/.*")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/comm/pbft.*")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/comm/blockChainQueryApi.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/comm/accessApi.c")
@@ -126,23 +125,14 @@ list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/validation/block_validation.
 list(FILTER LIB_SOURCES EXCLUDE REGEX "src/packages/validation/transaction_validation.c")
 list(FILTER LIB_SOURCES EXCLUDE REGEX "pbft_node_runner.c")
 
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/pbft_.*")
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/blockchain_test.c")
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/database_test.c")
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/node_peer_management_test.c")
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/access_request_test.c")
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/http_client_test.c")
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/init_network_test.c")
-# Note: init_network_test.c is now included since it has init_network_test_main instead of main
-
 # Ensure test_runner.c is the main entry point for tests
 list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/test_runner.c")
-# Exclude standalone test files that have their own main() functions
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/pbft_http_client_test.c")
-list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/pbft_integration_test.c")
 set(TEST_MAIN "src/tests/test_runner.c")
 
-add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES})
+add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES} 
+    src/packages/initialization/init.c
+    src/packages/comm/httpClient.c
+    src/packages/sql/schema.c)
 target_sources(tinyweb_tests PRIVATE ${GENERATED_SOURCES} ${GOSSIP_DB_SOURCES})
 add_dependencies(tinyweb_tests generate_proto)
 target_link_libraries(tinyweb_tests PRIVATE 
@@ -176,5 +166,24 @@ add_test(NAME MongooseTest COMMAND tinyweb_tests mongoose)
 
 
 
-# Add a separate executable for the initialization tool
-add_subdirectory(src/features/blockchain EXCLUDE_FROM_ALL)
+# Add init_tool executable (before blockchain subdirectory)
+add_executable(init_tool 
+    src/packages/initialization/init_tool.c 
+    src/packages/initialization/init.c
+    src/packages/sql/gossip_store.c
+    src/packages/sql/gossip_peers.c
+)
+target_sources(init_tool PRIVATE ${GOSSIP_DB_SOURCES})
+target_link_libraries(init_tool PRIVATE 
+    cjson 
+    ${SODIUM_LIBRARIES} 
+    SQLite::SQLite3
+    pthread
+    m
+)
+target_include_directories(init_tool PRIVATE 
+    ${SODIUM_INCLUDE_DIRS} 
+    /usr/include/cjson 
+    src
+)
+

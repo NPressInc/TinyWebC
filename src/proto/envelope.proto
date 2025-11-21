@@ -2,9 +2,74 @@ syntax = "proto3";
 
 package tinyweb;
 
+// Content type mapping - corresponds to messages in content.proto
+enum ContentType {
+  // Unknown/invalid
+  CONTENT_UNKNOWN = 0;
+  
+  // ===== PHASE 1: MVP =====
+  // User Management (1-9)
+  CONTENT_USER_REGISTRATION = 1;
+  CONTENT_ROLE_ASSIGNMENT = 2;
+  
+  // Communication (10-19)
+  CONTENT_DIRECT_MESSAGE = 10;
+  CONTENT_GROUP_MESSAGE = 11;
+  
+  // Group Management (20-29)
+  CONTENT_GROUP_CREATE = 20;
+  CONTENT_GROUP_UPDATE = 21;
+  CONTENT_GROUP_MEMBER_ADD = 22;
+  CONTENT_GROUP_MEMBER_REMOVE = 23;
+  CONTENT_GROUP_MEMBER_LEAVE = 24;
+  
+  // Safety & Control (30-39)
+  CONTENT_PERMISSION_EDIT = 30;
+  CONTENT_PARENTAL_CONTROL = 31;
+  CONTENT_CONTENT_FILTER = 32;
+  CONTENT_LOCATION_UPDATE = 33;
+  CONTENT_EMERGENCY_ALERT = 34;
+  
+  // Network Management (40-49)
+  CONTENT_NODE_REGISTRATION = 40;
+  CONTENT_SYSTEM_CONFIG = 41;
+  
+  // Access Control (50-59)
+  CONTENT_ACCESS_REQUEST = 50;
+  
+  // ===== PHASE 2: Enhanced Communication & Media (60-99) =====
+  CONTENT_VOICE_CALL_REQUEST = 60;
+  CONTENT_MEDIA_DOWNLOAD = 61;
+  CONTENT_CONTENT_ACCESS_UPDATE = 62;
+  CONTENT_CREATION_UPLOAD = 63;
+  CONTENT_CREATION_SHARE_REQUEST = 64;
+  
+  // ===== PHASE 3: Educational & Family (100-149) =====
+  CONTENT_EDUCATIONAL_RESOURCE_ADD = 100;
+  CONTENT_CHALLENGE_COMPLETE = 101;
+  CONTENT_BOOK_ADD_TO_LIBRARY = 102;
+  CONTENT_CHORE_ASSIGN = 103;
+  CONTENT_CHORE_COMPLETE = 104;
+  CONTENT_REWARD_DISTRIBUTE = 105;
+  
+  // ===== PHASE 4: Advanced Features (150-199) =====
+  CONTENT_GEOFENCE_CREATE = 150;
+  CONTENT_GEOFENCE_CONFIG_UPDATE = 151;
+  CONTENT_USAGE_POLICY_UPDATE = 152;
+  CONTENT_GAME_SESSION_START = 153;
+  CONTENT_GAME_PERMISSION_UPDATE = 154;
+  CONTENT_EVENT_CREATE = 155;
+  CONTENT_EVENT_INVITE = 156;
+  CONTENT_EVENT_RSVP = 157;
+  CONTENT_COMMUNITY_POST_CREATE = 158;
+  CONTENT_SHARED_ALBUM_CREATE = 159;
+  CONTENT_MEDIA_ADD_TO_ALBUM_REQUEST = 160;
+  CONTENT_COLLABORATIVE_PROJECT_CREATE = 161;
+}
+
 message EnvelopeHeader {
   uint32 version = 1;
-  uint32 content_type = 2;       // application-specific content id
+  uint32 content_type = 2;       // Maps to ContentType enum
   uint32 schema_version = 3;     // version of the content schema
   uint64 timestamp = 4;          // seconds since epoch
   bytes  sender_pubkey = 5;      // 32 bytes

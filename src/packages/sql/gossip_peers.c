@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "database.h"
+#include "database_gossip.h"
 
 #define GOSSIP_PEERS_CREATE_TABLE \
     "CREATE TABLE IF NOT EXISTS gossip_peers (" \

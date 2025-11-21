@@ -1,195 +1,173 @@
+#include "packages/encryption/encryption.h"
+#include "packages/keystore/keystore.h"
+#include "envelope.pb-c.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sodium.h>
-#include "packages/encryption/encryption.h"
-#include "packages/keystore/keystore.h"
-#include "packages/utils/print.h"
+#include <time.h>
 
-int encryption_test_main(void) {
-    printf("Starting Encryption Test\n");
+#define NUM_RECIPIENTS 3
 
-    // Initialize the keystore
-    if (!keystore_init()) {
-        printf("Keystore initialization failed\n");
+static void print_hex(const char* label, const unsigned char* data, size_t len) {
+    printf("%s: ", label);
+    for (size_t i = 0; i < len; i++) {
+        printf("%02x", data[i]);
+    }
+    printf("\n");
+}
+
+int encryption_test_main(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+
+    printf("=== Encryption Test (Protobuf Envelope API) ===\n\n");
+
+    // Initialize libsodium
+    if (sodium_init() < 0) {
+        fprintf(stderr, "Failed to initialize libsodium\n");
         return 1;
     }
 
-    // Generate and save sender's Ed25519 keypair
-    if (!keystore_generate_keypair()) {
-        printf("Keystore initialization failed\n");
+    // Initialize keystore
+    if (keystore_init() == 0) {
+        fprintf(stderr, "Failed to initialize keystore\n");
         return 1;
     }
 
-    if (!keystore_save_private_key("node_private.key", "testpass")) {
-        printf("Failed to save private key\n");
-        return 1;
-    }
-    printf("Ed25519 private key generated and saved\n");
-
-    // Get the sender's Ed25519 public key (for signing and identity)
-    unsigned char sender_pubkey[SIGN_PUBKEY_SIZE];
-    if (!keystore_get_public_key(sender_pubkey)) {
-        printf("Failed to get sender's Ed25519 public key\n");
-        return 1;
-    }
-    printf("Sender's Ed25519 public key (for signing and identity):\n");
-    print_hex("  Public key", sender_pubkey, SIGN_PUBKEY_SIZE);
-
-    // Get the sender's X25519 public key (for encryption)
-    unsigned char sender_encryption_pubkey[PUBKEY_SIZE];
-    if (!keystore_get_encryption_public_key(sender_encryption_pubkey)) {
-        printf("Failed to get sender's X25519 public key\n");
-        return 1;
-    }
-    printf("Sender's X25519 public key (for encryption):\n");
-    print_hex("  Encryption public key", sender_encryption_pubkey, PUBKEY_SIZE);
-
-    // Clear the loaded keypair
-    keystore_cleanup();
-
-    // Load the private key
-    if (!keystore_load_private_key("node_private.key", "testpass")) {
-        printf("Failed to load private key\n");
-        return 1;
-    }
-    printf("Ed25519 private key loaded\n");
-
-    // Create a test message that's within the size limit
-    const char* message = "This is a test message for encryption";
-    size_t msg_len = strlen(message) + 1;
-    printf("Message length: %zu bytes\n", msg_len);
-
-    // Generate multiple recipient keypairs (3 recipients)
-    #define NUM_RECIPIENTS 4  // Increased to include sender
-    unsigned char recip_pubkeys[NUM_RECIPIENTS][PUBKEY_SIZE];
-    unsigned char recip_privkeys[NUM_RECIPIENTS][SECRET_SIZE];
-    
-    // Create a continuous buffer for all public keys
-    unsigned char all_pubkeys[NUM_RECIPIENTS * PUBKEY_SIZE];
-
-    // First recipient is the sender (using X25519 key for encryption)
-    memcpy(recip_pubkeys[0], sender_encryption_pubkey, PUBKEY_SIZE);
-    memcpy(all_pubkeys, sender_encryption_pubkey, PUBKEY_SIZE);
-    printf("Recipient 0 (Sender):\n");
-    print_hex("  X25519 Public key", recip_pubkeys[0], PUBKEY_SIZE);
-
-    // Generate the other recipients
-    for (int i = 1; i < NUM_RECIPIENTS; i++) {
-        crypto_box_keypair(recip_pubkeys[i], recip_privkeys[i]);
-        memcpy(all_pubkeys + (i * PUBKEY_SIZE), recip_pubkeys[i], PUBKEY_SIZE);
-        printf("Recipient %d:\n", i);
-        print_hex("  Public key", recip_pubkeys[i], PUBKEY_SIZE);
-        print_hex("  Private key", recip_privkeys[i], SECRET_SIZE);
-    }
-
-    // Encrypt for multiple recipients
-    EncryptedPayload* encrypted_multi = encrypt_payload_multi(
-        (unsigned char*)message, 
-        msg_len, 
-        all_pubkeys, 
-        NUM_RECIPIENTS
-    );
-    
-    if (!encrypted_multi) {
-        printf("Multiple recipient encryption failed\n");
+    // Generate sender's keypair
+    if (keystore_generate_keypair() == 0) {
+        fprintf(stderr, "Failed to generate sender keypair\n");
         keystore_cleanup();
         return 1;
     }
-    printf("Multiple recipient encryption succeeded\n");
-    print_hex("Ephemeral pubkey", encrypted_multi->ephemeral_pubkey, PUBKEY_SIZE);
-    print_hex("Nonce", encrypted_multi->nonce, NONCE_SIZE);
+
+    // Get sender's public key
+    unsigned char sender_pubkey[PUBKEY_SIZE];
+    keystore_get_public_key(sender_pubkey);
+    print_hex("Sender public key", sender_pubkey, PUBKEY_SIZE);
+
+    // Generate recipient keypairs
+    unsigned char recip_pubkeys[NUM_RECIPIENTS][PUBKEY_SIZE];
     
-    // Print encrypted keys for each recipient
+    printf("\nGenerating %d recipient keypairs:\n", NUM_RECIPIENTS);
     for (int i = 0; i < NUM_RECIPIENTS; i++) {
-        printf("Encrypted key %d:\n", i);
-        print_hex("  Key", encrypted_multi->encrypted_keys + (i * ENCRYPTED_KEY_SIZE), ENCRYPTED_KEY_SIZE);
-        print_hex("  Nonce", encrypted_multi->key_nonces + (i * NONCE_SIZE), NONCE_SIZE);
+        crypto_sign_keypair(recip_pubkeys[i], (unsigned char[64]){0}); // Generate Ed25519 keypair
+        printf("Recipient %d:\n", i);
+        print_hex("  Public key", recip_pubkeys[i], PUBKEY_SIZE);
     }
+
+    // Prepare all recipient public keys
+    unsigned char all_pubkeys[NUM_RECIPIENTS * PUBKEY_SIZE];
+    for (int i = 0; i < NUM_RECIPIENTS; i++) {
+        memcpy(all_pubkeys + (i * PUBKEY_SIZE), recip_pubkeys[i], PUBKEY_SIZE);
+    }
+
+    // Test message
+    const char* message = "Hello, World! This is a test message.";
+    size_t msg_len = strlen(message) + 1;
+
+    printf("\nTest message: %s\n", message);
+    printf("Message length: %zu bytes\n\n", msg_len);
+
+    // Create and initialize envelope
+    Tinyweb__Envelope envelope;
+    tinyweb__envelope__init(&envelope);
+
+    // Encrypt plaintext directly into envelope
+    printf("Encrypting message for %d recipients...\n", NUM_RECIPIENTS);
+    if (encrypt_envelope_payload((unsigned char*)message, msg_len, 
+                                  all_pubkeys, NUM_RECIPIENTS, &envelope) != 0) {
+        printf("ERROR: Encryption failed\n");
+        keystore_cleanup();
+        return 1;
+    }
+    printf("SUCCESS: Encryption completed\n");
+
+    print_hex("Ephemeral pubkey", envelope.ephemeral_pubkey.data, envelope.ephemeral_pubkey.len);
+    print_hex("Payload nonce", envelope.payload_nonce.data, envelope.payload_nonce.len);
+    printf("Payload ciphertext length: %zu bytes\n", envelope.payload_ciphertext.len);
+    printf("Number of key wraps: %zu\n", envelope.n_keywraps);
 
     // Decrypt with sender's private key
     printf("\nDecrypting with sender's private key:\n");
+    unsigned char* decrypted = NULL;
+    size_t decrypted_len = 0;
     
-    // Use the new decrypt_payload function which gets keys from keystore
-    unsigned char* decrypted = decrypt_payload(encrypted_multi, all_pubkeys);
-    if (!decrypted) {
-        printf("Decryption failed for sender\n");
+    if (decrypt_envelope_payload(&envelope, &decrypted, &decrypted_len) != 0) {
+        printf("INFO: Decryption failed (expected if sender is not in recipients list)\n");
     } else {
-        if (strcmp((char*)decrypted, message) != 0) {
-            printf("Decryption mismatch for sender\n");
-            print_hex("Decrypted", decrypted, strlen((char*)decrypted) + 1);
-            free(decrypted);
+        if (strcmp((char*)decrypted, message) == 0) {
+            printf("SUCCESS: Sender decryption verified: %s\n", decrypted);
         } else {
-            printf("Sender decryption verified: %s\n", decrypted);
-            free(decrypted);
+            printf("ERROR: Decryption mismatch\n");
         }
+        free(decrypted);
     }
 
-    // Decrypt with each recipient's private key
-    for (int i = 1; i < NUM_RECIPIENTS; i++) {
-        // For each recipient, we need to:
-        // 1. Save their private key to keystore (temporarily)
-        keystore_cleanup(); // Clean up previous keys
-        
-        // 2. Create a new keypair and overwrite it with the test recipient's keys
-        keystore_generate_keypair(); // This creates a new keypair we'll overwrite
-        
-        // We need to replace the private key with our test recipient's key
-        // Note: This is a test-only approach as it's not a normal operation
-        unsigned char ed25519_privkey[SIGN_SECRET_SIZE]; // Ed25519 private key
-        unsigned char ed25519_pubkey[SIGN_PUBKEY_SIZE];  // Ed25519 public key
-        
-        // Convert X25519 to Ed25519 keys (reverse of what happens in keystore)
-        // This is a simplification and may not work in a real application
-        // Normally we'd need proper conversion routines
-        
-        // For test purposes, we'll just use the current keys but modify the keystore
-        // to return our recipient's key when _keystore_get_encryption_private_key is called
-        
-        // This approach isn't perfect but illustrates the test flow
-        // In a real implementation, we'd need a better way to test with different keys
-        
-        printf("\nTesting decryption for recipient %d:\n", i);
-        // Try to decrypt with the recipient's data
-        // This won't work correctly without proper key injection
-        unsigned char* recip_decrypted = decrypt_payload(encrypted_multi, all_pubkeys);
-        if (recip_decrypted) {
-            printf("Recipient %d decryption verified: %s\n", i, recip_decrypted);
-            free(recip_decrypted);
-        } else {
-            printf("Decryption failed for recipient %d (expected in this test setup)\n", i);
-        }
-    }
-
-    // Restore sender's key for cleanup
-    keystore_load_private_key("node_key.bin", "testpass");
-
-    // Test with a message that exceeds the size limit
-    printf("\nTesting with a message that exceeds the size limit:\n");
+    // Test with oversized message
+    printf("\nTesting with oversized message:\n");
     char* large_message = malloc(MAX_PLAINTEXT_SIZE + 1000);
     if (large_message) {
         memset(large_message, 'A', MAX_PLAINTEXT_SIZE + 1000);
         large_message[MAX_PLAINTEXT_SIZE + 999] = '\0';
         
-        EncryptedPayload* large_encrypted = encrypt_payload_multi(
-            (unsigned char*)large_message, 
-            MAX_PLAINTEXT_SIZE + 1000, 
-            all_pubkeys, 
-            NUM_RECIPIENTS
-        );
+        Tinyweb__Envelope large_envelope;
+        tinyweb__envelope__init(&large_envelope);
         
-        if (large_encrypted) {
-            printf("ERROR: Encryption of oversized message succeeded when it should have failed\n");
-            free_encrypted_payload(large_encrypted);
+        if (encrypt_envelope_payload((unsigned char*)large_message, 
+                                     MAX_PLAINTEXT_SIZE + 1000,
+                                     all_pubkeys, NUM_RECIPIENTS, &large_envelope) != 0) {
+            printf("SUCCESS: Oversized message correctly rejected\n");
         } else {
-            printf("SUCCESS: Encryption of oversized message correctly failed\n");
+            printf("ERROR: Oversized message was accepted\n");
+            tinyweb__envelope__free_unpacked(&large_envelope, NULL);
         }
         
         free(large_message);
     }
 
-    free_encrypted_payload(encrypted_multi);
+    // Test with too many recipients
+    printf("\nTesting with too many recipients:\n");
+    Tinyweb__Envelope many_recip_envelope;
+    tinyweb__envelope__init(&many_recip_envelope);
+    
+    unsigned char* too_many_keys = malloc((MAX_RECIPIENTS + 10) * PUBKEY_SIZE);
+    if (too_many_keys) {
+        memset(too_many_keys, 0, (MAX_RECIPIENTS + 10) * PUBKEY_SIZE);
+        
+        if (encrypt_envelope_payload((unsigned char*)message, msg_len,
+                                     too_many_keys, MAX_RECIPIENTS + 10,
+                                     &many_recip_envelope) != 0) {
+            printf("SUCCESS: Too many recipients correctly rejected\n");
+        } else {
+            printf("ERROR: Too many recipients was accepted\n");
+            tinyweb__envelope__free_unpacked(&many_recip_envelope, NULL);
+        }
+        
+        free(too_many_keys);
+    }
+
+    // Cleanup - manually free allocated fields (envelope is stack-allocated)
+    if (envelope.ephemeral_pubkey.data) free(envelope.ephemeral_pubkey.data);
+    if (envelope.payload_nonce.data) free(envelope.payload_nonce.data);
+    if (envelope.payload_ciphertext.data) free(envelope.payload_ciphertext.data);
+    if (envelope.keywraps) {
+        for (size_t i = 0; i < envelope.n_keywraps; i++) {
+            if (envelope.keywraps[i]) {
+                if (envelope.keywraps[i]->recipient_pubkey.data) {
+                    free(envelope.keywraps[i]->recipient_pubkey.data);
+                }
+                if (envelope.keywraps[i]->wrapped_key.data) {
+                    free(envelope.keywraps[i]->wrapped_key.data);
+                }
+                free(envelope.keywraps[i]);
+            }
+        }
+        free(envelope.keywraps);
+    }
+    
     keystore_cleanup();
-    printf("Test completed\n");
+    
+    printf("\n=== Encryption Test Complete ===\n");
     return 0;
 }

@@ -7,14 +7,13 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <sodium.h>
 
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/gossip_store.h"
 #include "packages/sql/gossip_peers.h"
-#include "packages/initialization/init.h"
-
-// Include implementation to exercise initialize_network in tests
-#include "packages/initialization/init.c"
+#include "packages/transactions/envelope.h"
+#include "envelope.pb-c.h"
 
 #define ASSERT_OR_FAIL(cond, msg) \
     do { \
@@ -37,7 +36,7 @@ static void cleanup_path_recursive(const char* path) {
 }
 
 static int test_gossip_seen_cache(void) {
-    printf("  - verifying gossip_seen cache lifecycle...\n");
+    printf("  - testing gossip_seen cache lifecycle...\n");
 
     ensure_directory_exists("test_state");
     const char* db_path = "test_state/gossip_seen_test.db";
@@ -71,126 +70,95 @@ static int test_gossip_seen_cache(void) {
     ASSERT_OR_FAIL(db_close() == 0, "db_close failed");
     remove(db_path);
 
-    printf("    ✓ gossip_seen lifecycle verified\n");
+    printf("    ✓ gossip_seen cache working\n");
     return 0;
 }
 
-static int query_single_int(sqlite3* db, const char* sql, int* out_value) {
-    sqlite3_stmt* stmt = NULL;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        return -1;
+static int test_envelope_storage(void) {
+    printf("  - testing envelope storage and retrieval...\n");
+
+    ensure_directory_exists("test_state");
+    const char* db_path = "test_state/envelope_store_test.db";
+    remove(db_path);
+
+    ASSERT_OR_FAIL(db_init_gossip(db_path) == 0, "db_init_gossip failed");
+    ASSERT_OR_FAIL(gossip_store_init() == 0, "gossip_store_init failed");
+
+    // Create test envelope data
+    unsigned char test_sender[PUBKEY_SIZE];
+    memset(test_sender, 0xAA, PUBKEY_SIZE);
+    
+    unsigned char test_envelope_data[100];
+    memset(test_envelope_data, 0xBB, sizeof(test_envelope_data));
+
+    uint64_t now = (uint64_t)time(NULL);
+    uint64_t expires_at = now + 3600;
+
+    // Save envelope
+    ASSERT_OR_FAIL(gossip_store_save_envelope(
+        1,  // version
+        100,  // content_type
+        1,  // schema_version
+        test_sender,
+        now,
+        test_envelope_data,
+        sizeof(test_envelope_data),
+        expires_at
+    ) == 0, "gossip_store_save_envelope failed");
+
+    // Fetch recent envelopes
+    GossipStoredEnvelope* envelopes = NULL;
+    size_t count = 0;
+    ASSERT_OR_FAIL(gossip_store_fetch_recent_envelopes(10, &envelopes, &count) == 0, 
+                   "fetch_recent_envelopes failed");
+    ASSERT_OR_FAIL(count == 1, "expected 1 envelope");
+    ASSERT_OR_FAIL(envelopes[0].version == 1, "version mismatch");
+    ASSERT_OR_FAIL(envelopes[0].content_type == 100, "content_type mismatch");
+    ASSERT_OR_FAIL(envelopes[0].schema_version == 1, "schema_version mismatch");
+    ASSERT_OR_FAIL(envelopes[0].timestamp == now, "timestamp mismatch");
+    ASSERT_OR_FAIL(memcmp(envelopes[0].sender, test_sender, PUBKEY_SIZE) == 0, "sender mismatch");
+    ASSERT_OR_FAIL(envelopes[0].envelope_size == sizeof(test_envelope_data), "envelope_size mismatch");
+
+    gossip_store_free_envelopes(envelopes, count);
+
+    // Test cleanup
+    ASSERT_OR_FAIL(gossip_store_cleanup(expires_at + 1) == 0, "cleanup failed");
+
+    envelopes = NULL;
+    count = 0;
+    ASSERT_OR_FAIL(gossip_store_fetch_recent_envelopes(10, &envelopes, &count) == 0,
+                   "fetch after cleanup failed");
+    ASSERT_OR_FAIL(count == 0, "envelope not cleaned up");
+
+    if (envelopes) {
+        gossip_store_free_envelopes(envelopes, count);
     }
-    int rc = sqlite3_step(stmt);
-    if (rc == SQLITE_ROW) {
-        *out_value = sqlite3_column_int(stmt, 0);
-        sqlite3_finalize(stmt);
-        return 0;
-    }
-    sqlite3_finalize(stmt);
-    return -1;
-}
 
-static int test_initialize_network_seeding(void) {
-    printf("  - verifying initialize_network seeding behavior...\n");
+    ASSERT_OR_FAIL(db_close() == 0, "db_close failed");
+    remove(db_path);
 
-    cleanup_path_recursive("test_state");
-
-    InitNodeConfig nodes[1];
-    memset(&nodes, 0, sizeof(nodes));
-
-    static char node_id[] = "node_001";
-    static char node_name[] = "Test Node";
-    static char node_type[] = "primary";
-    static char hostname[] = "node1.test-tailnet.ts.net";
-    static char tags[] = "tag:test";
-
-    nodes[0].id = node_id;
-    nodes[0].name = node_name;
-    nodes[0].type = node_type;
-    nodes[0].hostname = hostname;
-    nodes[0].gossip_port = 9100;
-    nodes[0].api_port = 8100;
-    nodes[0].tags = tags;
-    nodes[0].peers = NULL;
-    nodes[0].peer_count = 0;
-
-    InitUserRecord admins[1];
-    memset(admins, 0, sizeof(admins));
-    static char admin_id[] = "admin_001";
-    static char admin_name[] = "Alice";
-    static char admin_role[] = "admin";
-    admins[0].id = admin_id;
-    admins[0].name = admin_name;
-    admins[0].role = admin_role;
-    admins[0].age = 42;
-
-    InitUserRecord members[1];
-    memset(members, 0, sizeof(members));
-    static char member_id[] = "member_001";
-    static char member_name[] = "Bob";
-    static char member_role[] = "member";
-    members[0].id = member_id;
-    members[0].name = member_name;
-    members[0].role = member_role;
-    members[0].age = 12;
-
-    InitUsersConfig users = {
-        .admins = admins,
-        .admin_count = 1,
-        .members = members,
-        .member_count = 1
-    };
-
-    InitNetworkConfig cfg;
-    memset(&cfg, 0, sizeof(cfg));
-    cfg.network_name = "Test Gossip Network";
-    cfg.base_port = 9000;
-    cfg.node_count = 1;
-    cfg.debug_mode = 1;
-    cfg.nodes = nodes;
-    cfg.users = users;
-
-    ASSERT_OR_FAIL(initialize_network(&cfg) == 0, "initialize_network failed");
-
-    const char* db_path = "test_state/node_1/blockchain/blockchain.db";
-    sqlite3* db = NULL;
-    ASSERT_OR_FAIL(sqlite3_open(db_path, &db) == SQLITE_OK, "Failed to open seeded database");
-
-    int value = 0;
-    ASSERT_OR_FAIL(query_single_int(db, "SELECT COUNT(*) FROM roles", &value) == 0, "roles query failed");
-    ASSERT_OR_FAIL(value >= 2, "roles not seeded");
-
-    ASSERT_OR_FAIL(query_single_int(db, "SELECT COUNT(*) FROM permissions", &value) == 0, "permissions query failed");
-    ASSERT_OR_FAIL(value >= 2, "permissions not seeded");
-
-    ASSERT_OR_FAIL(query_single_int(db, "SELECT COUNT(*) FROM users", &value) == 0, "users query failed");
-    ASSERT_OR_FAIL(value == 2, "unexpected user count");
-
-    ASSERT_OR_FAIL(query_single_int(db, "SELECT COUNT(*) FROM transaction_permissions", &value) == 0, "txn permissions query failed");
-    ASSERT_OR_FAIL(value > 0, "transaction permissions not seeded");
-
-    ASSERT_OR_FAIL(query_single_int(db, "SELECT COUNT(*) FROM gossip_peers", &value) == 0, "gossip_peers query failed");
-    ASSERT_OR_FAIL(value >= 1, "gossip peers not seeded");
-
-    sqlite3_close(db);
-
-    cleanup_path_recursive("test_state");
-
-    printf("    ✓ initialize_network seeding verified\n");
+    printf("    ✓ envelope storage working\n");
     return 0;
 }
 
 int gossip_store_test_main(void) {
     int failures = 0;
 
+    printf("=== Gossip Store Tests ===\n");
+
     if (test_gossip_seen_cache() != 0) {
         failures++;
     }
 
-    if (test_initialize_network_seeding() != 0) {
+    if (test_envelope_storage() != 0) {
         failures++;
+    }
+
+    if (failures == 0) {
+        printf("✓ All gossip store tests passed\n");
+    } else {
+        printf("✗ %d test(s) failed\n", failures);
     }
 
     return (failures == 0) ? 0 : -1;
 }
-

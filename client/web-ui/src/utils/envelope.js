@@ -7,6 +7,11 @@ import { encryptPayloadMulti, encryptedPayloadToHex } from './encryption.js';
  * Handles message structure, encryption, and signing
  */
 
+// Ensure sodium is ready before use
+async function ensureSodiumReady() {
+  await sodium.ready;
+}
+
 // Content types matching backend
 export const CONTENT_TYPE = {
   DIRECT_MESSAGE: 1,
@@ -35,12 +40,19 @@ export class EnvelopeHeader {
  * @returns {Object} - Signed envelope object
  */
 export async function createSignedEnvelope(header, plaintext) {
+  await ensureSodiumReady();
+  
   if (!header.senderPubkey) {
     header.senderPubkey = keyStore.getPublicKey();
   }
 
-  // Encrypt the message for all recipients
-  const encrypted = await encryptPayloadMulti(plaintext, header.recipientPubkeys);
+  // Convert Ed25519 recipient pubkeys to X25519 for encryption
+  const encryptionPubkeys = header.recipientPubkeys.map(ed25519Pubkey => 
+    sodium.crypto_sign_ed25519_pk_to_curve25519(ed25519Pubkey)
+  );
+
+  // Encrypt the message for all recipients (using X25519 keys)
+  const encrypted = await encryptPayloadMulti(plaintext, encryptionPubkeys);
 
   // Create envelope structure
   const envelope = {
@@ -71,6 +83,8 @@ export async function createSignedEnvelope(header, plaintext) {
  * @returns {Uint8Array} - SHA256 digest
  */
 async function computeEnvelopeDigest(header, ciphertext) {
+  await ensureSodiumReady();
+  
   // Create domain separator
   const domain = new Uint8Array([84, 87, 69, 78, 86, 69, 76, 79, 80, 69]); // "TWENVELOPE"
 
@@ -93,7 +107,7 @@ async function computeEnvelopeDigest(header, ciphertext) {
   ]);
 
   // Hash ciphertext
-  const contentHash = sodium.crypto_hash_sha256(ciphertext);
+  const contentHash = sodium.crypto_generichash(sodium.crypto_generichash_BYTES, ciphertext);
 
   // Combine everything
   const combined = new Uint8Array([
@@ -102,7 +116,7 @@ async function computeEnvelopeDigest(header, ciphertext) {
     ...contentHash
   ]);
 
-  return sodium.crypto_hash_sha256(combined);
+  return sodium.crypto_generichash(sodium.crypto_generichash_BYTES, combined);
 }
 
 /**
@@ -111,6 +125,7 @@ async function computeEnvelopeDigest(header, ciphertext) {
  * @returns {Uint8Array} - The signature
  */
 async function signDigest(digest) {
+  await ensureSodiumReady();
   const privateKey = keyStore._getPrivateKey();
   return sodium.crypto_sign_detached(digest, privateKey);
 }
@@ -121,12 +136,34 @@ async function signDigest(digest) {
  * @returns {boolean} - Whether signature is valid
  */
 export async function verifyEnvelopeSignature(envelope) {
+  await ensureSodiumReady();
+  
+  console.log('🔍 verifyEnvelopeSignature called');
+  console.log('📦 Envelope:', envelope);
+  console.log('📋 Header:', envelope.header);
+  console.log('👤 Sender pubkey:', envelope.header.senderPubkey);
+  console.log('👤 Sender pubkey type:', envelope.header.senderPubkey?.constructor?.name);
+  console.log('👤 Sender pubkey length:', envelope.header.senderPubkey?.length);
+  console.log('🔑 Signature:', envelope.signature);
+  console.log('🔑 Signature type:', envelope.signature?.constructor?.name);
+  console.log('🔑 Signature length:', envelope.signature?.length);
+  
   const digest = await computeEnvelopeDigest(envelope.header, envelope.encryptedPayload.ciphertext);
-  return sodium.crypto_sign_verify_detached(
-    envelope.signature,
-    digest,
-    envelope.header.senderPubkey
-  );
+  console.log('🔐 Computed digest:', digest);
+  console.log('🔐 Digest length:', digest?.length);
+  
+  try {
+    const result = sodium.crypto_sign_verify_detached(
+      envelope.signature,
+      digest,
+      envelope.header.senderPubkey
+    );
+    console.log('✅ Verification result:', result);
+    return result;
+  } catch (err) {
+    console.error('❌ crypto_sign_verify_detached error:', err);
+    throw err;
+  }
 }
 
 /**
@@ -134,11 +171,13 @@ export async function verifyEnvelopeSignature(envelope) {
  * @param {Object} envelope - The signed envelope
  * @returns {Object} - Transaction data ready for API
  */
-export function envelopeToTransaction(envelope) {
+export async function envelopeToTransaction(envelope) {
+  await ensureSodiumReady();
+  
   // Serialize the envelope (simplified - in production would use protobuf)
   const envelopeData = {
     header: envelope.header,
-    encryptedPayloadHex: encryptedPayloadToHex(envelope.encryptedPayload),
+    encryptedPayloadHex: await encryptedPayloadToHex(envelope.encryptedPayload),
     signatureHex: sodium.to_hex(envelope.signature)
   };
 
