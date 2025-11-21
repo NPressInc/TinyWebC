@@ -50,8 +50,15 @@ static int create_and_store_test_envelope(const unsigned char* sender_secret,
                                           const char* message_text,
                                           uint64_t timestamp) {
     // Initialize keystore with sender key
-    keystore_init();
-    keystore_load_raw_ed25519_keypair(sender_secret);
+    if (keystore_init() != 0) {
+        fprintf(stderr, "Failed to initialize keystore\n");
+        return -1;
+    }
+    if (keystore_load_raw_ed25519_keypair(sender_secret) != 0) {
+        fprintf(stderr, "Failed to load keypair\n");
+        keystore_cleanup();
+        return -1;
+    }
     
     // Get sender pubkey
     unsigned char sender_pubkey[32];

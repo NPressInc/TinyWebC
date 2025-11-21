@@ -33,6 +33,8 @@ set(MONGOOSE_SOURCES
 # Gossip-only database layer
 set(GOSSIP_DB_SOURCES
     src/packages/sql/database_gossip.c
+    src/packages/sql/permissions.c
+    src/packages/sql/schema.c
 )
 
 # Protobuf-C generation for envelope/content
@@ -172,6 +174,7 @@ add_executable(init_tool
     src/packages/initialization/init.c
     src/packages/sql/gossip_store.c
     src/packages/sql/gossip_peers.c
+    src/structs/permission/permission.c
 )
 target_sources(init_tool PRIVATE ${GOSSIP_DB_SOURCES})
 target_link_libraries(init_tool PRIVATE 

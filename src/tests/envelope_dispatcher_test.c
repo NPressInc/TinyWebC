@@ -111,8 +111,8 @@ static int test_dispatch_routing(void) {
     get_public_key_from_secret(admin_secret, admin_pubkey);
     
     // Initialize keystore
-    ASSERT_TEST(keystore_init() != 0, "Failed to init keystore");
-    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) != 0, "Failed to load keypair");
+    ASSERT_TEST(keystore_init() == 0, "Failed to init keystore");
+    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) == 0, "Failed to load keypair");
     
     // Create DirectMessage content
     Tinyweb__DirectMessage direct_msg = TINYWEB__DIRECT_MESSAGE__INIT;
@@ -183,8 +183,8 @@ static int test_default_handlers(void) {
     get_public_key_from_secret(admin_secret, admin_pubkey);
     
     // Initialize keystore
-    ASSERT_TEST(keystore_init() != 0, "Failed to init keystore");
-    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) != 0, "Failed to load keypair");
+    ASSERT_TEST(keystore_init() == 0, "Failed to init keystore");
+    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) == 0, "Failed to load keypair");
     
     // Test DirectMessage handler
     Tinyweb__DirectMessage direct_msg = TINYWEB__DIRECT_MESSAGE__INIT;

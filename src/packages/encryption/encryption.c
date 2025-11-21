@@ -262,11 +262,17 @@ int decrypt_envelope_payload(
 
     // Get our public key (Ed25519)
     unsigned char our_ed25519_pubkey[PUBKEY_SIZE];
-    keystore_get_encryption_public_key(our_ed25519_pubkey);
+    if (keystore_get_encryption_public_key(our_ed25519_pubkey) != 0) {
+        fprintf(stderr, "decrypt_envelope_payload: failed to get encryption public key\n");
+        return -1;
+    }
 
     // Get our private key (X25519)
     unsigned char our_x25519_privkey[SECRET_SIZE];
-    _keystore_get_encryption_private_key(our_x25519_privkey);
+    if (_keystore_get_encryption_private_key(our_x25519_privkey) != 0) {
+        fprintf(stderr, "decrypt_envelope_payload: failed to get encryption private key\n");
+        return -1;
+    }
 
     // Find our key wrap
     Tinyweb__RecipientKeyWrap* our_wrap = NULL;

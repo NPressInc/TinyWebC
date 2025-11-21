@@ -29,13 +29,13 @@ int encryption_test_main(int argc, char** argv) {
     }
 
     // Initialize keystore
-    if (keystore_init() == 0) {
+    if (keystore_init() != 0) {
         fprintf(stderr, "Failed to initialize keystore\n");
         return 1;
     }
 
     // Generate sender's keypair
-    if (keystore_generate_keypair() == 0) {
+    if (keystore_generate_keypair() != 0) {
         fprintf(stderr, "Failed to generate sender keypair\n");
         keystore_cleanup();
         return 1;
@@ -43,7 +43,11 @@ int encryption_test_main(int argc, char** argv) {
 
     // Get sender's public key
     unsigned char sender_pubkey[PUBKEY_SIZE];
-    keystore_get_public_key(sender_pubkey);
+    if (keystore_get_public_key(sender_pubkey) != 0) {
+        fprintf(stderr, "Failed to get sender public key\n");
+        keystore_cleanup();
+        return 1;
+    }
     print_hex("Sender public key", sender_pubkey, PUBKEY_SIZE);
 
     // Generate recipient keypairs

@@ -11,7 +11,7 @@ int sign_message(const char* message, unsigned char* signature_out) {
 
     // Get the Ed25519 private key from keystore
     unsigned char private_key[SIGN_SECRET_SIZE];
-    if (!_keystore_get_private_key(private_key)) {
+    if (_keystore_get_private_key(private_key) != 0) {
         return -1;
     }
 

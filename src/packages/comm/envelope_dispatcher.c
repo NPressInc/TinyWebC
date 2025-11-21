@@ -7,6 +7,8 @@
 
 #include "packages/encryption/encryption.h"
 #include "packages/keystore/keystore.h"
+#include "packages/sql/permissions.h"
+#include "structs/permission/permission.h"
 
 #define MAX_HANDLERS 256
 
@@ -181,13 +183,23 @@ int envelope_dispatch(const Tinyweb__Envelope* envelope, void* context) {
         return -1;
     }
     
-    // TODO: Decrypt payload here
-    // For now, pass NULL payload to handler (handler can decrypt if needed)
-    const unsigned char* decrypted = NULL;
+    // Attempt decryption
+    unsigned char* decrypted = NULL;
     size_t decrypted_len = 0;
+    int decrypt_result = decrypt_envelope_payload(envelope, &decrypted, &decrypted_len);
     
-    // Call handler
-    int result = handler(envelope, decrypted, decrypted_len, context);
+    // Call handler with decrypted payload (or NULL if decryption failed)
+    // Decryption failure is not an error - we may not be a recipient
+    int result = handler(envelope, 
+                         (decrypt_result == 0) ? decrypted : NULL,
+                         (decrypt_result == 0) ? decrypted_len : 0,
+                         context);
+    
+    // Free decrypted payload if it was allocated
+    if (decrypted != NULL) {
+        free(decrypted);
+    }
+    
     if (result != 0) {
         fprintf(stderr, "envelope_dispatch: handler for %s failed\n",
                 envelope_content_type_name(content_type));
@@ -203,6 +215,20 @@ static int handle_direct_message(const Tinyweb__Envelope* envelope,
                                  size_t payload_len, 
                                  void* context) {
     (void)context;
+    
+    if (!envelope || !envelope->header || !envelope->header->sender_pubkey.data) {
+        fprintf(stderr, "handle_direct_message: invalid envelope\n");
+        return -1;
+    }
+    
+    // Check permission: user must have SEND_MESSAGE permission in SCOPE_DIRECT
+    if (envelope->header->sender_pubkey.len == 32) {
+        if (!check_user_permission(envelope->header->sender_pubkey.data, 
+                                   PERMISSION_SEND_MESSAGE, SCOPE_DIRECT)) {
+            fprintf(stderr, "handle_direct_message: user does not have permission to send direct messages\n");
+            return -1;
+        }
+    }
     
     if (!payload) {
         fprintf(stderr, "handle_direct_message: payload decryption not yet implemented\n");
@@ -229,6 +255,23 @@ static int handle_group_message(const Tinyweb__Envelope* envelope,
                                size_t payload_len,
                                void* context) {
     (void)context;
+    
+    if (!envelope || !envelope->header || !envelope->header->sender_pubkey.data) {
+        fprintf(stderr, "handle_group_message: invalid envelope\n");
+        return -1;
+    }
+    
+    // Check permission: user must have SEND_MESSAGE permission in PRIMARY_GROUP or EXTENDED_GROUP scope
+    if (envelope->header->sender_pubkey.len == 32) {
+        bool has_perm = check_user_permission(envelope->header->sender_pubkey.data, 
+                                             PERMISSION_SEND_MESSAGE, SCOPE_PRIMARY_GROUP) ||
+                       check_user_permission(envelope->header->sender_pubkey.data, 
+                                             PERMISSION_SEND_MESSAGE, SCOPE_EXTENDED_GROUP);
+        if (!has_perm) {
+            fprintf(stderr, "handle_group_message: user does not have permission to send group messages\n");
+            return -1;
+        }
+    }
     
     if (!payload) {
         fprintf(stderr, "handle_group_message: payload decryption not yet implemented\n");

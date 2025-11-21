@@ -43,19 +43,23 @@ static Tinyweb__Envelope* create_test_envelope(uint64_t timestamp, size_t payloa
     }
     
     // Initialize keystore with the loaded key
-    if (keystore_init() == 0) {
+    if (keystore_init() != 0) {
         fprintf(stderr, "Failed to init keystore\n");
         return NULL;
     }
     
-    if (keystore_load_raw_ed25519_keypair(secret_key) == 0) {
+    if (keystore_load_raw_ed25519_keypair(secret_key) != 0) {
         fprintf(stderr, "Failed to load keypair into keystore\n");
         keystore_cleanup();
         return NULL;
     }
     
     unsigned char admin_pubkey[PUBKEY_SIZE];
-    keystore_get_public_key(admin_pubkey);
+    if (keystore_get_public_key(admin_pubkey) != 0) {
+        fprintf(stderr, "Failed to get public key\n");
+        keystore_cleanup();
+        return NULL;
+    }
     
     // Create test payload
     unsigned char* payload = malloc(payload_size);

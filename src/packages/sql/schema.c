@@ -60,6 +60,8 @@ const char* SQL_CREATE_ROLE_PERMISSIONS =
     "    permission_id INTEGER NOT NULL,"
     "    granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
     "    granted_by_user_id INTEGER,"
+    "    scope_flags INTEGER NOT NULL DEFAULT 0,"
+    "    condition_flags INTEGER NOT NULL DEFAULT 0,"
     "    time_start INTEGER,"
     "    time_end INTEGER,"
     "    is_active BOOLEAN DEFAULT TRUE,"
@@ -168,15 +170,16 @@ const char* SQL_SELECT_ROLE_USERS =
     "WHERE ur.role_id = ? AND ur.is_active = 1 AND u.is_active = 1;";
 
 const char* SQL_INSERT_ROLE_PERMISSION = 
-    "INSERT OR REPLACE INTO role_permissions (role_id, permission_id, granted_by_user_id, time_start, time_end) "
-    "VALUES (?, ?, ?, ?, ?);";
+    "INSERT OR REPLACE INTO role_permissions (role_id, permission_id, granted_by_user_id, scope_flags, condition_flags, time_start, time_end) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?);";
 
 const char* SQL_DELETE_ROLE_PERMISSION = 
     "UPDATE role_permissions SET is_active = 0 WHERE role_id = ? AND permission_id = ?;";
 
 const char* SQL_SELECT_ROLE_PERMISSIONS = 
     "SELECT rp.id, rp.role_id, rp.permission_id, rp.granted_at, rp.granted_by_user_id, "
-    "rp.time_start, rp.time_end, p.name as permission_name, p.permission_flags, p.scope_flags, p.condition_flags, p.category "
+    "rp.scope_flags, rp.condition_flags, rp.time_start, rp.time_end, "
+    "p.name as permission_name, p.permission_flags, p.category "
     "FROM role_permissions rp "
     "JOIN permissions p ON rp.permission_id = p.id "
     "WHERE rp.role_id = ? AND rp.is_active = 1;";

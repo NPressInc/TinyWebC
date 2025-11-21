@@ -25,11 +25,11 @@ int keystore_load_private_key(const char* filename, const char* passphrase);
 int keystore_load_raw_ed25519_keypair(const unsigned char* private_key);
 
 // Get the Ed25519 public key (for signing or as sender ID)
-// Returns 1 on success, 0 on failure
+// Returns 0 on success, -1 on failure
 int keystore_get_public_key(unsigned char* pubkey_out);
 
 // Get the X25519 public key (converted from Ed25519, for encryption)
-// Returns 1 on success, 0 on failure
+// Returns 0 on success, -1 on failure
 int keystore_get_encryption_public_key(unsigned char* pubkey_out);
 
 // Internal use only by encryption and signing modules

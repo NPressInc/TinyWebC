@@ -1,6 +1,6 @@
 {
   "name": "CTinyWeb",
-  "description": "Decentralized PBFT Blockchain Node in C",
+  "description": "Decentralized Gossip Network Node in C",
   "setup": {
     "os": "linux",
     "package_manager": "apt",

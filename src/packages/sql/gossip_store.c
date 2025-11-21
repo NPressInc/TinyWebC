@@ -100,6 +100,8 @@
     "    granted_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))," \
     "    granted_by_user_id INTEGER," \
     "    grant_transaction_id INTEGER," \
+    "    scope_flags INTEGER NOT NULL DEFAULT 0," \
+    "    condition_flags INTEGER NOT NULL DEFAULT 0," \
     "    time_start INTEGER," \
     "    time_end INTEGER," \
     "    is_active INTEGER DEFAULT 1," \

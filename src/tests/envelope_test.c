@@ -62,8 +62,8 @@ int test_envelope_create_sign_verify(void) {
     get_public_key_from_secret(admin_secret, admin_pubkey);
 
     // Initialize keystore with the loaded key
-    ASSERT_TEST(keystore_init() != 0, "Failed to init keystore");
-    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) != 0, 
+    ASSERT_TEST(keystore_init() == 0, "Failed to init keystore");
+    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) == 0, 
                 "Failed to load keypair into keystore");
 
     // Create simple direct message content
@@ -127,8 +127,8 @@ int test_envelope_multi_recipient_encryption(void) {
     get_public_key_from_secret(admin2_secret, admin2_pubkey);
 
     // Initialize keystore with admin1's key (sender)
-    ASSERT_TEST(keystore_init() != 0, "Failed to init keystore");
-    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin1_secret) != 0, 
+    ASSERT_TEST(keystore_init() == 0, "Failed to init keystore");
+    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin1_secret) == 0, 
                 "Failed to load keypair into keystore");
 
     // Prepare recipient array
@@ -192,8 +192,8 @@ int test_envelope_serialization(void) {
     get_public_key_from_secret(admin_secret, admin_pubkey);
 
     // Initialize keystore
-    ASSERT_TEST(keystore_init() != 0, "Failed to init keystore");
-    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) != 0, 
+    ASSERT_TEST(keystore_init() == 0, "Failed to init keystore");
+    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) == 0, 
                 "Failed to load keypair into keystore");
 
     // Create content
@@ -270,8 +270,8 @@ int test_envelope_gossip_storage(void) {
     get_public_key_from_secret(admin_secret, admin_pubkey);
 
     // Initialize keystore
-    ASSERT_TEST(keystore_init() != 0, "Failed to init keystore");
-    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) != 0, 
+    ASSERT_TEST(keystore_init() == 0, "Failed to init keystore");
+    ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) == 0, 
                 "Failed to load keypair into keystore");
 
     // Create envelope

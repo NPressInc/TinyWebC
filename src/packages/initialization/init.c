@@ -12,6 +12,8 @@
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/gossip_peers.h"
 #include "packages/sql/gossip_store.h"
+#include "packages/sql/schema.h"
+#include "structs/permission/permission.h"
 
 // ============================================================================
 // Helper Functions
@@ -172,7 +174,7 @@ int generate_user_keypair(const char* user_id, const char* base_path,
 // Database Seeding
 // ============================================================================
 
-static int seed_basic_roles(sqlite3* db) {
+int seed_basic_roles(sqlite3* db) {
     if (!db) {
         return -1;
     }
@@ -200,156 +202,211 @@ static int seed_basic_roles(sqlite3* db) {
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
+    // Contact role
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    sqlite3_bind_text(stmt, 1, "contact", -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, "Contact/peer role with limited permissions", -1, SQLITE_STATIC);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
     return 0;
 }
 
-static int seed_basic_permissions(sqlite3* db) {
-    if (!db) {
-        return -1;
-    }
-
+// Helper function to insert a permission
+static int insert_permission(sqlite3* db, const char* name, uint64_t permission_flags, 
+                             int category, const char* description) {
     const char* sql = 
         "INSERT OR IGNORE INTO permissions (name, permission_flags, scope_flags, "
-        "condition_flags, category, description) VALUES (?, ?, ?, ?, ?, ?)";
+        "condition_flags, category, description) VALUES (?, ?, 0, 0, ?, ?)";
     
     sqlite3_stmt* stmt = NULL;
-
-    // send_message permission
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
         fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
         return -1;
     }
-    sqlite3_bind_text(stmt, 1, "send_message", -1, SQLITE_STATIC);
-    sqlite3_bind_int64(stmt, 2, 1);  // Basic flag
-    sqlite3_bind_int(stmt, 3, 1);    // Basic scope
-    sqlite3_bind_int64(stmt, 4, 0);  // No conditions
-    sqlite3_bind_int(stmt, 5, 1);    // Category: messaging
-    sqlite3_bind_text(stmt, 6, "Send messages to other users", -1, SQLITE_STATIC);
-    sqlite3_step(stmt);
+    
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 2, (int64_t)permission_flags);
+    sqlite3_bind_int(stmt, 3, category);
+    sqlite3_bind_text(stmt, 4, description, -1, SQLITE_STATIC);
+    
+    int result = (sqlite3_step(stmt) == SQLITE_DONE) ? 0 : -1;
     sqlite3_finalize(stmt);
-
-    // manage_users permission
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
-        return -1;
-    }
-    sqlite3_bind_text(stmt, 1, "manage_users", -1, SQLITE_STATIC);
-    sqlite3_bind_int64(stmt, 2, 2);  // Admin flag
-    sqlite3_bind_int(stmt, 3, 2);    // Network scope
-    sqlite3_bind_int64(stmt, 4, 0);
-    sqlite3_bind_int(stmt, 5, 2);    // Category: admin
-    sqlite3_bind_text(stmt, 6, "Manage user accounts", -1, SQLITE_STATIC);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
-    // manage_network permission
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
-        return -1;
-    }
-    sqlite3_bind_text(stmt, 1, "manage_network", -1, SQLITE_STATIC);
-    sqlite3_bind_int64(stmt, 2, 4);  // Admin flag
-    sqlite3_bind_int(stmt, 3, 4);    // System scope
-    sqlite3_bind_int64(stmt, 4, 0);
-    sqlite3_bind_int(stmt, 5, 2);    // Category: admin
-    sqlite3_bind_text(stmt, 6, "Manage network configuration", -1, SQLITE_STATIC);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
-    return 0;
+    return result;
 }
 
-static int seed_role_permissions(sqlite3* db) {
+int seed_basic_permissions(sqlite3* db) {
     if (!db) {
         return -1;
     }
 
-    const char* get_role_sql = "SELECT id FROM roles WHERE name = ?";
-    const char* get_perm_sql = "SELECT id FROM permissions WHERE name = ?";
-    const char* map_sql = 
-        "INSERT OR IGNORE INTO role_permissions (role_id, permission_id, "
-        "granted_by_user_id, grant_transaction_id, time_start, time_end, is_active) "
-        "VALUES (?, ?, NULL, NULL, 0, 0, 1)";
-    
+    // Communication Permissions (category 1: messaging)
+    if (insert_permission(db, "send_message", PERMISSION_SEND_MESSAGE, 1, "Send messages to other users") != 0) return -1;
+    if (insert_permission(db, "read_message", PERMISSION_READ_MESSAGE, 1, "Read messages") != 0) return -1;
+    if (insert_permission(db, "delete_message", PERMISSION_DELETE_MESSAGE, 1, "Delete messages") != 0) return -1;
+    if (insert_permission(db, "edit_message", PERMISSION_EDIT_MESSAGE, 1, "Edit messages") != 0) return -1;
+    if (insert_permission(db, "forward_message", PERMISSION_FORWARD_MESSAGE, 1, "Forward messages") != 0) return -1;
+    if (insert_permission(db, "send_emergency", PERMISSION_SEND_EMERGENCY, 1, "Send emergency alerts") != 0) return -1;
+
+    // Group Management Permissions (category 2: group management)
+    if (insert_permission(db, "create_group", PERMISSION_CREATE_GROUP, 2, "Create groups") != 0) return -1;
+    if (insert_permission(db, "delete_group", PERMISSION_DELETE_GROUP, 2, "Delete groups") != 0) return -1;
+    if (insert_permission(db, "edit_group", PERMISSION_EDIT_GROUP, 2, "Edit group settings") != 0) return -1;
+    if (insert_permission(db, "invite_users", PERMISSION_INVITE_USERS, 2, "Invite users to groups") != 0) return -1;
+    if (insert_permission(db, "remove_users", PERMISSION_REMOVE_USERS, 2, "Remove users from groups") != 0) return -1;
+    if (insert_permission(db, "approve_members", PERMISSION_APPROVE_MEMBERS, 2, "Approve group membership") != 0) return -1;
+    if (insert_permission(db, "moderate_group", PERMISSION_MODERATE_GROUP, 2, "Moderate group content") != 0) return -1;
+
+    // User Management Permissions (category 3: user management)
+    if (insert_permission(db, "view_status", PERMISSION_VIEW_STATUS, 3, "View user status/activity") != 0) return -1;
+    if (insert_permission(db, "view_location", PERMISSION_VIEW_LOCATION, 3, "View location data") != 0) return -1;
+    if (insert_permission(db, "track_location", PERMISSION_TRACK_LOCATION, 3, "Actively track location") != 0) return -1;
+    if (insert_permission(db, "manage_contacts", PERMISSION_MANAGE_CONTACTS, 3, "Manage user's contacts") != 0) return -1;
+    if (insert_permission(db, "approve_contacts", PERMISSION_APPROVE_CONTACTS, 3, "Approve new contacts") != 0) return -1;
+    if (insert_permission(db, "monitor_activity", PERMISSION_MONITOR_ACTIVITY, 3, "Monitor user activity") != 0) return -1;
+    if (insert_permission(db, "set_boundaries", PERMISSION_SET_BOUNDARIES, 3, "Set communication boundaries") != 0) return -1;
+
+    // Administrative Permissions (category 4: admin)
+    if (insert_permission(db, "set_controls", PERMISSION_SET_CONTROLS, 4, "Set administrative controls") != 0) return -1;
+    if (insert_permission(db, "view_controls", PERMISSION_VIEW_CONTROLS, 4, "View administrative controls") != 0) return -1;
+    if (insert_permission(db, "set_content_filters", PERMISSION_SET_CONTENT_FILTERS, 4, "Set content filters") != 0) return -1;
+    if (insert_permission(db, "view_content_filters", PERMISSION_VIEW_CONTENT_FILTERS, 4, "View content filters") != 0) return -1;
+    if (insert_permission(db, "manage_roles", PERMISSION_MANAGE_ROLES, 4, "Manage user roles") != 0) return -1;
+    if (insert_permission(db, "view_logs", PERMISSION_VIEW_LOGS, 4, "View system logs") != 0) return -1;
+    if (insert_permission(db, "manage_settings", PERMISSION_MANAGE_SETTINGS, 4, "Manage system settings") != 0) return -1;
+    if (insert_permission(db, "view_settings", PERMISSION_VIEW_SETTINGS, 4, "View system settings") != 0) return -1;
+
+    return 0;
+}
+
+// Helper to get role ID by name
+static int get_role_id(sqlite3* db, const char* role_name) {
+    const char* sql = "SELECT id FROM roles WHERE name = ?";
     sqlite3_stmt* stmt = NULL;
-    int admin_role_id = -1;
-    int member_role_id = -1;
-    int send_msg_perm_id = -1;
-    int manage_users_perm_id = -1;
-    int manage_network_perm_id = -1;
+    int role_id = -1;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, role_name, -1, SQLITE_STATIC);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            role_id = sqlite3_column_int(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    return role_id;
+}
+
+// Helper to get permission ID by permission flag
+static int get_permission_id_by_flag(sqlite3* db, uint64_t permission_flag) {
+    const char* sql = "SELECT id FROM permissions WHERE permission_flags = ?";
+    sqlite3_stmt* stmt = NULL;
+    int perm_id = -1;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) == SQLITE_OK) {
+        sqlite3_bind_int64(stmt, 1, (int64_t)permission_flag);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            perm_id = sqlite3_column_int(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    } else {
+        fprintf(stderr, "get_permission_id_by_flag: SQL error: %s\n", sqlite3_errmsg(db));
+    }
+    
+    if (perm_id < 0) {
+        fprintf(stderr, "get_permission_id_by_flag: No permission found for flag 0x%llx\n", 
+                (unsigned long long)permission_flag);
+    }
+    
+    return perm_id;
+}
+
+// Helper to map a PermissionSet to a role
+static int map_permission_set_to_role(sqlite3* db, int role_id, const PermissionSet* perm_set) {
+    if (!db || role_id < 0 || !perm_set) return -1;
+    
+    const char* sql = SQL_INSERT_ROLE_PERMISSION;
+    sqlite3_stmt* stmt = NULL;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        fprintf(stderr, "SQLite error: %s\n", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    // Iterate through all permission flags in the PermissionSet
+    uint64_t remaining_perms = perm_set->permissions;
+    uint64_t flag = 1ULL;
+    int inserted_count = 0;
+    
+    printf("    Mapping PermissionSet to role_id=%d: permissions=0x%llx, scopes=0x%x\n",
+           role_id, (unsigned long long)perm_set->permissions, perm_set->scopes);
+    
+    while (remaining_perms > 0 && flag <= PERMISSION_VIEW_SETTINGS) {
+        if (remaining_perms & flag) {
+            // Get permission ID for this flag
+            int perm_id = get_permission_id_by_flag(db, flag);
+            if (perm_id > 0) {
+                // Reset statement for reuse
+                sqlite3_reset(stmt);
+                sqlite3_bind_int(stmt, 1, role_id);
+                sqlite3_bind_int(stmt, 2, perm_id);
+                sqlite3_bind_null(stmt, 3); // granted_by_user_id
+                sqlite3_bind_int(stmt, 4, (int)perm_set->scopes); // scope_flags
+                sqlite3_bind_int64(stmt, 5, (int64_t)perm_set->conditions); // condition_flags
+                sqlite3_bind_int64(stmt, 6, (int64_t)perm_set->time_start);
+                sqlite3_bind_int64(stmt, 7, (int64_t)perm_set->time_end);
+                
+                if (sqlite3_step(stmt) != SQLITE_DONE) {
+                    fprintf(stderr, "Failed to insert role_permission: %s\n", sqlite3_errmsg(db));
+                    sqlite3_finalize(stmt);
+                    return -1;
+                }
+                inserted_count++;
+            } else {
+                fprintf(stderr, "    Warning: Permission flag 0x%llx not found in database\n", 
+                        (unsigned long long)flag);
+            }
+            remaining_perms &= ~flag;
+        }
+        flag <<= 1;
+    }
+    
+    printf("    Inserted %d role_permission mappings\n", inserted_count);
+    
+    sqlite3_finalize(stmt);
+    return 0;
+}
+
+int seed_role_permissions(sqlite3* db) {
+    if (!db) {
+        return -1;
+    }
 
     // Get role IDs
-    if (sqlite3_prepare_v2(db, get_role_sql, -1, &stmt, NULL) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, "admin", -1, SQLITE_STATIC);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-            admin_role_id = sqlite3_column_int(stmt, 0);
-        }
-        sqlite3_finalize(stmt);
-    }
-    
-    if (sqlite3_prepare_v2(db, get_role_sql, -1, &stmt, NULL) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, "member", -1, SQLITE_STATIC);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-            member_role_id = sqlite3_column_int(stmt, 0);
-        }
-        sqlite3_finalize(stmt);
-    }
+    int admin_role_id = get_role_id(db, "admin");
+    int member_role_id = get_role_id(db, "member");
+    int contact_role_id = get_role_id(db, "contact");
 
-    // Get permission IDs
-    if (sqlite3_prepare_v2(db, get_perm_sql, -1, &stmt, NULL) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, "send_message", -1, SQLITE_STATIC);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-            send_msg_perm_id = sqlite3_column_int(stmt, 0);
-        }
-        sqlite3_finalize(stmt);
-    }
-    
-    if (sqlite3_prepare_v2(db, get_perm_sql, -1, &stmt, NULL) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, "manage_users", -1, SQLITE_STATIC);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-            manage_users_perm_id = sqlite3_column_int(stmt, 0);
-        }
-        sqlite3_finalize(stmt);
-    }
-    
-    if (sqlite3_prepare_v2(db, get_perm_sql, -1, &stmt, NULL) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, "manage_network", -1, SQLITE_STATIC);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-            manage_network_perm_id = sqlite3_column_int(stmt, 0);
-        }
-        sqlite3_finalize(stmt);
-    }
-
-    // Map admin role to all permissions
+    // Map admin role to all its PermissionSets
     if (admin_role_id > 0) {
-        if (send_msg_perm_id > 0 && sqlite3_prepare_v2(db, map_sql, -1, &stmt, NULL) == SQLITE_OK) {
-            sqlite3_bind_int(stmt, 1, admin_role_id);
-            sqlite3_bind_int(stmt, 2, send_msg_perm_id);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-        }
-        if (manage_users_perm_id > 0 && sqlite3_prepare_v2(db, map_sql, -1, &stmt, NULL) == SQLITE_OK) {
-            sqlite3_bind_int(stmt, 1, admin_role_id);
-            sqlite3_bind_int(stmt, 2, manage_users_perm_id);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-        }
-        if (manage_network_perm_id > 0 && sqlite3_prepare_v2(db, map_sql, -1, &stmt, NULL) == SQLITE_OK) {
-            sqlite3_bind_int(stmt, 1, admin_role_id);
-            sqlite3_bind_int(stmt, 2, manage_network_perm_id);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-        }
+        if (map_permission_set_to_role(db, admin_role_id, &ADMIN_MESSAGING) != 0) return -1;
+        if (map_permission_set_to_role(db, admin_role_id, &ADMIN_GROUP_MANAGEMENT) != 0) return -1;
+        if (map_permission_set_to_role(db, admin_role_id, &ADMIN_USER_MANAGEMENT) != 0) return -1;
+        if (map_permission_set_to_role(db, admin_role_id, &ADMIN_SYSTEM) != 0) return -1;
+        if (map_permission_set_to_role(db, admin_role_id, &ADMIN_BASIC) != 0) return -1;
     }
 
-    // Map member role to send_message only
-    if (member_role_id > 0 && send_msg_perm_id > 0) {
-        if (sqlite3_prepare_v2(db, map_sql, -1, &stmt, NULL) == SQLITE_OK) {
-            sqlite3_bind_int(stmt, 1, member_role_id);
-            sqlite3_bind_int(stmt, 2, send_msg_perm_id);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-        }
+    // Map member role to its PermissionSets
+    if (member_role_id > 0) {
+        if (map_permission_set_to_role(db, member_role_id, &MEMBER_MESSAGING) != 0) return -1;
+        if (map_permission_set_to_role(db, member_role_id, &MEMBER_BASIC) != 0) return -1;
+    }
+
+    // Map contact role to its PermissionSets
+    if (contact_role_id > 0) {
+        if (map_permission_set_to_role(db, contact_role_id, &CONTACT_MESSAGING) != 0) return -1;
+        if (map_permission_set_to_role(db, contact_role_id, &CONTACT_BASIC) != 0) return -1;
     }
 
     return 0;
@@ -528,6 +585,19 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     sqlite3* db = db_get_handle();
     if (!db) {
         fprintf(stderr, "Failed to get database handle\n");
+        return -1;
+    }
+
+    // Create user/role/permission schema tables
+    if (schema_create_all_tables(db) != 0) {
+        fprintf(stderr, "Failed to create schema tables\n");
+        db_close();
+        return -1;
+    }
+    
+    if (schema_create_all_indexes(db) != 0) {
+        fprintf(stderr, "Failed to create schema indexes\n");
+        db_close();
         return -1;
     }
 

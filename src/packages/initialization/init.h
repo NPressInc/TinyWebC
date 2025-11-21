@@ -2,6 +2,7 @@
 #define INIT_H
 
 #include <stdint.h>
+#include <sqlite3.h>
 
 #define MAX_NODES 100
 #define MAX_USERS 100
@@ -57,5 +58,11 @@ int initialize_node(const InitNodeConfig* node,
 int generate_user_keypair(const char* user_id, 
                          const char* base_path, 
                          unsigned char* out_pubkey);
+
+// Seed database with initial data (for testing)
+// Requires schema tables to already exist
+int seed_basic_roles(sqlite3* db);
+int seed_basic_permissions(sqlite3* db);
+int seed_role_permissions(sqlite3* db);
 
 #endif // INIT_H

@@ -32,4 +32,5 @@ Before making changes, ensure you have:
 - [ ] Found all field accesses (if modifying structs)
 
 Never make changes without first understanding the full impact using these tools.
+If the tool misfunctions or doesnt give you any data when you expecting it to. Please note that to the user, this tool is under active development
 

@@ -10,24 +10,24 @@ static int keypair_loaded = 0;
 int keystore_init(void) {
     if (sodium_init() < 0) {
         fprintf(stderr, "Failed to initialize sodium\n");
-        return 0;
+        return -1;
     }
-    return 1;
+    return 0;
 }
 
 int keystore_generate_keypair(void) {
     if (crypto_sign_keypair(sign_public_key, sign_secret_key) != 0) {
         fprintf(stderr, "Failed to generate Ed25519 keypair\n");
-        return 0;
+        return -1;
     }
     keypair_loaded = 1;
-    return 1;
+    return 0;
 }
 
 int keystore_save_private_key(const char* filename, const char* passphrase) {
     if (!keypair_loaded) {
         fprintf(stderr, "No keypair loaded to save\n");
-        return 0;
+        return -1;
     }
 
     unsigned char nonce[crypto_box_NONCEBYTES];
@@ -46,7 +46,7 @@ int keystore_save_private_key(const char* filename, const char* passphrase) {
                      crypto_pwhash_MEMLIMIT_INTERACTIVE,
                      crypto_pwhash_ALG_DEFAULT) != 0) {
         fprintf(stderr, "Failed to derive key from passphrase\n");
-        return 0;
+        return -1;
     }
 
     // Encrypt the private key
@@ -54,7 +54,7 @@ int keystore_save_private_key(const char* filename, const char* passphrase) {
                              SIGN_SECRET_SIZE, nonce, key) != 0) {
         sodium_memzero(key, sizeof key);
         fprintf(stderr, "Failed to encrypt private key\n");
-        return 0;
+        return -1;
     }
 
     // Write to file: salt, nonce, encrypted private key
@@ -62,7 +62,7 @@ int keystore_save_private_key(const char* filename, const char* passphrase) {
     if (!fp) {
         sodium_memzero(key, sizeof key);
         fprintf(stderr, "Failed to open file for writing\n");
-        return 0;
+        return -1;
     }
 
     int success = (fwrite(salt, 1, sizeof salt, fp) == sizeof salt &&
@@ -74,10 +74,10 @@ int keystore_save_private_key(const char* filename, const char* passphrase) {
 
     if (!success) {
         fprintf(stderr, "Failed to write to file\n");
-        return 0;
+        return -1;
     }
 
-    return 1;
+    return 0;
 }
 
 int keystore_load_private_key(const char* filename, const char* passphrase) {
@@ -90,7 +90,7 @@ int keystore_load_private_key(const char* filename, const char* passphrase) {
     FILE* fp = fopen(filename, "rb");
     if (!fp) {
         fprintf(stderr, "Failed to open key file\n");
-        return 0;
+        return -1;
     }
 
     int success = (fread(salt, 1, sizeof salt, fp) == sizeof salt &&
@@ -101,7 +101,7 @@ int keystore_load_private_key(const char* filename, const char* passphrase) {
 
     if (!success) {
         fprintf(stderr, "Failed to read from key file\n");
-        return 0;
+        return -1;
     }
 
     // Derive key from passphrase
@@ -111,7 +111,7 @@ int keystore_load_private_key(const char* filename, const char* passphrase) {
                      crypto_pwhash_MEMLIMIT_INTERACTIVE,
                      crypto_pwhash_ALG_DEFAULT) != 0) {
         fprintf(stderr, "Failed to derive key from passphrase\n");
-        return 0;
+        return -1;
     }
 
     // Decrypt the private key
@@ -119,7 +119,7 @@ int keystore_load_private_key(const char* filename, const char* passphrase) {
                                  sizeof ciphertext, nonce, key) != 0) {
         sodium_memzero(key, sizeof key);
         fprintf(stderr, "Failed to decrypt private key\n");
-        return 0;
+        return -1;
     }
 
     sodium_memzero(key, sizeof key);
@@ -127,17 +127,17 @@ int keystore_load_private_key(const char* filename, const char* passphrase) {
     // Derive public key from private key
     if (crypto_sign_ed25519_sk_to_pk(sign_public_key, sign_secret_key) != 0) {
         fprintf(stderr, "Failed to derive public key\n");
-        return 0;
+        return -1;
     }
 
     keypair_loaded = 1;
-    return 1;
+    return 0;
 }
 
 int keystore_load_user_key(const char* base_keys_path, const char* user_id) {
     if (!base_keys_path || !user_id) {
         fprintf(stderr, "Null base_keys_path or user_id provided\n");
-        return 0;
+        return -1;
     }
 
     char key_path[512];
@@ -146,7 +146,7 @@ int keystore_load_user_key(const char* base_keys_path, const char* user_id) {
     FILE* f = fopen(key_path, "rb");
     if (!f) {
         fprintf(stderr, "Failed to open key file: %s\n", key_path);
-        return 0;
+        return -1;
     }
 
     size_t read = fread(sign_secret_key, 1, SIGN_SECRET_SIZE, f);
@@ -154,56 +154,62 @@ int keystore_load_user_key(const char* base_keys_path, const char* user_id) {
 
     if (read != SIGN_SECRET_SIZE) {
         fprintf(stderr, "Failed to read complete key from %s\n", key_path);
-        return 0;
+        return -1;
     }
 
     // Extract public key from secret key
     crypto_sign_ed25519_sk_to_pk(sign_public_key, sign_secret_key);
     
     keypair_loaded = 1;
-    return 1;
+    return 0;
 }
 
 int keystore_get_public_key(unsigned char* pubkey_out) {
     if (!keypair_loaded) {
         fprintf(stderr, "No keypair loaded\n");
-        return 0;
+        return -1;
     }
     memcpy(pubkey_out, sign_public_key, SIGN_PUBKEY_SIZE);
-    return 1;
+    return 0;
 }
 
 int keystore_get_encryption_public_key(unsigned char* pubkey_out) {
     if (!keypair_loaded) {
         fprintf(stderr, "No keypair loaded\n");
-        return 0;
+        return -1;
     }
     // Convert Ed25519 public key to X25519
-    return crypto_sign_ed25519_pk_to_curve25519(pubkey_out, sign_public_key) == 0;
+    if (crypto_sign_ed25519_pk_to_curve25519(pubkey_out, sign_public_key) != 0) {
+        return -1;
+    }
+    return 0;
 }
 
 int _keystore_get_private_key(unsigned char* privkey_out) {
     if (!keypair_loaded) {
         fprintf(stderr, "No keypair loaded\n");
-        return 0;
+        return -1;
     }
     memcpy(privkey_out, sign_secret_key, SIGN_SECRET_SIZE);
-    return 1;
+    return 0;
 }
 
 int _keystore_get_encryption_private_key(unsigned char* privkey_out) {
     if (!keypair_loaded) {
         fprintf(stderr, "No keypair loaded\n");
-        return 0;
+        return -1;
     }
     // Convert Ed25519 private key to X25519
-    return crypto_sign_ed25519_sk_to_curve25519(privkey_out, sign_secret_key) == 0;
+    if (crypto_sign_ed25519_sk_to_curve25519(privkey_out, sign_secret_key) != 0) {
+        return -1;
+    }
+    return 0;
 }
 
 int keystore_load_raw_ed25519_keypair(const unsigned char* private_key) {
     if (!private_key) {
         fprintf(stderr, "Invalid private key provided\n");
-        return 0;
+        return -1;
     }
     
     // Copy the Ed25519 private key
@@ -212,11 +218,11 @@ int keystore_load_raw_ed25519_keypair(const unsigned char* private_key) {
     // Derive the Ed25519 public key from the private key
     if (crypto_sign_ed25519_sk_to_pk(sign_public_key, sign_secret_key) != 0) {
         fprintf(stderr, "Failed to derive Ed25519 public key\n");
-        return 0;
+        return -1;
     }
     
     keypair_loaded = 1;
-    return 1;
+    return 0;
 }
 
 int keystore_is_keypair_loaded(void) {

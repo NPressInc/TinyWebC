@@ -25,7 +25,7 @@ int signing_test_main(void) {
     printf("Starting signing tests...\n");
 
     // Initialize keystore
-    if (keystore_init() == 0) {
+    if (keystore_init() != 0) {
         printf("Failed to initialize keystore\n");
         return 1;
     }
@@ -42,13 +42,13 @@ int signing_test_main(void) {
         ensure_directory("test_state");
         ensure_directory(key_dir);
 
-        if (!keystore_generate_keypair()) {
+        if (keystore_generate_keypair() != 0) {
             printf("Failed to generate keypair for signing test\n");
             keystore_cleanup();
             return 1;
         }
 
-        if (!_keystore_get_private_key(raw_private_key)) {
+        if (_keystore_get_private_key(raw_private_key) != 0) {
             printf("Failed to extract generated private key\n");
             keystore_cleanup();
             return 1;
@@ -84,7 +84,7 @@ int signing_test_main(void) {
         return 1;
     }
 
-    if (!keystore_load_raw_ed25519_keypair(raw_private_key)) {
+    if (keystore_load_raw_ed25519_keypair(raw_private_key) != 0) {
         printf("Failed to load raw private key\n");
         keystore_cleanup();
         return 1;
@@ -92,7 +92,7 @@ int signing_test_main(void) {
 
     // Get the public key for verification
     unsigned char public_key[SIGN_PUBKEY_SIZE];
-    if (!keystore_get_public_key(public_key)) {
+    if (keystore_get_public_key(public_key) != 0) {
         printf("Failed to get public key\n");
         keystore_cleanup();
         return 1;

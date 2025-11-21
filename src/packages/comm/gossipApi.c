@@ -11,7 +11,9 @@
 #include "external/mongoose/mongoose.h"
 #include "packages/sql/gossip_store.h"
 #include "packages/sql/database_gossip.h"
+#include "packages/sql/permissions.h"
 #include "packages/transactions/envelope.h"
+#include "structs/permission/permission.h"
 #include "envelope.pb-c.h"
 #include "content.pb-c.h"
 #include "api.pb-c.h"
@@ -156,6 +158,24 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                     mg_http_reply(c, 422, "Content-Type: application/json\r\n",
                                   "{\"error\":\"%s\"}", msg);
                     return;
+                }
+
+                // Check permission: user must have SEND_MESSAGE permission
+                if (env->header && env->header->sender_pubkey.data && env->header->sender_pubkey.len == 32) {
+                    // Determine scope based on content type
+                    permission_scope_t scope = SCOPE_DIRECT; // Default
+                    if (env->header->content_type == TINYWEB__CONTENT_TYPE__CONTENT_GROUP_MESSAGE) {
+                        scope = SCOPE_PRIMARY_GROUP; // Will check both PRIMARY and EXTENDED in handler
+                    }
+                    
+                    if (!check_user_permission(env->header->sender_pubkey.data, 
+                                             PERMISSION_SEND_MESSAGE, scope)) {
+                        tinyweb__envelope__free_unpacked(env, NULL);
+                        cJSON_Delete(root);
+                        mg_http_reply(c, 403, "Content-Type: application/json\r\n",
+                                      "{\"error\":\"Permission denied: user does not have permission to send messages\"}");
+                        return;
+                    }
                 }
 
                 // Persist using gossip_store (as raw bytes)

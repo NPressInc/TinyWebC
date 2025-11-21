@@ -637,12 +637,44 @@ src/packages/sql/gossip_store.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_store.c.s
 .PHONY : src/packages/sql/gossip_store.c.s
 
+src/packages/sql/permissions.o: src/packages/sql/permissions.c.o
+.PHONY : src/packages/sql/permissions.o
+
+# target to build an object file
+src/packages/sql/permissions.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.o
+.PHONY : src/packages/sql/permissions.c.o
+
+src/packages/sql/permissions.i: src/packages/sql/permissions.c.i
+.PHONY : src/packages/sql/permissions.i
+
+# target to preprocess a source file
+src/packages/sql/permissions.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.i
+.PHONY : src/packages/sql/permissions.c.i
+
+src/packages/sql/permissions.s: src/packages/sql/permissions.c.s
+.PHONY : src/packages/sql/permissions.s
+
+# target to generate assembly for a file
+src/packages/sql/permissions.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.s
+.PHONY : src/packages/sql/permissions.c.s
+
 src/packages/sql/schema.o: src/packages/sql/schema.c.o
 .PHONY : src/packages/sql/schema.o
 
 # target to build an object file
 src/packages/sql/schema.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.o
 .PHONY : src/packages/sql/schema.c.o
 
 src/packages/sql/schema.i: src/packages/sql/schema.c.i
@@ -650,7 +682,9 @@ src/packages/sql/schema.i: src/packages/sql/schema.c.i
 
 # target to preprocess a source file
 src/packages/sql/schema.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.i
 .PHONY : src/packages/sql/schema.c.i
 
 src/packages/sql/schema.s: src/packages/sql/schema.c.s
@@ -658,7 +692,9 @@ src/packages/sql/schema.s: src/packages/sql/schema.c.s
 
 # target to generate assembly for a file
 src/packages/sql/schema.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.s
 .PHONY : src/packages/sql/schema.c.s
 
 src/packages/transactions/envelope.o: src/packages/transactions/envelope.c.o
@@ -803,6 +839,7 @@ src/structs/permission/permission.o: src/structs/permission/permission.c.o
 src/structs/permission/permission.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.o
 .PHONY : src/structs/permission/permission.c.o
 
 src/structs/permission/permission.i: src/structs/permission/permission.c.i
@@ -812,6 +849,7 @@ src/structs/permission/permission.i: src/structs/permission/permission.c.i
 src/structs/permission/permission.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.i
 .PHONY : src/structs/permission/permission.c.i
 
 src/structs/permission/permission.s: src/structs/permission/permission.c.s
@@ -821,6 +859,7 @@ src/structs/permission/permission.s: src/structs/permission/permission.c.s
 src/structs/permission/permission.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.s
 .PHONY : src/structs/permission/permission.c.s
 
 src/tests/api_protobuf_test.o: src/tests/api_protobuf_test.c.o
@@ -1015,6 +1054,30 @@ src/tests/mongoose_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/mongoose_test.c.s
 .PHONY : src/tests/mongoose_test.c.s
 
+src/tests/permissions_test.o: src/tests/permissions_test.c.o
+.PHONY : src/tests/permissions_test.o
+
+# target to build an object file
+src/tests/permissions_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/permissions_test.c.o
+.PHONY : src/tests/permissions_test.c.o
+
+src/tests/permissions_test.i: src/tests/permissions_test.c.i
+.PHONY : src/tests/permissions_test.i
+
+# target to preprocess a source file
+src/tests/permissions_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/permissions_test.c.i
+.PHONY : src/tests/permissions_test.c.i
+
+src/tests/permissions_test.s: src/tests/permissions_test.c.s
+.PHONY : src/tests/permissions_test.s
+
+# target to generate assembly for a file
+src/tests/permissions_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/permissions_test.c.s
+.PHONY : src/tests/permissions_test.c.s
+
 src/tests/schema_test.o: src/tests/schema_test.c.o
 .PHONY : src/tests/schema_test.o
 
@@ -1175,6 +1238,9 @@ help:
 	@echo "... src/packages/sql/gossip_store.o"
 	@echo "... src/packages/sql/gossip_store.i"
 	@echo "... src/packages/sql/gossip_store.s"
+	@echo "... src/packages/sql/permissions.o"
+	@echo "... src/packages/sql/permissions.i"
+	@echo "... src/packages/sql/permissions.s"
 	@echo "... src/packages/sql/schema.o"
 	@echo "... src/packages/sql/schema.i"
 	@echo "... src/packages/sql/schema.s"
@@ -1220,6 +1286,9 @@ help:
 	@echo "... src/tests/mongoose_test.o"
 	@echo "... src/tests/mongoose_test.i"
 	@echo "... src/tests/mongoose_test.s"
+	@echo "... src/tests/permissions_test.o"
+	@echo "... src/tests/permissions_test.i"
+	@echo "... src/tests/permissions_test.s"
 	@echo "... src/tests/schema_test.o"
 	@echo "... src/tests/schema_test.i"
 	@echo "... src/tests/schema_test.s"
