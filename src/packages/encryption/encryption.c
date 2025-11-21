@@ -4,6 +4,7 @@
 #include <string.h>
 #include "packages/keystore/keystore.h"
 #include "packages/utils/logger.h"
+#include "packages/utils/error.h"
 
 int encrypt_envelope_payload(
     const unsigned char* plaintext, size_t plaintext_len,
@@ -11,17 +12,20 @@ int encrypt_envelope_payload(
     Tinyweb__Envelope* envelope)
 {
     if (!plaintext || !envelope || num_recipients == 0) {
+        tw_error_create(TW_ERROR_INVALID_ARGUMENT, "encryption", __func__, __LINE__, "Invalid arguments: plaintext=%p, envelope=%p, num_recipients=%zu", plaintext, envelope, num_recipients);
         logger_error("encryption", "encrypt_envelope_payload: invalid arguments");
         return -1;
     }
 
     if (!keystore_is_keypair_loaded()) {
+        tw_error_create(TW_ERROR_NOT_INITIALIZED, "encryption", __func__, __LINE__, "Keypair not loaded");
         logger_error("encryption", "encrypt_envelope_payload: keypair not loaded");
         return -1;
     }
 
     // Check if plaintext size exceeds the maximum allowed
     if (plaintext_len > MAX_PLAINTEXT_SIZE) {
+        tw_error_create(TW_ERROR_INVALID_ARGUMENT, "encryption", __func__, __LINE__, "Plaintext size (%zu bytes) exceeds maximum allowed size (%d bytes)", plaintext_len, MAX_PLAINTEXT_SIZE);
         logger_error("encryption", "Plaintext size (%zu bytes) exceeds maximum allowed size (%d bytes)", 
                 plaintext_len, MAX_PLAINTEXT_SIZE);
         return -1;
@@ -29,6 +33,7 @@ int encrypt_envelope_payload(
 
     // Check if number of recipients exceeds the maximum allowed
     if (num_recipients > MAX_RECIPIENTS) {
+        tw_error_create(TW_ERROR_INVALID_ARGUMENT, "encryption", __func__, __LINE__, "Number of recipients (%zu) exceeds maximum allowed (%d)", num_recipients, MAX_RECIPIENTS);
         logger_error("encryption", "Number of recipients (%zu) exceeds maximum allowed (%d)", 
                 num_recipients, MAX_RECIPIENTS);
         return -1;
@@ -58,6 +63,8 @@ int encrypt_envelope_payload(
     if (crypto_secretbox_easy(ciphertext, plaintext, plaintext_len,
                               nonce, symmetric_key) != 0)
     {
+        tw_error_create(TW_ERROR_CRYPTO_ERROR, "encryption", __func__, __LINE__, "Failed to encrypt plaintext with symmetric key");
+        logger_error("encryption", "Failed to encrypt plaintext");
         free(ciphertext);
         sodium_memzero(symmetric_key, crypto_secretbox_KEYBYTES);
         sodium_memzero(ephemeral_privkey, SECRET_SIZE);

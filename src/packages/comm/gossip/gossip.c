@@ -9,6 +9,9 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "packages/utils/logger.h"
+#include "packages/utils/error.h"
+#include "packages/utils/retry.h"
+#include <time.h>
 
 typedef struct {
     GossipService* service;
@@ -64,6 +67,11 @@ int gossip_service_add_peer(GossipService* service,
     strncpy(peer->address, address, sizeof(peer->address) - 1);
     peer->address[sizeof(peer->address) - 1] = '\0';
     peer->port = port;
+    peer->last_success = 0;
+    peer->last_failure = 0;
+    peer->consecutive_failures = 0;
+    peer->is_healthy = true;
+    peer->last_health_check = 0;
 
     pthread_mutex_unlock(&service->peer_lock);
     return 0;
@@ -80,13 +88,15 @@ int gossip_service_start(GossipService* service) {
 
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
-        perror("gossip socket");
+        tw_error_create(TW_ERROR_NETWORK_ERROR, "gossip", __func__, __LINE__, "Failed to create socket: %s", strerror(errno));
+        logger_error("gossip", "Failed to create socket: %s", strerror(errno));
         return -1;
     }
 
     int reuse = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-        perror("gossip reuseaddr");
+        tw_error_create(TW_ERROR_NETWORK_ERROR, "gossip", __func__, __LINE__, "Failed to set SO_REUSEADDR: %s", strerror(errno));
+        logger_error("gossip", "Failed to set SO_REUSEADDR: %s", strerror(errno));
         close(fd);
         return -1;
     }
@@ -98,7 +108,8 @@ int gossip_service_start(GossipService* service) {
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        perror("gossip bind");
+        tw_error_create(TW_ERROR_NETWORK_ERROR, "gossip", __func__, __LINE__, "Failed to bind to port %u: %s", service->listen_port, strerror(errno));
+        logger_error("gossip", "Failed to bind to port %u: %s", service->listen_port, strerror(errno));
         close(fd);
         return -1;
     }
@@ -107,7 +118,8 @@ int gossip_service_start(GossipService* service) {
     service->running = true;
 
     if (pthread_create(&service->receive_thread, NULL, gossip_receive_loop, service) != 0) {
-        perror("gossip pthread_create");
+        tw_error_create(TW_ERROR_NETWORK_ERROR, "gossip", __func__, __LINE__, "Failed to create receive thread: %s", strerror(errno));
+        logger_error("gossip", "Failed to create receive thread: %s", strerror(errno));
         close(fd);
         service->socket_fd = -1;
         service->running = false;
@@ -170,6 +182,18 @@ static int gossip_service_send_envelope(GossipService* service,
     pthread_mutex_lock(&service->peer_lock);
 
     for (size_t i = 0; i < service->peer_count; ++i) {
+        // Skip unhealthy peers (circuit breaker pattern)
+        if (!service->peers[i].is_healthy) {
+            // Periodically retry unhealthy peers (every 60 seconds)
+            time_t now = time(NULL);
+            if (now - service->peers[i].last_health_check > 60) {
+                service->peers[i].last_health_check = now;
+                // Will try this peer
+            } else {
+                continue; // Skip unhealthy peer
+            }
+        }
+        
         char port_str[6];
         snprintf(port_str, sizeof(port_str), "%u", service->peers[i].port);
 
@@ -201,9 +225,22 @@ static int gossip_service_send_envelope(GossipService* service,
                                   0,
                                   ai->ai_addr,
                                   ai->ai_addrlen);
+            time_t now = time(NULL);
             if (sent < 0) {
-                perror("gossip sendto");
+                // Track failure
+                service->peers[i].last_failure = now;
+                service->peers[i].consecutive_failures++;
+                if (service->peers[i].consecutive_failures >= 3) {
+                    service->peers[i].is_healthy = false;
+                }
+                tw_error_create(TW_ERROR_NETWORK_ERROR, "gossip", __func__, __LINE__, "Failed to send to %s:%u: %s", service->peers[i].address, service->peers[i].port, strerror(errno));
+                logger_error("gossip", "Failed to send to %s:%u: %s", service->peers[i].address, service->peers[i].port, strerror(errno));
                 continue;
+            } else {
+                // Track success
+                service->peers[i].last_success = now;
+                service->peers[i].consecutive_failures = 0;
+                service->peers[i].is_healthy = true;
             }
         }
 
@@ -254,7 +291,8 @@ static void* gossip_receive_loop(void* arg) {
             if (errno == EINTR) {
                 continue;
             }
-            perror("gossip recvfrom");
+            tw_error_create(TW_ERROR_NETWORK_ERROR, "gossip", __func__, __LINE__, "Failed to receive: %s", strerror(errno));
+            logger_error("gossip", "Failed to receive: %s", strerror(errno));
             continue;
         }
 

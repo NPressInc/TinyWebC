@@ -45,7 +45,8 @@ typedef struct {
 
 // Initialize network with all nodes and users
 // base_path: "state" for production, "test_state" for testing
-int initialize_network(const InitNetworkConfig* config, const char* base_path);
+// original_config_path: Path to the original network_config.json file (can be NULL)
+int initialize_network(const InitNetworkConfig* config, const char* base_path, const char* original_config_path);
 
 // Initialize a single node
 int initialize_node(const InitNodeConfig* node, 
@@ -64,5 +65,9 @@ int generate_user_keypair(const char* user_id,
 int seed_basic_roles(sqlite3* db);
 int seed_basic_permissions(sqlite3* db);
 int seed_role_permissions(sqlite3* db);
+
+// Save network config to node's directory
+// original_config_path: Path to the original network_config.json file
+int init_save_node_config(const char* original_config_path, const InitNetworkConfig* network_config, const InitNodeConfig* node, const char* node_path);
 
 #endif // INIT_H

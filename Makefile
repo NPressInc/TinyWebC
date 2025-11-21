@@ -751,6 +751,63 @@ src/packages/utils/byteorder.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/byteorder.c.s
 .PHONY : src/packages/utils/byteorder.c.s
 
+src/packages/utils/config.o: src/packages/utils/config.c.o
+.PHONY : src/packages/utils/config.o
+
+# target to build an object file
+src/packages/utils/config.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/config.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/config.c.o
+.PHONY : src/packages/utils/config.c.o
+
+src/packages/utils/config.i: src/packages/utils/config.c.i
+.PHONY : src/packages/utils/config.i
+
+# target to preprocess a source file
+src/packages/utils/config.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/config.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/config.c.i
+.PHONY : src/packages/utils/config.c.i
+
+src/packages/utils/config.s: src/packages/utils/config.c.s
+.PHONY : src/packages/utils/config.s
+
+# target to generate assembly for a file
+src/packages/utils/config.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/config.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/config.c.s
+.PHONY : src/packages/utils/config.c.s
+
+src/packages/utils/error.o: src/packages/utils/error.c.o
+.PHONY : src/packages/utils/error.o
+
+# target to build an object file
+src/packages/utils/error.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/error.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/error.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/error.c.o
+.PHONY : src/packages/utils/error.c.o
+
+src/packages/utils/error.i: src/packages/utils/error.c.i
+.PHONY : src/packages/utils/error.i
+
+# target to preprocess a source file
+src/packages/utils/error.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/error.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/error.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/error.c.i
+.PHONY : src/packages/utils/error.c.i
+
+src/packages/utils/error.s: src/packages/utils/error.c.s
+.PHONY : src/packages/utils/error.s
+
+# target to generate assembly for a file
+src/packages/utils/error.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/error.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/error.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/error.c.s
+.PHONY : src/packages/utils/error.c.s
+
 src/packages/utils/logger.o: src/packages/utils/logger.c.o
 .PHONY : src/packages/utils/logger.o
 
@@ -807,6 +864,33 @@ src/packages/utils/print.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/print.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/print.c.s
 .PHONY : src/packages/utils/print.c.s
+
+src/packages/utils/retry.o: src/packages/utils/retry.c.o
+.PHONY : src/packages/utils/retry.o
+
+# target to build an object file
+src/packages/utils/retry.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/retry.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/retry.c.o
+.PHONY : src/packages/utils/retry.c.o
+
+src/packages/utils/retry.i: src/packages/utils/retry.c.i
+.PHONY : src/packages/utils/retry.i
+
+# target to preprocess a source file
+src/packages/utils/retry.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/retry.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/retry.c.i
+.PHONY : src/packages/utils/retry.c.i
+
+src/packages/utils/retry.s: src/packages/utils/retry.c.s
+.PHONY : src/packages/utils/retry.s
+
+# target to generate assembly for a file
+src/packages/utils/retry.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/retry.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/retry.c.s
+.PHONY : src/packages/utils/retry.c.s
 
 src/packages/utils/statePaths.o: src/packages/utils/statePaths.c.o
 .PHONY : src/packages/utils/statePaths.o
@@ -987,6 +1071,30 @@ src/tests/envelope_test.s: src/tests/envelope_test.c.s
 src/tests/envelope_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/envelope_test.c.s
 .PHONY : src/tests/envelope_test.c.s
+
+src/tests/foundational_features_test.o: src/tests/foundational_features_test.c.o
+.PHONY : src/tests/foundational_features_test.o
+
+# target to build an object file
+src/tests/foundational_features_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/foundational_features_test.c.o
+.PHONY : src/tests/foundational_features_test.c.o
+
+src/tests/foundational_features_test.i: src/tests/foundational_features_test.c.i
+.PHONY : src/tests/foundational_features_test.i
+
+# target to preprocess a source file
+src/tests/foundational_features_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/foundational_features_test.c.i
+.PHONY : src/tests/foundational_features_test.c.i
+
+src/tests/foundational_features_test.s: src/tests/foundational_features_test.c.s
+.PHONY : src/tests/foundational_features_test.s
+
+# target to generate assembly for a file
+src/tests/foundational_features_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/foundational_features_test.c.s
+.PHONY : src/tests/foundational_features_test.c.s
 
 src/tests/gossip_store_test.o: src/tests/gossip_store_test.c.o
 .PHONY : src/tests/gossip_store_test.o
@@ -1280,12 +1388,21 @@ help:
 	@echo "... src/packages/utils/byteorder.o"
 	@echo "... src/packages/utils/byteorder.i"
 	@echo "... src/packages/utils/byteorder.s"
+	@echo "... src/packages/utils/config.o"
+	@echo "... src/packages/utils/config.i"
+	@echo "... src/packages/utils/config.s"
+	@echo "... src/packages/utils/error.o"
+	@echo "... src/packages/utils/error.i"
+	@echo "... src/packages/utils/error.s"
 	@echo "... src/packages/utils/logger.o"
 	@echo "... src/packages/utils/logger.i"
 	@echo "... src/packages/utils/logger.s"
 	@echo "... src/packages/utils/print.o"
 	@echo "... src/packages/utils/print.i"
 	@echo "... src/packages/utils/print.s"
+	@echo "... src/packages/utils/retry.o"
+	@echo "... src/packages/utils/retry.i"
+	@echo "... src/packages/utils/retry.s"
 	@echo "... src/packages/utils/statePaths.o"
 	@echo "... src/packages/utils/statePaths.i"
 	@echo "... src/packages/utils/statePaths.s"
@@ -1307,6 +1424,9 @@ help:
 	@echo "... src/tests/envelope_test.o"
 	@echo "... src/tests/envelope_test.i"
 	@echo "... src/tests/envelope_test.s"
+	@echo "... src/tests/foundational_features_test.o"
+	@echo "... src/tests/foundational_features_test.i"
+	@echo "... src/tests/foundational_features_test.s"
 	@echo "... src/tests/gossip_store_test.o"
 	@echo "... src/tests/gossip_store_test.i"
 	@echo "... src/tests/gossip_store_test.s"

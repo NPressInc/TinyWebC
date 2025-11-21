@@ -463,7 +463,7 @@ int main(int argc, char* argv[]) {
     }
 
     printf("\nInitializing gossip network...\n");
-    if (initialize_network(&config, base_path) != 0) {
+    if (initialize_network(&config, base_path, config_path) != 0) {
         fprintf(stderr, "Initialization failed.\n");
         free_config(&config, nodes, users);
         return 1;

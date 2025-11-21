@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(CTinyWeb)
 
+# AddressSanitizer support (optional)
+option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+if(ENABLE_ASAN)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+    message(STATUS "AddressSanitizer enabled")
+endif()
+
 # Mongoose configuration - add these compile definitions for optimal performance
 add_compile_definitions(
     MG_ENABLE_IPV6=1
@@ -175,6 +183,7 @@ add_executable(init_tool
     src/packages/sql/gossip_store.c
     src/packages/sql/gossip_peers.c
     src/packages/utils/logger.c
+    src/packages/utils/error.c
     src/structs/permission/permission.c
 )
 target_sources(init_tool PRIVATE ${GOSSIP_DB_SOURCES})

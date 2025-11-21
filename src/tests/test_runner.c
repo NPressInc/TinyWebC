@@ -15,6 +15,7 @@
 #include "tests/schema_test.h"
 #include "tests/httpclient_test.h"
 #include "tests/permissions_test.h"
+#include "tests/foundational_features_test.h"
 
 int main(int argc, char* argv[]) {
     // Initialize libsodium once at the start
@@ -35,7 +36,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 11;
+        int total_tests = 12;
 
         printf("Running all gossip tests...\n\n");
 
@@ -163,6 +164,17 @@ int main(int argc, char* argv[]) {
         }
         printf("\n");
 
+        // Run foundational features integration tests
+        printf("Running foundational features integration tests...\n");
+        if (foundational_features_test_main() == 0) {
+            printf("✓ Foundational features tests passed\n");
+            tests_passed++;
+        } else {
+            printf("✗ Foundational features tests failed\n");
+            tests_failed++;
+        }
+        printf("\n");
+
         printf("\n=== Test Summary ===\n");
         printf("Total Tests: %d\n", total_tests);
         printf("Passed: %d\n", tests_passed);
@@ -200,9 +212,11 @@ int main(int argc, char* argv[]) {
             result = httpclient_test_main();
         } else if (strcmp(test_name, "permissions") == 0) {
             result = permissions_test_main();
+        } else if (strcmp(test_name, "foundational") == 0) {
+            result = foundational_features_test_main();
         } else {
             printf("Unknown test: %s\n", test_name);
-            printf("Available tests: encryption, signing, mongoose, gossipdb, envelope, validation, apipb, dispatcher, schema, httpclient, permissions\n");
+            printf("Available tests: encryption, signing, mongoose, gossipdb, envelope, validation, apipb, dispatcher, schema, httpclient, permissions, foundational\n");
             test_cleanup_environment();
             return 1;
         }

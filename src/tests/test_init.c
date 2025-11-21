@@ -260,7 +260,7 @@ int test_init_environment(void) {
     }
 
     // Initialize network in test_state
-    if (initialize_network(&config, TEST_BASE_PATH) != 0) {
+    if (initialize_network(&config, TEST_BASE_PATH, NULL) != 0) {
         fprintf(stderr, "Failed to initialize test network\n");
         free_test_config(&config, nodes, users);
         return -1;

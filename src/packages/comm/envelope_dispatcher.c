@@ -232,8 +232,8 @@ static int handle_direct_message(const Tinyweb__Envelope* envelope,
     }
     
     if (!payload) {
-        logger_error("envelope_dispatch", "handle_direct_message: payload decryption not yet implemented");
-        return 0; // Not an error, just not implemented yet
+        logger_error("envelope_dispatch", "handle_direct_message: unable to decrypt payload (not a recipient?)");
+        return 0; // Not an error - we may not be a recipient of this message
     }
     
     // Parse DirectMessage from payload
@@ -275,8 +275,8 @@ static int handle_group_message(const Tinyweb__Envelope* envelope,
     }
     
     if (!payload) {
-        logger_error("envelope_dispatch", "handle_group_message: payload decryption not yet implemented");
-        return 0;
+        logger_error("envelope_dispatch", "handle_group_message: unable to decrypt payload (not a recipient?)");
+        return 0; // Not an error - we may not be a recipient of this message
     }
     
     Tinyweb__GroupMessage* msg = tinyweb__group_message__unpack(NULL, payload_len, payload);
@@ -300,8 +300,8 @@ static int handle_location_update(const Tinyweb__Envelope* envelope,
     (void)context;
     
     if (!payload) {
-        logger_error("envelope_dispatch", "handle_location_update: payload decryption not yet implemented");
-        return 0;
+        logger_error("envelope_dispatch", "handle_location_update: unable to decrypt payload (not a recipient?)");
+        return 0; // Not an error - we may not be a recipient of this message
     }
     
     Tinyweb__LocationUpdate* loc = tinyweb__location_update__unpack(NULL, payload_len, payload);
@@ -325,8 +325,8 @@ static int handle_emergency_alert(const Tinyweb__Envelope* envelope,
     (void)context;
     
     if (!payload) {
-        logger_error("envelope_dispatch", "handle_emergency_alert: payload decryption not yet implemented");
-        return 0;
+        logger_error("envelope_dispatch", "handle_emergency_alert: unable to decrypt payload (not a recipient?)");
+        return 0; // Not an error - we may not be a recipient of this message
     }
     
     Tinyweb__EmergencyAlert* alert = tinyweb__emergency_alert__unpack(NULL, payload_len, payload);

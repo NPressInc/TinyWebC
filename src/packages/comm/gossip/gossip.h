@@ -15,6 +15,11 @@
 typedef struct {
     char address[256];
     uint16_t port;
+    time_t last_success;        // Last successful message
+    time_t last_failure;        // Last failure
+    int consecutive_failures;   // Consecutive failure count
+    bool is_healthy;            // Health status
+    time_t last_health_check;   // Last health check time
 } GossipPeer;
 
 struct GossipService;

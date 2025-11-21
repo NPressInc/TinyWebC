@@ -19,33 +19,23 @@
 #include "packages/transactions/envelope.h"
 #include "packages/comm/gossipApi.h"
 #include "packages/comm/envelope_dispatcher.h"
-
-typedef struct {
-    uint32_t node_id;
-    bool debug_mode;
-    uint16_t gossip_port;
-    uint16_t api_port;
-} AppConfig;
+#include "packages/utils/config.h"
 
 static volatile int g_running = 1;
 static GossipService g_gossip_service;
-static GossipValidationConfig g_validation_config = {
-    .max_clock_skew_seconds = 300,
-    .message_ttl_seconds = 60ULL * 60ULL * 24ULL * 30ULL,
-    .max_payload_bytes = 1024 * 1024  // 1MB max payload
-};
 static volatile int g_cleanup_running = 0;
 static pthread_t g_cleanup_thread;
 static bool g_cleanup_thread_started = false;
 static bool g_http_server_running = false;
 
 static void handle_signal(int sig);
-static int parse_arguments(int argc, char* argv[], AppConfig* config);
-static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len);
-static int start_gossip_service(uint16_t port);
+static int parse_arguments(int argc, char* argv[], NodeConfig* config);
+static int initialize_storage(const NodeConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len);
+static int load_node_config(NodeConfig* config, uint32_t node_id, bool debug_mode);
+static int start_gossip_service(uint16_t port, const GossipValidationConfig* validation_config);
 static void bootstrap_known_peers(GossipService* service);
 static void stop_gossip_service(void);
-static int start_http_api(uint16_t port);
+static int start_http_api(uint16_t port, const GossipValidationConfig* validation_config);
 static void stop_http_api(void);
 static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* envelope, const struct sockaddr_in* source, void* context);
 static void* cleanup_loop(void* arg);
@@ -67,15 +57,17 @@ static void print_usage(const char* program_name) {
     printf("  -h, --help               Show this help message\n");
 }
 
-static int parse_arguments(int argc, char* argv[], AppConfig* config) {
-    config->node_id = 0;
-    config->debug_mode = false;
-    config->gossip_port = 9000;
-    config->api_port = 8000;
+static int parse_arguments(int argc, char* argv[], NodeConfig* config) {
+    // Set defaults first
+    config_set_defaults(config);
+    
+    // Parse node_id from command line (required for loading config)
+    uint32_t node_id = 0;
+    bool debug_mode = false;
 
     for (int i = 1; i < argc; ++i) {
         if ((strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--id") == 0) && i + 1 < argc) {
-            config->node_id = (uint32_t)atoi(argv[++i]);
+            node_id = (uint32_t)atoi(argv[++i]);
         } else if ((strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--gossip-port") == 0) && i + 1 < argc) {
             uint32_t port = (uint32_t)atoi(argv[++i]);
             if (port < 1024 || port > 65535) {
@@ -91,6 +83,7 @@ static int parse_arguments(int argc, char* argv[], AppConfig* config) {
             }
             config->api_port = (uint16_t)port;
         } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--debug") == 0) {
+            debug_mode = true;
             config->debug_mode = true;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
@@ -100,13 +93,91 @@ static int parse_arguments(int argc, char* argv[], AppConfig* config) {
             return -1;
         }
     }
+    
+    // Load config from network_config.json
+    if (load_node_config(config, node_id, debug_mode) != 0) {
+        logger_error("main", "Failed to load node configuration");
+        return -1;
+    }
+    
+    // Load environment variable overrides
+    NodeConfig env_config;
+    memset(&env_config, 0, sizeof(env_config));
+    config_load_from_env(&env_config);
+    config_merge(config, &env_config);
+    
+    // Command-line arguments override everything
+    if (node_id > 0) {
+        snprintf(config->node_id, sizeof(config->node_id), "node_%03u", node_id);
+    }
+    if (config->gossip_port == 0) {
+        config->gossip_port = 9000; // Default
+    }
+    if (config->api_port == 0) {
+        config->api_port = 8000; // Default
+    }
 
     return 0;
 }
 
-static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len) {
-    if (!state_paths_init(config->node_id, config->debug_mode, paths)) {
-        logger_error("main", "Failed to initialize state paths for node %u", config->node_id);
+static int load_node_config(NodeConfig* config, uint32_t node_id, bool debug_mode) {
+    if (!config) {
+        return -1;
+    }
+    
+    // Build path to node's network_config.json
+    char config_path[512];
+    if (debug_mode) {
+        snprintf(config_path, sizeof(config_path), "test_state/node_%03u/network_config.json", node_id);
+    } else {
+        // Try to find node_id from config file
+        if (node_id == 0) {
+            // Try to get from environment
+            const char* env_node_id = getenv("TINYWEB_NODE_ID");
+            if (env_node_id) {
+                node_id = (uint32_t)atoi(env_node_id);
+            }
+        }
+        if (node_id > 0) {
+            snprintf(config_path, sizeof(config_path), "state/node_%03u/network_config.json", node_id);
+        } else {
+            // Fallback: try state/network_config.json
+            snprintf(config_path, sizeof(config_path), "state/network_config.json");
+        }
+    }
+    
+    char node_id_str[64];
+    if (node_id > 0) {
+        snprintf(node_id_str, sizeof(node_id_str), "node_%03u", node_id);
+    } else {
+        // Try to extract from config file path or use default
+        strncpy(node_id_str, "node_001", sizeof(node_id_str) - 1);
+    }
+    
+    // Load config from file
+    if (config_load_node_from_network_config(config_path, node_id_str, config) != 0) {
+        // If file doesn't exist, use defaults
+        logger_error("main", "Could not load config from %s, using defaults", config_path);
+        config_set_defaults(config);
+        if (node_id > 0) {
+            snprintf(config->node_id, sizeof(config->node_id), "node_%03u", node_id);
+        }
+        config->debug_mode = debug_mode;
+        return 0; // Not fatal, use defaults
+    }
+    
+    return 0;
+}
+
+static int initialize_storage(const NodeConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len) {
+    // Extract node_id from config->node_id (format: "node_001")
+    uint32_t node_id = 0;
+    if (config->node_id[0] != '\0' && sscanf(config->node_id, "node_%u", &node_id) == 1) {
+        // Successfully parsed
+    }
+    
+    if (!state_paths_init(node_id, config->debug_mode, paths)) {
+        logger_error("main", "Failed to initialize state paths for node %s", config->node_id);
         return -1;
     }
 
@@ -133,8 +204,8 @@ static int initialize_storage(const AppConfig* config, NodeStatePaths* paths, ch
     return 0;
 }
 
-static int start_gossip_service(uint16_t port) {
-    if (gossip_service_init(&g_gossip_service, port, gossip_receive_handler, &g_validation_config) != 0) {
+static int start_gossip_service(uint16_t port, const GossipValidationConfig* validation_config) {
+    if (gossip_service_init(&g_gossip_service, port, gossip_receive_handler, validation_config) != 0) {
         logger_error("main", "Failed to initialize gossip service");
         return -1;
     }
@@ -166,12 +237,12 @@ static void stop_gossip_service(void) {
     gossip_service_stop(&g_gossip_service);
 }
 
-static int start_http_api(uint16_t port) {
+static int start_http_api(uint16_t port, const GossipValidationConfig* validation_config) {
     if (g_http_server_running) {
         return 0;
     }
 
-    if (gossip_api_start(port, &g_gossip_service, &g_validation_config) != 0) {
+    if (gossip_api_start(port, &g_gossip_service, validation_config) != 0) {
         return -1;
     }
 
@@ -302,9 +373,10 @@ static void bootstrap_known_peers(GossipService* service) {
 }
 
 int main(int argc, char* argv[]) {
-    AppConfig config;
+    NodeConfig config;
     NodeStatePaths paths;
     char db_path[MAX_STATE_PATH_LEN];
+    GossipValidationConfig validation_config;
 
     // Initialize logger first
     if (logger_init() != 0) {
@@ -314,46 +386,68 @@ int main(int argc, char* argv[]) {
     
     if (parse_arguments(argc, argv, &config) != 0) {
         print_usage(argv[0]);
+        config_free(&config);
         return 1;
     }
+    
+    // Validate configuration
+    if (config_validate(&config) != 0) {
+        logger_error("main", "Configuration validation failed");
+        config_free(&config);
+        return 1;
+    }
+    
+    // Set up validation config from node config
+    validation_config.max_clock_skew_seconds = config.max_clock_skew_seconds;
+    validation_config.message_ttl_seconds = config.message_ttl_seconds;
+    validation_config.max_payload_bytes = config.max_payload_bytes;
+    
+    // Set log level from config
+    logger_set_level(config.log_level);
     
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
     
     if (sodium_init() < 0) {
         logger_error("main", "Failed to initialize libsodium");
+        config_free(&config);
         return 1;
     }
     
     if (envelope_dispatcher_init() != 0) {
         logger_error("main", "Failed to initialize envelope dispatcher");
+        config_free(&config);
         return 1;
     }
     
     if (initialize_storage(&config, &paths, db_path, sizeof(db_path)) != 0) {
         envelope_dispatcher_cleanup();
+        config_free(&config);
         return 1;
     }
     
-    if (start_gossip_service(config.gossip_port) != 0) {
+    if (start_gossip_service(config.gossip_port, &validation_config) != 0) {
         stop_gossip_service();
         envelope_dispatcher_cleanup();
         db_close();
+        config_free(&config);
         return 1;
     }
     
-    if (start_http_api(config.api_port) != 0) {
+    if (start_http_api(config.api_port, &validation_config) != 0) {
         logger_error("main", "Failed to start HTTP API on port %u", config.api_port);
         stop_gossip_service();
         envelope_dispatcher_cleanup();
         db_close();
+        config_free(&config);
         return 1;
     }
     
     printf("=================================================================\n");
     printf("🚀 TinyWeb Gossip Node Online\n");
     printf("=================================================================\n");
-    printf("  Node ID:           %u\n", config.node_id);
+    printf("  Node ID:           %s\n", config.node_id);
+    printf("  Node Name:         %s\n", config.node_name);
     printf("  Gossip UDP Port:   %u\n", config.gossip_port);
     printf("  HTTP API Port:     %u\n", config.api_port);
     printf("  Storage Path:      %s\n", db_path);
@@ -374,6 +468,7 @@ int main(int argc, char* argv[]) {
         db_close();
     }
 
+    config_free(&config);
     logger_cleanup();
     printf("Shutdown complete. Goodbye!\n");
     return 0;

@@ -637,7 +637,7 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     return 0;
 }
 
-int initialize_network(const InitNetworkConfig* config, const char* base_path) {
+int initialize_network(const InitNetworkConfig* config, const char* base_path, const char* original_config_path) {
     if (!config || !base_path) {
         fprintf(stderr, "Invalid arguments to initialize_network\n");
         return -1;
@@ -655,12 +655,152 @@ int initialize_network(const InitNetworkConfig* config, const char* base_path) {
     // Initialize each node
     for (uint32_t i = 0; i < config->node_count; ++i) {
         if (initialize_node(&config->nodes[i], config->users, config->user_count, base_path) != 0) {
-            fprintf(stderr, "Failed to initialize node %u\n", i);
+            logger_error("init", "Failed to initialize node %u", i);
             return -1;
+        }
+        
+        // Save network config to node's directory
+        char node_path[PATH_MAX];
+        snprintf(node_path, sizeof(node_path), "%s/%s", base_path, config->nodes[i].id);
+        if (init_save_node_config(original_config_path, config, &config->nodes[i], node_path) != 0) {
+            logger_error("init", "Failed to save config for node %s", config->nodes[i].id);
+            // Non-fatal, continue
         }
     }
 
     printf("Network initialization complete. %u node(s), %u user(s) configured.\n",
            config->node_count, config->user_count);
+    return 0;
+}
+
+// Save network config JSON to node's directory
+// This saves the complete network_config.json (including all network-level settings)
+// to each node's directory so the node can load its config at runtime
+int init_save_node_config(const char* original_config_path, const InitNetworkConfig* network_config, const InitNodeConfig* node, const char* node_path) {
+    if (!network_config || !node || !node_path) {
+        logger_error("init", "Invalid arguments to init_save_node_config");
+        return -1;
+    }
+    
+    // Build path: node_path/network_config.json
+    char config_path[PATH_MAX];
+    snprintf(config_path, sizeof(config_path), "%s/network_config.json", node_path);
+    
+    // Ensure node directory exists
+    if (ensure_directory(node_path) != 0) {
+        logger_error("init", "Failed to create node directory: %s", node_path);
+        return -1;
+    }
+    
+    // If we have the original config file path, copy it directly (preserves all settings)
+    if (original_config_path) {
+        FILE* src = fopen(original_config_path, "r");
+        if (src) {
+            FILE* dst = fopen(config_path, "w");
+            if (dst) {
+                char buffer[4096];
+                size_t bytes;
+                while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+                    fwrite(buffer, 1, bytes, dst);
+                }
+                fclose(dst);
+                fclose(src);
+                logger_info("init", "Saved full network config to %s", config_path);
+                return 0;
+            }
+            fclose(src);
+            logger_error("init", "Failed to create config file: %s", config_path);
+            return -1;
+        }
+        // If original file doesn't exist, fall through to reconstruction
+        logger_error("init", "Original config file not found: %s, reconstructing", original_config_path);
+    }
+    
+    // Fallback: Reconstruct the full JSON from the parsed structure
+    // This ensures all network-level settings are included
+    FILE* f = fopen(config_path, "w");
+    if (!f) {
+        logger_error("init", "Failed to create config file: %s", config_path);
+        return -1;
+    }
+    
+    // Write complete network config JSON
+    fprintf(f, "{\n");
+    
+    // Network section
+    fprintf(f, "  \"network\": {\n");
+    if (network_config->network_name) {
+        fprintf(f, "    \"name\": \"%s\",\n", network_config->network_name);
+    }
+    if (network_config->network_description) {
+        fprintf(f, "    \"description\": \"%s\",\n", network_config->network_description);
+    }
+    if (network_config->base_port > 0) {
+        fprintf(f, "    \"base_port\": %u,\n", network_config->base_port);
+    }
+    fprintf(f, "    \"max_connections\": 10,\n");
+    
+    // Network-level settings with defaults (these should come from the original JSON)
+    fprintf(f, "    \"validation\": {\n");
+    fprintf(f, "      \"max_clock_skew_seconds\": 300,\n");
+    fprintf(f, "      \"message_ttl_seconds\": 2592000,\n");
+    fprintf(f, "      \"max_payload_bytes\": 1048576\n");
+    fprintf(f, "    },\n");
+    
+    fprintf(f, "    \"logging\": {\n");
+    fprintf(f, "      \"level\": \"INFO\",\n");
+    fprintf(f, "      \"to_file\": false,\n");
+    fprintf(f, "      \"file_path\": \"logs/tinyweb.log\"\n");
+    fprintf(f, "    },\n");
+    
+    fprintf(f, "    \"network_error_handling\": {\n");
+    fprintf(f, "      \"max_retries\": 3,\n");
+    fprintf(f, "      \"initial_delay_ms\": 100,\n");
+    fprintf(f, "      \"backoff_multiplier\": 2.0,\n");
+    fprintf(f, "      \"max_delay_ms\": 5000\n");
+    fprintf(f, "    }\n");
+    fprintf(f, "  },\n");
+    
+    // Nodes array (include all nodes so peers can be discovered)
+    fprintf(f, "  \"nodes\": [\n");
+    for (uint32_t i = 0; i < network_config->node_count; ++i) {
+        const InitNodeConfig* n = &network_config->nodes[i];
+        fprintf(f, "    {\n");
+        if (n->id) fprintf(f, "      \"id\": \"%s\",\n", n->id);
+        if (n->name) fprintf(f, "      \"name\": \"%s\",\n", n->name);
+        if (n->type) fprintf(f, "      \"type\": \"%s\",\n", n->type);
+        if (n->hostname) fprintf(f, "      \"hostname\": \"%s\",\n", n->hostname);
+        fprintf(f, "      \"gossip_port\": %u,\n", n->gossip_port);
+        fprintf(f, "      \"api_port\": %u", n->api_port);
+        if (n->peers && n->peer_count > 0) {
+            fprintf(f, ",\n      \"peers\": [\n");
+            for (uint32_t p = 0; p < n->peer_count; ++p) {
+                fprintf(f, "        \"%s\"", n->peers[p]);
+                if (p < n->peer_count - 1) fprintf(f, ",");
+                fprintf(f, "\n");
+            }
+            fprintf(f, "      ]");
+        }
+        if (n->tags) {
+            fprintf(f, ",\n      \"tags\": \"%s\"", n->tags);
+        }
+        fprintf(f, "\n    }");
+        if (i < network_config->node_count - 1) fprintf(f, ",");
+        fprintf(f, "\n");
+    }
+    fprintf(f, "  ]\n");
+    
+    // Users section (optional, but include if present)
+    if (network_config->users && network_config->user_count > 0) {
+        fprintf(f, ",\n  \"users\": {\n");
+        fprintf(f, "    \"admins\": [],\n");
+        fprintf(f, "    \"members\": []\n");
+        fprintf(f, "  }\n");
+    }
+    
+    fprintf(f, "}\n");
+    fclose(f);
+    
+    logger_info("init", "Reconstructed and saved network config to %s", config_path);
     return 0;
 }
