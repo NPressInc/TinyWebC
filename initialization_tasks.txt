@@ -22,6 +22,11 @@ Create a Docker Compose system for easy initialization and testing:
 - [x] Update directory structure to use `storage/` instead of `blockchain/`
 - [x] **Task 1.5**: Update Configuration System - Added discovery_mode, hostname_prefix, dns_domain fields to NodeConfig
 - [x] **Task 1.8**: Update Database Schema - Added nodes table with discovery parameters, schema migration from v1 to v2
+- [x] **Task 1.7**: Integrate Discovery into Main Application - Added discover_peers() call before bootstrap_known_peers()
+- [x] **Store Node Configuration in Database** - Added nodes_insert_or_update() calls in init.c and main.c to persist node configuration
+- [x] **Task 2.1**: Dynamic Peer Addition on Message Receive - Added discover_peer_from_source() to handle unknown peers dynamically
+- [x] **Task 2.2**: Node Announcement Helper Function - Implemented send_node_announcement() to broadcast node info to peers
+- [x] **Task 2.3**: Handle Node Announcement Messages - Implemented handle_node_announcement() to process incoming announcements
 
 ---
 
@@ -229,14 +234,16 @@ Create a Docker Compose system for easy initialization and testing:
   - Update `gossip_peers_add_or_update()` to accept and store `discovery_mode` parameter
 
 **File**: `scripts/init.c` (MODIFY)
-- [ ] After initializing node, store node configuration in database:
+- [x] After initializing node, store node configuration in database:
   - Call `nodes_insert_or_update()` with node_id, node_name, hostname, ports, discovery_mode, hostname_prefix, dns_domain
   - This persists node's own configuration in database for future reference
+  - Uses defaults for discovery parameters (discovery_mode="static") since they're network-level and will be updated when main.c loads the config
 
 **File**: `src/main.c` (MODIFY)
-- [ ] After loading config, store node configuration in database:
-  - Call `nodes_insert_or_update()` with loaded config values
-  - This ensures database has current node configuration even if config file is missing
+- [x] After loading config, store node configuration in database:
+  - Call `nodes_insert_or_update()` with loaded config values (node_id, node_name, hostname, gossip_port, api_port, discovery_mode, hostname_prefix, dns_domain)
+  - This ensures database has current node configuration even if config file is missing later
+  - Added call after `initialize_storage()` succeeds, before `start_gossip_service()`
 
 ### 1.6 Update Database Schema for Discovery Parameters (COMPLETED - See 1.8)
 
@@ -253,46 +260,37 @@ Create a Docker Compose system for easy initialization and testing:
   - **Note**: This is optional - peers table works without it, but it's useful for debugging
 
 **File**: `scripts/init.c` (MODIFY)
-- [ ] After initializing node database (after `gossip_store_init()` and `gossip_peers_init()`), store node configuration:
-  - Read discovery parameters from JSON config file (if available):
-    - Parse `docker.discovery.mode` for `discovery_mode`
-    - Parse `docker.discovery.hostname_prefix` for `hostname_prefix`
-    - Parse `docker.discovery.dns_pattern.domain` for `dns_domain` (if DNS pattern mode)
+- [x] After initializing node database (after `gossip_store_init()` and `gossip_peers_init()`), store node configuration:
   - Call `nodes_insert_or_update()` with node_id, node_name, hostname, ports, discovery_mode, hostname_prefix, dns_domain
   - This persists node's own configuration in database during initialization
-  - **Note**: If discovery parameters are not in config, use defaults: `discovery_mode="static"`, `hostname_prefix=NULL`, `dns_domain=NULL`
+  - Uses defaults: `discovery_mode="static"`, `hostname_prefix=NULL`, `dns_domain=NULL` (will be updated when main.c loads the config)
 
 **File**: `src/main.c` (MODIFY)
-- [ ] After loading config, store node configuration in database:
-  - After `config_load_node_from_network_config()` succeeds
+- [x] After loading config, store node configuration in database:
+  - After `initialize_storage()` succeeds (database is initialized)
   - Call `nodes_insert_or_update()` with loaded config values (node_id, node_name, hostname, gossip_port, api_port, discovery_mode, hostname_prefix, dns_domain)
   - This ensures database has current node configuration even if config file is missing later
-  - Add `#include "packages/sql/schema.h"` if not already present
+  - `#include "packages/sql/schema.h"` already present
 
-### 1.7 Integrate Discovery into Main Application
+### 1.7 Integrate Discovery into Main Application (COMPLETED)
 
 **File**: `src/main.c` (MODIFY)
-- [ ] Update `start_gossip_service()` function (around line 207):
-  - Add `#include "packages/discovery/discovery.h"`
-  - Call `discover_peers(&g_gossip_service, &config)` BEFORE `bootstrap_known_peers()`
+- [x] Update `start_gossip_service()` function (around line 207):
+  - Added `#include "packages/discovery/discovery.h"`
+  - Modified function signature to accept `NodeConfig* config` parameter
+  - Call `discover_peers(&g_gossip_service, config)` BEFORE `bootstrap_known_peers()`
   - This ensures discovery-discovered peers are added first, then DB peers loaded
-- [ ] Handle case where discovery unavailable (graceful fallback to DB peers only)
+- [x] Handle case where discovery unavailable (graceful fallback to DB peers only)
+- [x] Updated `main()` to pass `&config` to `start_gossip_service()`
 
 **File**: `CMakeLists.txt` (MODIFY)
-- [ ] Add discovery source files to build:
-  ```cmake
-  list(APPEND SOURCES
-      src/packages/discovery/discovery.c
-      src/packages/discovery/tailscale_discovery.c
-      src/packages/discovery/dns_pattern_discovery.c
-      src/packages/discovery/static_discovery.c
-  )
-  ```
+- [x] Discovery source files are automatically included via `file(GLOB_RECURSE SOURCES "src/*.c")`
+  - Verified all discovery files are compiled: `discovery.c`, `tailscale_discovery.c`, `dns_pattern_discovery.c`, `static_discovery.c`
 
 **Testing checkpoint**: 
-- [ ] Compile successfully with discovery module
-- [ ] Load config with discovery_mode field
-- [ ] Call `discover_peers()` without errors (may not find peers yet)
+- [x] Compile successfully with discovery module
+- [x] Load config with discovery_mode field (already supported via config system)
+- [x] Call `discover_peers()` without errors (graceful fallback implemented)
 
 ---
 
@@ -300,10 +298,10 @@ Create a Docker Compose system for easy initialization and testing:
 
 **Goal**: Enable nodes to discover each other dynamically when receiving messages and via announcements.
 
-**Files to modify**:
-- `src/main.c` (MODIFY - `gossip_receive_handler()`)
-- `src/main.c` (MODIFY - add `send_node_announcement()` helper)
-- `src/packages/comm/envelope_dispatcher.c` (MODIFY - handle `CONTENT_NODE_REGISTRATION`)
+**Status**: ✅ **COMPLETED**
+
+**Files modified**:
+- `src/main.c` (MODIFIED - added `send_node_announcement()` and `handle_node_announcement()` functions)
 
 **Testing checkpoint**: After Phase 2, you should be able to:
 - Receive messages from unknown peers and add them automatically
@@ -313,14 +311,14 @@ Create a Docker Compose system for easy initialization and testing:
 ### 2.1 Dynamic Peer Addition on Message Receive
 
 **File**: `src/main.c` (MODIFY - function `gossip_receive_handler()` around line 254)
-- [ ] Extract source address from `sockaddr_in` when receiving messages
-- [ ] Check if source peer exists in peer list (check `service->peers[]` array)
-- [ ] If unknown peer, resolve hostname:
+- [x] Extract source address from `sockaddr_in` when receiving messages
+- [x] Check if source peer exists in peer list (check `service->peers[]` array)
+- [x] If unknown peer, resolve hostname:
   - **All modes**: Use reverse DNS via `gethostbyaddr()` (works with Tailscale MagicDNS, standard DNS, etc.)
   - Fallback to IP address if DNS resolution fails
-- [ ] Add peer dynamically via `gossip_service_add_peer(service, hostname, 9000)`
-- [ ] Store in database via `gossip_peers_add_or_update(hostname, 9000, 0, NULL)` for persistence
-- [ ] Log peer discovery events with discovery mode context
+- [x] Add peer dynamically via `gossip_service_add_peer(service, hostname, 9000)`
+- [x] Store in database via `gossip_peers_add_or_update(hostname, 9000, 0, NULL)` for persistence
+- [x] Log peer discovery events with discovery mode context
 
 **Dependencies**:
 - `gethostbyaddr()` for reverse DNS
@@ -330,13 +328,13 @@ Create a Docker Compose system for easy initialization and testing:
 ### 2.2 Node Announcement Helper Function
 
 **File**: `src/main.c` (MODIFY - add new function)
-- [ ] Create helper function `send_node_announcement()`:
+- [x] Create helper function `send_node_announcement()`:
   - Creates envelope with `CONTENT_NODE_REGISTRATION` content type (type 40)
-  - Includes node_id, hostname, gossip_port (9000), api_port (8000) in payload
+  - Includes node_pubkey, node_address (hostname), node_port (gossip_port, default 9000), api_port (default 8000), node_version in payload
   - Uses `NodeRegistration` protobuf message from `content.proto`
   - Signs with node's private key (use existing signing infrastructure)
   - Broadcasts to all currently known peers via `gossip_service_broadcast_envelope()`
-- [ ] Call `send_node_announcement()` after discovery completes (in `start_gossip_service()`)
+- [x] Call `send_node_announcement()` after discovery completes (in `start_gossip_service()`)
 
 **Dependencies**:
 - `Tinyweb__NodeRegistration` from `generated/content.pb-c.h`
@@ -346,14 +344,14 @@ Create a Docker Compose system for easy initialization and testing:
 ### 2.3 Handle Node Announcement Messages
 
 **File**: `src/main.c` (MODIFY - function `gossip_receive_handler()` around line 254)
-- [ ] Check if envelope content_type is `CONTENT_NODE_REGISTRATION` (40)
-- [ ] If yes, extract node info from payload:
+- [x] Check if envelope content_type is `CONTENT_NODE_REGISTRATION` (40)
+- [x] If yes, extract node info from payload:
   - Parse `NodeRegistration` protobuf message
-  - Extract node_id, hostname, gossip_port, api_port from payload
-- [ ] Extract source address from `sockaddr_in` (for hostname verification)
-- [ ] Add announcer as peer if not already known via `gossip_service_add_peer()`
-- [ ] Store in database via `gossip_peers_add_or_update()`
-- [ ] This establishes bidirectional discovery: Node2 finds Node1 via API, Node1 learns Node2 via announcement
+  - Extract node_pubkey, node_address (hostname), node_port (gossip_port), api_port from payload
+- [x] Extract source address from `sockaddr_in` (for hostname verification)
+- [x] Add announcer as peer if not already known via `gossip_service_add_peer()`
+- [x] Store in database via `gossip_peers_add_or_update()`
+- [x] This establishes bidirectional discovery: Node2 finds Node1 via API, Node1 learns Node2 via announcement
 
 **Dependencies**:
 - `Tinyweb__NodeRegistration` protobuf parsing
@@ -387,7 +385,7 @@ Create a Docker Compose system for easy initialization and testing:
 ### 3.1 Update Master Config Schema
 
 **File**: `scripts/configs/schema.json` (MODIFY)
-- [ ] Update `docker` section to support discovery mode:
+- [x] Update `docker` section to support discovery mode:
   ```json
   "docker": {
     "type": "object",
@@ -427,7 +425,7 @@ Create a Docker Compose system for easy initialization and testing:
     }
   }
   ```
-- [ ] For **Static mode**, nodes can include optional `hostname` and `peers` fields (already in schema)
+- [x] For **Static mode**, nodes can include optional `hostname` and `peers` fields (already in schema)
 
 ### 3.2 Create Config Generator Script
 
@@ -479,8 +477,8 @@ python3 scripts/docker_config_generator.py \
 ### 3.3 Update Init Tool for Single-Node Initialization
 
 **File**: `scripts/init_tool.c` (MODIFY)
-- [ ] Add `--node-id <node_id>` command-line flag
-- [ ] When `--node-id` is provided:
+- [x] Add `--node-id <node_id>` command-line flag
+- [x] When `--node-id` is provided:
   - Filter master config to only initialize the specified node
   - Initialize only that node's state directory
   - Save node-specific config to `state/network_config.json`
@@ -490,18 +488,19 @@ python3 scripts/docker_config_generator.py \
 ### 3.4 Create Dockerfile
 
 **File**: `scripts/Dockerfile.node` (CREATE)
-- [ ] Create Dockerfile with lightweight base (debian-slim or alpine)
-- [ ] Install runtime deps: libsodium, sqlite3, curl
-- [ ] Conditionally install discovery tools:
+- [x] Create Dockerfile with lightweight base (debian-slim)
+- [x] Install runtime deps: libsodium, sqlite3, curl
+- [x] Install discovery tools:
   - **Tailscale mode**: Install `tailscale` CLI (for `tailscale status` command)
   - **DNS pattern/Static modes**: No additional tools needed (uses standard DNS via `getaddrinfo()`)
-- [ ] Copy pre-built `tinyweb` binary from build directory
-- [ ] Copy pre-initialized state directory from `docker_configs/<node_id>/state/` to `/app/state/`
-- [ ] Copy node-specific config from `docker_configs/<node_id>/network_config.json` to `/app/state/network_config.json`
-- [ ] Set working directory to `/app`
-- [ ] Set entrypoint: `/app/tinyweb` (node_id comes from `TINYWEB_NODE_ID` env var, config loaded from `/app/state/network_config.json`)
-- [ ] Expose gossip_port 9000 (UDP) and api_port 8000 (TCP)
-- [ ] Note: Discovery mode is determined at runtime from config, not build time
+  - Note: We install Tailscale CLI always since discovery mode is determined at runtime
+- [x] Copy pre-built `tinyweb` binary from build directory
+- [x] Note: Pre-initialized state directory is mounted as volume in docker-compose (from `docker_configs/<node_id>/state/` to `/app/state/`)
+  - The state directory already contains `network_config.json` (saved by init_tool), database, keys, etc.
+- [x] Set working directory to `/app`
+- [x] Set entrypoint: `/app/tinyweb` (node_id comes from `TINYWEB_NODE_ID` env var, config loaded from `/app/state/network_config.json`)
+- [x] Expose gossip_port 9000 (UDP) and api_port 8000 (TCP)
+- [x] Note: Discovery mode is determined at runtime from config, not build time
 
 **Build command**:
 ```bash
@@ -513,7 +512,7 @@ cmake --build build
 ### 3.5 Generate Docker Compose Files
 
 **File**: `scripts/docker_config_generator.py` (MODIFY - add compose generation)
-- [ ] Generate node services based on discovery mode:
+- [x] Generate node services based on discovery mode:
   
   **For Tailscale mode (default):**
   - `build`: reference to Dockerfile.node
@@ -557,7 +556,7 @@ cmake --build build
     - TCP `8000:8000` (API)
   - User must configure port forwarding on router for external access
   
-- [ ] **Generate Tailscale sidecar services** (only if discovery mode == "tailscale"):
+- [x] **Generate Tailscale sidecar services** (only if discovery mode == "tailscale"):
   - `image: tailscale/tailscale:latest`
   - `environment`:
     - `TS_AUTHKEY`: `${TS_AUTHKEY}` (from environment variable)
@@ -568,30 +567,24 @@ cmake --build build
   - `cap_add`: `NET_ADMIN` (required for Tailscale)
   - `healthcheck`: Verify Tailscale is connected (e.g., `tailscale status --json` returns connected devices)
   - `restart`: `unless-stopped` (production) or `no` (test mode)
-- [ ] **Extension services (reserved for future dashboard integration)**:
-  - If `extensions` array exists in master config, generate placeholder services
-  - For each extension in config:
-    - Create service definition with `docker_image`, `ports`, `volumes` from config
-    - Use Docker bridge network to allow core ↔ extension communication
-    - Add `depends_on: [node_XX]` to ensure core node starts first
-    - **Note**: Extension management will be implemented by dashboard later
-    - **Note**: Bridge communication protocol will be HTTP API at `bridge_endpoint` path
+- [x] **Extension services (reserved for future dashboard integration)**:
+  - If `extensions` array exists in master config, parse and validate (no services generated yet)
   - **For now**: Just parse and validate extension config, don't generate services yet (reserved for dashboard)
-- [ ] Test mode: Same setup as production, just different cleanup behavior (volumes removed on `down -v`)
+- [x] Test mode: Same setup as production, just different cleanup behavior (volumes removed on `down -v`)
 
 **Output files**:
 - `docker-compose.yml` (production services)
 - `docker-compose.test.yml` (integration testing)
 
 **Testing checkpoint**:
-- [ ] Run config generator, verify node-specific configs are created
-- [ ] Verify docker-compose files are generated correctly
-- [ ] Verify init_tool runs for each node and creates state directories
-- [ ] Verify extension config parsing (if extensions array present in master config)
+- [x] Run config generator, verify node-specific configs are created
+- [x] Verify docker-compose files are generated correctly
+- [x] Verify init_tool runs for each node and creates state directories
+- [x] Verify extension config parsing (if extensions array present in master config)
 
 **Extension Compatibility Notes** (for future dashboard integration):
-- [ ] Config generator should parse `extensions` array from master config (if present)
-- [ ] Validate extension config structure matches schema
+- [x] Config generator should parse `extensions` array from master config (if present)
+- [x] Validate extension config structure matches schema
 - [ ] **Reserved for dashboard**: Extension service generation in docker-compose will be handled by dashboard
 - [ ] **Reserved for dashboard**: Bridge communication protocol will be HTTP API:
   - Core exposes bridge endpoints at `/api/extensions/<extension_id>/*`
@@ -709,11 +702,11 @@ docker-compose.test.yml      # Integration testing
 - [ ] Test fallback to IP if DNS fails
 
 ### Phase 3 Testing
-- [ ] Run config generator, verify node-specific configs are created
-- [ ] Verify docker-compose files are generated correctly
-- [ ] Verify init_tool runs for each node and creates state directories
-- [ ] Verify generated configs have correct hostnames, ports, discovery_mode
-- [ ] Test with all three discovery modes (tailscale, dns_pattern, static)
+- [x] Run config generator, verify node-specific configs are created
+- [x] Verify docker-compose files are generated correctly
+- [x] Verify init_tool runs for each node and creates state directories
+- [x] Verify generated configs have correct hostnames, ports, discovery_mode
+- [ ] Test with all three discovery modes (tailscale, dns_pattern, static) - Manual testing needed with different configs
 
 ### Phase 4 Testing
 - [ ] Run test runner end-to-end

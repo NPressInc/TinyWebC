@@ -1,0 +1,57 @@
+# Dockerfile for TinyWeb Node
+# Builds a containerized TinyWeb gossip node with pre-initialized state
+
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libsodium23 \
+        sqlite3 \
+        curl \
+        ca-certificates \
+        && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Tailscale CLI (for discovery mode)
+# Note: Discovery mode is determined at runtime from config, but we install
+# Tailscale CLI to support tailscale discovery mode
+RUN curl -fsSL https://tailscale.com/install.sh | sh && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy pre-built tinyweb binary
+# The binary should be built before building the Docker image:
+#   cmake -S . -B build
+#   cmake --build build
+COPY build/tinyweb /app/tinyweb
+RUN chmod +x /app/tinyweb
+
+# Note: Pre-initialized state directory should be mounted as a volume
+# in docker-compose.yml from docker_configs/<node_id>/state/ to /app/state/
+# This allows state to persist across container restarts
+# The state directory contains:
+#   - network_config.json (node-specific config)
+#   - storage/tinyweb.db (SQLite database)
+#   - keys/ (user keypairs)
+#   - etc.
+
+# Set working directory
+WORKDIR /app
+
+# Expose ports
+# 9000: UDP gossip port
+# 8000: TCP HTTP API port
+EXPOSE 9000/udp 8000/tcp
+
+# Set entrypoint
+# node_id comes from TINYWEB_NODE_ID env var (e.g., "1" for node_01)
+# tinyweb reads TINYWEB_NODE_ID from environment if --id is not provided
+# config is automatically loaded from /app/state/network_config.json
+# The TINYWEB_NODE_ID should be set in docker-compose.yml environment
+ENTRYPOINT ["/app/tinyweb"]
+# No CMD needed - tinyweb will read TINYWEB_NODE_ID from environment
+# Or docker-compose can override with: command: ["--id", "1"]
+

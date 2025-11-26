@@ -368,7 +368,14 @@ struct  Tinyweb__NodeRegistration
    * IP or DNS
    */
   char *node_address;
+  /*
+   * Gossip port (default: 9000)
+   */
   uint32_t node_port;
+  /*
+   * HTTP API port (default: 8000)
+   */
+  uint32_t api_port;
   char *node_version;
   /*
    * Optional: proof of stake/commitment
@@ -377,7 +384,7 @@ struct  Tinyweb__NodeRegistration
 };
 #define TINYWEB__NODE_REGISTRATION__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&tinyweb__node_registration__descriptor) \
-    , {0,NULL}, (char *)protobuf_c_empty_string, 0, (char *)protobuf_c_empty_string, {0,NULL} }
+    , {0,NULL}, (char *)protobuf_c_empty_string, 0, 0, (char *)protobuf_c_empty_string, {0,NULL} }
 
 
 struct  Tinyweb__SystemConfig

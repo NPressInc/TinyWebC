@@ -1,0 +1,10 @@
+{
+  "id": "node_01",
+  "name": "Family Node 1",
+  "hostname": "tw_node01",
+  "gossip_port": 9000,
+  "api_port": 8000,
+  "discovery_mode": "tailscale",
+  "peers": [],
+  "hostname_prefix": "tw_node"
+}

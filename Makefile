@@ -466,6 +466,114 @@ src/packages/comm/httpClient.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.s
 .PHONY : src/packages/comm/httpClient.c.s
 
+src/packages/discovery/discovery.o: src/packages/discovery/discovery.c.o
+.PHONY : src/packages/discovery/discovery.o
+
+# target to build an object file
+src/packages/discovery/discovery.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/discovery.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/discovery.c.o
+.PHONY : src/packages/discovery/discovery.c.o
+
+src/packages/discovery/discovery.i: src/packages/discovery/discovery.c.i
+.PHONY : src/packages/discovery/discovery.i
+
+# target to preprocess a source file
+src/packages/discovery/discovery.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/discovery.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/discovery.c.i
+.PHONY : src/packages/discovery/discovery.c.i
+
+src/packages/discovery/discovery.s: src/packages/discovery/discovery.c.s
+.PHONY : src/packages/discovery/discovery.s
+
+# target to generate assembly for a file
+src/packages/discovery/discovery.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/discovery.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/discovery.c.s
+.PHONY : src/packages/discovery/discovery.c.s
+
+src/packages/discovery/dns_pattern_discovery.o: src/packages/discovery/dns_pattern_discovery.c.o
+.PHONY : src/packages/discovery/dns_pattern_discovery.o
+
+# target to build an object file
+src/packages/discovery/dns_pattern_discovery.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/dns_pattern_discovery.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/dns_pattern_discovery.c.o
+.PHONY : src/packages/discovery/dns_pattern_discovery.c.o
+
+src/packages/discovery/dns_pattern_discovery.i: src/packages/discovery/dns_pattern_discovery.c.i
+.PHONY : src/packages/discovery/dns_pattern_discovery.i
+
+# target to preprocess a source file
+src/packages/discovery/dns_pattern_discovery.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/dns_pattern_discovery.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/dns_pattern_discovery.c.i
+.PHONY : src/packages/discovery/dns_pattern_discovery.c.i
+
+src/packages/discovery/dns_pattern_discovery.s: src/packages/discovery/dns_pattern_discovery.c.s
+.PHONY : src/packages/discovery/dns_pattern_discovery.s
+
+# target to generate assembly for a file
+src/packages/discovery/dns_pattern_discovery.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/dns_pattern_discovery.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/dns_pattern_discovery.c.s
+.PHONY : src/packages/discovery/dns_pattern_discovery.c.s
+
+src/packages/discovery/static_discovery.o: src/packages/discovery/static_discovery.c.o
+.PHONY : src/packages/discovery/static_discovery.o
+
+# target to build an object file
+src/packages/discovery/static_discovery.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/static_discovery.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/static_discovery.c.o
+.PHONY : src/packages/discovery/static_discovery.c.o
+
+src/packages/discovery/static_discovery.i: src/packages/discovery/static_discovery.c.i
+.PHONY : src/packages/discovery/static_discovery.i
+
+# target to preprocess a source file
+src/packages/discovery/static_discovery.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/static_discovery.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/static_discovery.c.i
+.PHONY : src/packages/discovery/static_discovery.c.i
+
+src/packages/discovery/static_discovery.s: src/packages/discovery/static_discovery.c.s
+.PHONY : src/packages/discovery/static_discovery.s
+
+# target to generate assembly for a file
+src/packages/discovery/static_discovery.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/static_discovery.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/static_discovery.c.s
+.PHONY : src/packages/discovery/static_discovery.c.s
+
+src/packages/discovery/tailscale_discovery.o: src/packages/discovery/tailscale_discovery.c.o
+.PHONY : src/packages/discovery/tailscale_discovery.o
+
+# target to build an object file
+src/packages/discovery/tailscale_discovery.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/tailscale_discovery.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/tailscale_discovery.c.o
+.PHONY : src/packages/discovery/tailscale_discovery.c.o
+
+src/packages/discovery/tailscale_discovery.i: src/packages/discovery/tailscale_discovery.c.i
+.PHONY : src/packages/discovery/tailscale_discovery.i
+
+# target to preprocess a source file
+src/packages/discovery/tailscale_discovery.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/tailscale_discovery.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/tailscale_discovery.c.i
+.PHONY : src/packages/discovery/tailscale_discovery.c.i
+
+src/packages/discovery/tailscale_discovery.s: src/packages/discovery/tailscale_discovery.c.s
+.PHONY : src/packages/discovery/tailscale_discovery.s
+
+# target to generate assembly for a file
+src/packages/discovery/tailscale_discovery.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/discovery/tailscale_discovery.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/discovery/tailscale_discovery.c.s
+.PHONY : src/packages/discovery/tailscale_discovery.c.s
+
 src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
 .PHONY : src/packages/encryption/encryption.o
 
@@ -970,6 +1078,30 @@ src/tests/api_protobuf_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/api_protobuf_test.c.s
 .PHONY : src/tests/api_protobuf_test.c.s
 
+src/tests/discovery_test.o: src/tests/discovery_test.c.o
+.PHONY : src/tests/discovery_test.o
+
+# target to build an object file
+src/tests/discovery_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/discovery_test.c.o
+.PHONY : src/tests/discovery_test.c.o
+
+src/tests/discovery_test.i: src/tests/discovery_test.c.i
+.PHONY : src/tests/discovery_test.i
+
+# target to preprocess a source file
+src/tests/discovery_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/discovery_test.c.i
+.PHONY : src/tests/discovery_test.c.i
+
+src/tests/discovery_test.s: src/tests/discovery_test.c.s
+.PHONY : src/tests/discovery_test.s
+
+# target to generate assembly for a file
+src/tests/discovery_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/discovery_test.c.s
+.PHONY : src/tests/discovery_test.c.s
+
 src/tests/encryption_test.o: src/tests/encryption_test.c.o
 .PHONY : src/tests/encryption_test.o
 
@@ -1328,6 +1460,18 @@ help:
 	@echo "... src/packages/comm/httpClient.o"
 	@echo "... src/packages/comm/httpClient.i"
 	@echo "... src/packages/comm/httpClient.s"
+	@echo "... src/packages/discovery/discovery.o"
+	@echo "... src/packages/discovery/discovery.i"
+	@echo "... src/packages/discovery/discovery.s"
+	@echo "... src/packages/discovery/dns_pattern_discovery.o"
+	@echo "... src/packages/discovery/dns_pattern_discovery.i"
+	@echo "... src/packages/discovery/dns_pattern_discovery.s"
+	@echo "... src/packages/discovery/static_discovery.o"
+	@echo "... src/packages/discovery/static_discovery.i"
+	@echo "... src/packages/discovery/static_discovery.s"
+	@echo "... src/packages/discovery/tailscale_discovery.o"
+	@echo "... src/packages/discovery/tailscale_discovery.i"
+	@echo "... src/packages/discovery/tailscale_discovery.s"
 	@echo "... src/packages/encryption/encryption.o"
 	@echo "... src/packages/encryption/encryption.i"
 	@echo "... src/packages/encryption/encryption.s"
@@ -1382,6 +1526,9 @@ help:
 	@echo "... src/tests/api_protobuf_test.o"
 	@echo "... src/tests/api_protobuf_test.i"
 	@echo "... src/tests/api_protobuf_test.s"
+	@echo "... src/tests/discovery_test.o"
+	@echo "... src/tests/discovery_test.i"
+	@echo "... src/tests/discovery_test.s"
 	@echo "... src/tests/encryption_test.o"
 	@echo "... src/tests/encryption_test.i"
 	@echo "... src/tests/encryption_test.s"

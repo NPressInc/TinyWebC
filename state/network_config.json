@@ -1,0 +1,23 @@
+{
+  "network": {
+    "name": "Test Network",
+    "description": "Test network for Phase 1 testing"
+  },
+  "nodes": [
+    {
+      "id": "node_01",
+      "name": "Test Node 1",
+      "hostname": "test-node-01",
+      "gossip_port": 9000,
+      "api_port": 8000,
+      "peers": ["test-node-02:9000", "test-node-03:9000"]
+    }
+  ],
+  "docker": {
+    "mode": "test",
+    "discovery": {
+      "mode": "static",
+      "hostname_prefix": "tw_node"
+    }
+  }
+}

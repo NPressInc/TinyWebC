@@ -206,6 +206,7 @@
     },
     "docker": {
       "type": "object",
+      "required": ["mode", "discovery"],
       "description": "Docker deployment configuration",
       "properties": {
         "mode": {

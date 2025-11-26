@@ -623,6 +623,38 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
         }
     }
 
+    // Store node configuration in database
+    // Use defaults for discovery parameters (they'll be updated when main.c loads the config)
+    const char* discovery_mode = "static";  // Default, will be updated from config at runtime
+    const char* hostname_prefix = NULL;      // Will be updated from config at runtime
+    const char* dns_domain = NULL;           // Will be updated from config at runtime
+    
+    // Use node hostname if available, otherwise construct from node ID
+    char node_hostname[256];
+    if (node->hostname && node->hostname[0] != '\0') {
+        snprintf(node_hostname, sizeof(node_hostname), "%s", node->hostname);
+    } else {
+        // Default hostname format: use node ID as hostname
+        snprintf(node_hostname, sizeof(node_hostname), "%s", node->id ? node->id : "unknown");
+    }
+    
+    // Use default ports if not specified
+    uint16_t gossip_port = node->gossip_port > 0 ? node->gossip_port : 9000;
+    uint16_t api_port = node->api_port > 0 ? node->api_port : 8000;
+    
+    if (nodes_insert_or_update(
+            node->id ? node->id : "unknown",
+            node->name ? node->name : node->id ? node->id : "Unknown Node",
+            node_hostname,
+            gossip_port,
+            api_port,
+            discovery_mode,
+            hostname_prefix,
+            dns_domain) != 0) {
+        logger_info("init", "Failed to store node configuration in database (non-fatal)");
+        // Non-fatal, continue
+    }
+
     db_close();
     printf("Initialized node '%s' in %s\n", node->name ? node->name : node->id, base_path);
     return 0;

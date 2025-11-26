@@ -109,9 +109,10 @@ message EmergencyAlert {
 message NodeRegistration {
   bytes node_pubkey = 1;           // 32 bytes
   string node_address = 2;         // IP or DNS
-  uint32 node_port = 3;
-  string node_version = 4;
-  bytes stake_proof = 5;           // Optional: proof of stake/commitment
+  uint32 node_port = 3;           // Gossip port (default: 9000)
+  uint32 api_port = 4;             // HTTP API port (default: 8000)
+  string node_version = 5;
+  bytes stake_proof = 6;           // Optional: proof of stake/commitment
 }
 
 message SystemConfig {

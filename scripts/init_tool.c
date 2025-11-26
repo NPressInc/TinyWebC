@@ -21,9 +21,13 @@ static void print_usage(const char* program_name) {
     printf("  -h, --help          Show this help message\n");
     printf("  -t, --test          Use test_state/ directory instead of state/\n");
     printf("  -v, --verbose       Enable verbose output\n");
+    printf("  --node-id <id>      Initialize only the specified node (e.g., node_01)\n");
+    printf("                      When provided, only that node's state directory is initialized\n");
+    printf("  --state-dir <dir>   Use custom state directory path (overrides -t/--test)\n");
     printf("\nExample:\n");
     printf("  %s --config scripts/configs/network_config.json\n", program_name);
     printf("  %s --config config.json --test\n", program_name);
+    printf("  %s --config config.json --node-id node_01\n", program_name);
 }
 
 static int parse_json_config(const char* path, InitNetworkConfig* out_config,
@@ -388,18 +392,22 @@ int main(int argc, char* argv[]) {
     int verbose = 0;
     int use_test_state = 0;
     const char* config_path = NULL;
+    const char* node_id_filter = NULL;
+    const char* custom_state_dir = NULL;
 
     static struct option long_opts[] = {
-        {"help",    no_argument,       0, 'h'},
-        {"config",  required_argument, 0, 'c'},
-        {"test",    no_argument,       0, 't'},
-        {"verbose", no_argument,       0, 'v'},
+        {"help",     no_argument,       0, 'h'},
+        {"config",   required_argument, 0, 'c'},
+        {"test",     no_argument,       0, 't'},
+        {"verbose",  no_argument,       0, 'v'},
+        {"node-id",  required_argument, 0, 'n'},
+        {"state-dir", required_argument, 0, 's'},
         {0, 0, 0, 0}
     };
 
     int opt;
     int opt_index = 0;
-    while ((opt = getopt_long(argc, argv, "hc:tv", long_opts, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hc:tvn:s:", long_opts, &opt_index)) != -1) {
         switch (opt) {
             case 'h':
                 print_usage(argv[0]);
@@ -412,6 +420,12 @@ int main(int argc, char* argv[]) {
                 break;
             case 'v':
                 verbose = 1;
+                break;
+            case 'n':
+                node_id_filter = optarg;
+                break;
+            case 's':
+                custom_state_dir = optarg;
                 break;
             default:
                 print_usage(argv[0]);
@@ -439,6 +453,50 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Filter to single node if --node-id is provided
+    if (node_id_filter) {
+        InitNodeConfig* found_node = NULL;
+        for (uint32_t i = 0; i < config.node_count; ++i) {
+            if (nodes[i].id && strcmp(nodes[i].id, node_id_filter) == 0) {
+                found_node = &nodes[i];
+                break;
+            }
+        }
+        
+        if (!found_node) {
+            fprintf(stderr, "Error: node '%s' not found in configuration\n", node_id_filter);
+            free_config(&config, nodes, users);
+            return 1;
+        }
+        
+        // Filter config to only this node
+        // Free other nodes
+        for (uint32_t i = 0; i < config.node_count; ++i) {
+            if (&nodes[i] != found_node) {
+                if (nodes[i].id) free(nodes[i].id);
+                if (nodes[i].name) free(nodes[i].name);
+                if (nodes[i].hostname) free(nodes[i].hostname);
+                if (nodes[i].tags) free(nodes[i].tags);
+                if (nodes[i].peers) {
+                    for (uint32_t j = 0; j < nodes[i].peer_count; ++j) {
+                        if (nodes[i].peers[j]) free(nodes[i].peers[j]);
+                    }
+                    free(nodes[i].peers);
+                }
+            }
+        }
+        
+        // Move found node to first position and update count
+        if (found_node != &nodes[0]) {
+            nodes[0] = *found_node;
+        }
+        config.node_count = 1;
+        
+        if (verbose) {
+            printf("Filtered to single node: %s\n", node_id_filter);
+        }
+    }
+
     if (verbose) {
         printf("Loaded network config from: %s\n", config_path);
         printf("  Network: %s\n", config.network_name ? config.network_name : "(unnamed)");
@@ -446,27 +504,66 @@ int main(int argc, char* argv[]) {
         printf("  Users: %u\n", config.user_count);
     }
 
-    const char* base_path = use_test_state ? DEFAULT_TEST_STATE_PATH : DEFAULT_STATE_PATH;
-    if (use_test_state) {
-        printf("Using test state directory: %s/\n", base_path);
+    const char* base_path;
+    if (custom_state_dir) {
+        base_path = custom_state_dir;
+        if (verbose) {
+            printf("Using custom state directory: %s/\n", base_path);
+        }
+    } else {
+        base_path = use_test_state ? DEFAULT_TEST_STATE_PATH : DEFAULT_STATE_PATH;
+        if (use_test_state) {
+            printf("Using test state directory: %s/\n", base_path);
+        }
     }
 
-    int clean_result = check_and_clean_existing_state(base_path);
-    if (clean_result < 0) {
-        free_config(&config, nodes, users);
-        return 0; // User cancelled intentionally
-    }
+    // For single-node initialization, use base_path directly (not a subdirectory)
+    // For multi-node initialization, each node gets its own subdirectory
+    if (node_id_filter) {
+        // Single node: initialize directly in base_path (e.g., state/)
+        // Don't create node subdirectory - the container expects state/ at root
+        int clean_result = check_and_clean_existing_state(base_path);
+        if (clean_result < 0) {
+            free_config(&config, nodes, users);
+            return 0; // User cancelled intentionally
+        }
 
-    printf("\nInitializing gossip network...\n");
-    if (initialize_network(&config, base_path, config_path) != 0) {
-        fprintf(stderr, "Initialization failed.\n");
-        free_config(&config, nodes, users);
-        return 1;
-    }
+        printf("\nInitializing single node '%s' in %s/\n", node_id_filter, base_path);
+        
+        // Initialize the single node directly
+        if (initialize_node(&nodes[0], users, config.user_count, base_path) != 0) {
+            fprintf(stderr, "Initialization failed.\n");
+            free_config(&config, nodes, users);
+            return 1;
+        }
+        
+        // Save node-specific config to state/network_config.json
+        if (init_save_node_config(config_path, &config, &nodes[0], base_path) != 0) {
+            fprintf(stderr, "Warning: Failed to save node config (non-fatal)\n");
+        }
+        
+        printf("\n✓ Node '%s' is ready in %s/\n", 
+               nodes[0].name ? nodes[0].name : nodes[0].id,
+               base_path);
+    } else {
+        // Multi-node: use existing initialize_network which creates subdirectories
+        int clean_result = check_and_clean_existing_state(base_path);
+        if (clean_result < 0) {
+            free_config(&config, nodes, users);
+            return 0; // User cancelled intentionally
+        }
 
-    printf("\n✓ Network '%s' is ready in %s/\n", 
-           config.network_name ? config.network_name : "TinyWeb",
-           base_path);
+        printf("\nInitializing gossip network...\n");
+        if (initialize_network(&config, base_path, config_path) != 0) {
+            fprintf(stderr, "Initialization failed.\n");
+            free_config(&config, nodes, users);
+            return 1;
+        }
+
+        printf("\n✓ Network '%s' is ready in %s/\n", 
+               config.network_name ? config.network_name : "TinyWeb",
+               base_path);
+    }
     
     free_config(&config, nodes, users);
     return 0;

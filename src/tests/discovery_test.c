@@ -11,8 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <pthread.h>
 
 static int test_discovery_mode_from_string(void) {
@@ -94,13 +92,25 @@ static int test_discover_peers_routing(void) {
 static int test_static_discovery(void) {
     printf("  Testing static discovery...\n");
     
-    // Initialize test database
-    const char* db_path = "test_state/static_discovery_test.db";
-    remove(db_path);
-    mkdir("test_state", 0755);
+    // Use shared test database (already initialized by test_runner)
+    if (!db_is_initialized()) {
+        const char* db_path = test_get_db_path();
+        if (db_init_gossip(db_path) != 0) {
+            printf("    ✗ Failed to initialize database\n");
+            return -1;
+        }
+    }
     
-    assert(db_init_gossip(db_path) == 0);
-    assert(gossip_peers_init() == 0);
+    // Ensure schema is initialized
+    if (gossip_store_init() != 0) {
+        printf("    ✗ Failed to initialize schema\n");
+        return -1;
+    }
+    
+    if (gossip_peers_init() != 0) {
+        printf("    ✗ Failed to initialize gossip peers\n");
+        return -1;
+    }
     
     // Create mock GossipService
     GossipService mock_service;
@@ -138,14 +148,14 @@ static int test_static_discovery(void) {
     GossipPeerInfo* db_peers = NULL;
     size_t db_peer_count = 0;
     assert(gossip_peers_fetch_all(&db_peers, &db_peer_count) == 0);
-    assert(db_peer_count == 3);
+    // Note: db_peer_count may be > 3 if other tests added peers, so we check >= 3
+    assert(db_peer_count >= 3);
     
     // Cleanup
     gossip_peers_free(db_peers, db_peer_count);
     config_free(&config);
     pthread_mutex_destroy(&mock_service.peer_lock);
-    db_close();
-    remove(db_path);
+    // Don't close database - it's shared with other tests
     
     printf("    ✓ Static discovery passed\n");
     return 0;
@@ -154,12 +164,25 @@ static int test_static_discovery(void) {
 static int test_static_discovery_skip_self(void) {
     printf("  Testing static discovery skips self...\n");
     
-    const char* db_path = "test_state/static_discovery_self_test.db";
-    remove(db_path);
-    mkdir("test_state", 0755);
+    // Use shared test database (already initialized by test_runner)
+    if (!db_is_initialized()) {
+        const char* db_path = test_get_db_path();
+        if (db_init_gossip(db_path) != 0) {
+            printf("    ✗ Failed to initialize database\n");
+            return -1;
+        }
+    }
     
-    assert(db_init_gossip(db_path) == 0);
-    assert(gossip_peers_init() == 0);
+    // Ensure schema is initialized
+    if (gossip_store_init() != 0) {
+        printf("    ✗ Failed to initialize schema\n");
+        return -1;
+    }
+    
+    if (gossip_peers_init() != 0) {
+        printf("    ✗ Failed to initialize gossip peers\n");
+        return -1;
+    }
     
     GossipService mock_service;
     memset(&mock_service, 0, sizeof(mock_service));
@@ -186,8 +209,7 @@ static int test_static_discovery_skip_self(void) {
     
     config_free(&config);
     pthread_mutex_destroy(&mock_service.peer_lock);
-    db_close();
-    remove(db_path);
+    // Don't close database - it's shared with other tests
     
     printf("    ✓ Static discovery skip self passed\n");
     return 0;
@@ -350,12 +372,27 @@ static int test_dns_pattern_discovery_missing_config(void) {
 }
 
 int discovery_test_main(void) {
-    printf("\n🔍 Discovery Router Smoke Test\n");
-    printf("==============================\n\n");
+    printf("\n🔍 Discovery Tests\n");
+    printf("==================\n\n");
     
     // Initialize logger (needed for discovery functions)
     if (logger_init() != 0) {
         printf("  ✗ Failed to initialize logger\n");
+        return 1;
+    }
+    
+    // Ensure database is available (should already be initialized by test_runner)
+    if (!db_is_initialized()) {
+        const char* db_path = test_get_db_path();
+        if (db_init_gossip(db_path) != 0) {
+            printf("  ✗ Failed to initialize database\n");
+            return 1;
+        }
+    }
+    
+    // Ensure schema is initialized
+    if (gossip_store_init() != 0) {
+        printf("  ✗ Failed to initialize schema\n");
         return 1;
     }
     

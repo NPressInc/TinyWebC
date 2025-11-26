@@ -298,6 +298,17 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                 mg_http_reply(c, 405, "Content-Type: application/json\r\n",
                               "{\"error\":\"Method Not Allowed\"}");
             }
+        } else if (mg_strcmp(hm->uri, mg_str("/health")) == 0) {
+            // Health check endpoint for Docker healthchecks
+            if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
+                mg_http_reply(c, 200,
+                              "Content-Type: application/json\r\n"
+                              "Access-Control-Allow-Origin: *\r\n",
+                              "{\"status\":\"healthy\",\"service\":\"tinyweb\"}");
+            } else {
+                mg_http_reply(c, 405, "Content-Type: application/json\r\n",
+                              "{\"error\":\"Method Not Allowed\"}");
+            }
         } else {
             mg_http_reply(c, 404, "Content-Type: application/json\r\n",
                           "{\"error\":\"Not Found\"}");

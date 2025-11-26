@@ -2872,7 +2872,7 @@ const ProtobufCMessageDescriptor tinyweb__emergency_alert__descriptor =
   (ProtobufCMessageInit) tinyweb__emergency_alert__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor tinyweb__node_registration__field_descriptors[5] =
+static const ProtobufCFieldDescriptor tinyweb__node_registration__field_descriptors[6] =
 {
   {
     "node_pubkey",
@@ -2911,8 +2911,20 @@ static const ProtobufCFieldDescriptor tinyweb__node_registration__field_descript
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "node_version",
+    "api_port",
     4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(Tinyweb__NodeRegistration, api_port),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "node_version",
+    5,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
@@ -2924,7 +2936,7 @@ static const ProtobufCFieldDescriptor tinyweb__node_registration__field_descript
   },
   {
     "stake_proof",
-    5,
+    6,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BYTES,
     0,   /* quantifier_offset */
@@ -2936,16 +2948,17 @@ static const ProtobufCFieldDescriptor tinyweb__node_registration__field_descript
   },
 };
 static const unsigned tinyweb__node_registration__field_indices_by_name[] = {
+  3,   /* field[3] = api_port */
   1,   /* field[1] = node_address */
   2,   /* field[2] = node_port */
   0,   /* field[0] = node_pubkey */
-  3,   /* field[3] = node_version */
-  4,   /* field[4] = stake_proof */
+  4,   /* field[4] = node_version */
+  5,   /* field[5] = stake_proof */
 };
 static const ProtobufCIntRange tinyweb__node_registration__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 5 }
+  { 0, 6 }
 };
 const ProtobufCMessageDescriptor tinyweb__node_registration__descriptor =
 {
@@ -2955,7 +2968,7 @@ const ProtobufCMessageDescriptor tinyweb__node_registration__descriptor =
   "Tinyweb__NodeRegistration",
   "tinyweb",
   sizeof(Tinyweb__NodeRegistration),
-  5,
+  6,
   tinyweb__node_registration__field_descriptors,
   tinyweb__node_registration__field_indices_by_name,
   1,  tinyweb__node_registration__number_ranges,
