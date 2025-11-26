@@ -24,5 +24,10 @@ int discover_peers(GossipService* service, const NodeConfig* config);
 // Returns DISCOVERY_NONE if string doesn't match any known mode
 DiscoveryMode discovery_mode_from_string(const char* mode_str);
 
+// Discovery implementation functions (internal use)
+int discover_tailscale_peers(GossipService* service, const NodeConfig* config);
+int discover_dns_pattern_peers(GossipService* service, const NodeConfig* config);
+int discover_static_peers(GossipService* service, const NodeConfig* config);
+
 #endif // TW_DISCOVERY_H
 

@@ -3,10 +3,7 @@
 #include <string.h>
 #include <strings.h>  // For strcasecmp
 
-// Forward declarations for discovery implementations (will be implemented in tasks 1.2-1.4)
-static int discover_tailscale_peers(GossipService* service, const NodeConfig* config);
-static int discover_dns_pattern_peers(GossipService* service, const NodeConfig* config);
-static int discover_static_peers(GossipService* service, const NodeConfig* config);
+// DNS pattern and static discovery are implemented in their respective files
 
 // Helper function to convert discovery mode string to enum
 DiscoveryMode discovery_mode_from_string(const char* mode_str) {
@@ -62,22 +59,7 @@ int discover_peers(GossipService* service, const NodeConfig* config) {
     }
 }
 
-// Stub implementations (will be fully implemented in tasks 1.2-1.4)
-static int discover_tailscale_peers(GossipService* service, const NodeConfig* config) {
-    // TODO: Implement in task 1.2
-    logger_info("discovery", "Tailscale discovery not yet implemented");
-    return 0;  // Graceful fallback - don't fail if discovery unavailable
-}
+// Tailscale discovery is implemented in tailscale_discovery.c
 
-static int discover_dns_pattern_peers(GossipService* service, const NodeConfig* config) {
-    // TODO: Implement in task 1.3
-    logger_info("discovery", "DNS pattern discovery not yet implemented");
-    return 0;  // Graceful fallback
-}
-
-static int discover_static_peers(GossipService* service, const NodeConfig* config) {
-    // TODO: Implement in task 1.4
-    logger_info("discovery", "Static discovery not yet implemented");
-    return 0;  // Graceful fallback
-}
+// DNS pattern and static discovery implementations are in dns_pattern_discovery.c and static_discovery.c
 
