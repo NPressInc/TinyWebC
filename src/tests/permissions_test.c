@@ -471,13 +471,9 @@ int permissions_test_main(void) {
     }
     
     // Create schema tables if they don't exist
-    if (schema_create_all_tables(db) != 0) {
+    // Note: gossip_store_init() creates all tables and indexes
+    if (gossip_store_init() != 0) {
         fprintf(stderr, "Failed to create schema tables\n");
-        return -1;
-    }
-    
-    if (schema_create_all_indexes(db) != 0) {
-        fprintf(stderr, "Failed to create schema indexes\n");
         return -1;
     }
     

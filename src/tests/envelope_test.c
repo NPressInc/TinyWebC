@@ -11,7 +11,7 @@
 #include "packages/encryption/encryption.h"
 #include "packages/keystore/keystore.h"
 #include "packages/sql/database_gossip.h"
-#include "packages/sql/gossip_store.h"
+#include "packages/sql/schema.h"
 #include "envelope.pb-c.h"
 #include "content.pb-c.h"
 

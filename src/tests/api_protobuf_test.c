@@ -8,7 +8,7 @@
 #include <sodium.h>
 
 #include "packages/sql/database_gossip.h"
-#include "packages/sql/gossip_store.h"
+#include "packages/sql/schema.h"
 #include "packages/transactions/envelope.h"
 #include "packages/keystore/keystore.h"
 #include "envelope.pb-c.h"

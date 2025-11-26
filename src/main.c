@@ -11,7 +11,7 @@
 
 #include "packages/comm/gossip/gossip.h"
 #include "packages/sql/database_gossip.h"
-#include "packages/sql/gossip_store.h"
+#include "packages/sql/schema.h"
 #include "packages/sql/gossip_peers.h"
 #include "packages/utils/statePaths.h"
 #include "packages/utils/logger.h"

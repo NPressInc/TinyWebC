@@ -181,7 +181,7 @@ add_test(NAME MongooseTest COMMAND tinyweb_tests mongoose)
 add_executable(init_tool 
     scripts/init_tool.c 
     scripts/init.c
-    src/packages/sql/gossip_store.c
+    src/packages/sql/schema.c
     src/packages/sql/gossip_peers.c
     src/packages/utils/logger.c
     src/packages/utils/error.c

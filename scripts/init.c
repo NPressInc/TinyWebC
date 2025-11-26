@@ -11,7 +11,7 @@
 
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/gossip_peers.h"
-#include "packages/sql/gossip_store.h"
+#include "packages/sql/schema.h"
 #include "packages/sql/schema.h"
 #include "packages/utils/logger.h"
 #include "structs/permission/permission.h"
@@ -584,18 +584,9 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
         return -1;
     }
 
-    // Create user/role/permission schema tables
-    if (schema_create_all_tables(db) != 0) {
-        logger_error("init", "Failed to create schema tables");
-        db_close();
-        return -1;
-    }
-    
-    if (schema_create_all_indexes(db) != 0) {
-        fprintf(stderr, "Failed to create schema indexes\n");
-        db_close();
-        return -1;
-    }
+    // Note: gossip_store_init() already creates all user/role/permission tables and indexes
+    // No need to call schema_create_all_tables() or schema_create_all_indexes() anymore
+    // (Those functions were in the old schema.c which has been replaced)
 
     // Seed database
     if (seed_basic_roles(db) != 0) {
@@ -764,7 +755,7 @@ int init_save_node_config(const char* original_config_path, const InitNetworkCon
         fprintf(f, "    {\n");
         if (n->id) fprintf(f, "      \"id\": \"%s\",\n", n->id);
         if (n->name) fprintf(f, "      \"name\": \"%s\",\n", n->name);
-        if (n->type) fprintf(f, "      \"type\": \"%s\",\n", n->type);
+        // Note: type field removed from InitNodeConfig (all nodes are equal)
         if (n->hostname) fprintf(f, "      \"hostname\": \"%s\",\n", n->hostname);
         fprintf(f, "      \"gossip_port\": %u,\n", n->gossip_port);
         fprintf(f, "      \"api_port\": %u", n->api_port);

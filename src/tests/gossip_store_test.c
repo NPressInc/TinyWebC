@@ -10,7 +10,7 @@
 #include <sodium.h>
 
 #include "packages/sql/database_gossip.h"
-#include "packages/sql/gossip_store.h"
+#include "packages/sql/schema.h"
 #include "packages/sql/gossip_peers.h"
 #include "packages/transactions/envelope.h"
 #include "envelope.pb-c.h"

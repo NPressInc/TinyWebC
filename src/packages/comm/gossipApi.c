@@ -9,7 +9,7 @@
 #include <time.h>
 #include <openssl/sha.h>
 #include "external/mongoose/mongoose.h"
-#include "packages/sql/gossip_store.h"
+#include "packages/sql/schema.h"
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/permissions.h"
 #include "packages/transactions/envelope.h"

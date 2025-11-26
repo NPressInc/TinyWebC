@@ -169,6 +169,79 @@
     "initial_transactions": {
       "type": "object",
       "additionalProperties": {"type": "boolean"}
+    },
+    "extensions": {
+      "type": "array",
+      "description": "Optional: Extension services (Jellyfin, Immich, etc.) to run alongside core nodes. Reserved for future dashboard integration.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique extension identifier (e.g., 'jellyfin', 'immich')"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable extension name"
+          },
+          "docker_image": {
+            "type": "string",
+            "description": "Docker image for the extension service"
+          },
+          "ports": {
+            "type": "object",
+            "description": "Port mappings for the extension (e.g., {'web': 8096, 'api': 8097})"
+          },
+          "bridge_endpoint": {
+            "type": "string",
+            "description": "API endpoint path for core ↔ extension communication (e.g., '/api/jellyfin')"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this extension is enabled (managed by dashboard)"
+          }
+        }
+      }
+    },
+    "docker": {
+      "type": "object",
+      "description": "Docker deployment configuration",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["production", "test"],
+          "description": "Deployment mode"
+        },
+        "discovery": {
+          "type": "object",
+          "required": ["mode", "hostname_prefix"],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["tailscale", "dns_pattern", "static"],
+              "description": "Peer discovery mechanism"
+            },
+            "hostname_prefix": {
+              "type": "string",
+              "description": "Prefix for hostname generation (e.g., 'tw_node', 'smithfam_tw_node')"
+            },
+            "dns_pattern": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string",
+                  "description": "Optional DNS pattern (e.g., 'tw_node*.tinyweb.win')"
+                },
+                "domain": {
+                  "type": "string",
+                  "description": "Required if pattern not provided (e.g., 'tinyweb.win', 'duckdns.org')"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {

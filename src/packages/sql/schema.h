@@ -1,63 +1,58 @@
 #ifndef SCHEMA_H
 #define SCHEMA_H
 
+#include <stddef.h>
+#include <stdint.h>
 #include <sqlite3.h>
 
-// Database schema version
-#define CURRENT_SCHEMA_VERSION 1
+#define GOSSIP_SEEN_DIGEST_SIZE 32
+#ifndef PUBKEY_SIZE
+#define PUBKEY_SIZE 32  // Ed25519 public key size
+#endif
 
-// SQL statements for creating tables
-// User, Role, and Permission tables
-extern const char* SQL_CREATE_USERS;
-extern const char* SQL_CREATE_ROLES;
-extern const char* SQL_CREATE_PERMISSIONS;
-extern const char* SQL_CREATE_USER_ROLES;
-extern const char* SQL_CREATE_ROLE_PERMISSIONS;
+typedef struct {
+    uint64_t id;
+    uint32_t version;
+    uint32_t content_type;
+    uint32_t schema_version;
+    uint64_t timestamp;
+    unsigned char sender[PUBKEY_SIZE];
+    unsigned char* envelope;
+    size_t envelope_size;
+    uint64_t expires_at;
+} GossipStoredEnvelope;
 
-// SQL statements for creating indexes
-// User, Role, and Permission indexes
-extern const char* SQL_CREATE_INDEX_USERS_PUBKEY;
-extern const char* SQL_CREATE_INDEX_USERS_USERNAME;
-extern const char* SQL_CREATE_INDEX_ROLES_NAME;
-extern const char* SQL_CREATE_INDEX_USER_ROLES_USER;
-extern const char* SQL_CREATE_INDEX_USER_ROLES_ROLE;
-extern const char* SQL_CREATE_INDEX_ROLE_PERMISSIONS_ROLE;
+int gossip_store_init(void);
 
-// User, Role, and Permission management queries
-extern const char* SQL_INSERT_USER;
-extern const char* SQL_UPDATE_USER;
+int gossip_store_cleanup(uint64_t now_epoch);
+
+int gossip_store_has_seen(const unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE], int* is_seen);
+int gossip_store_mark_seen(const unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE], uint64_t expires_at);
+
+// Envelope APIs
+int gossip_store_save_envelope(uint32_t version, uint32_t content_type, uint32_t schema_version,
+                               const unsigned char sender[PUBKEY_SIZE],
+                               uint64_t timestamp,
+                               const unsigned char* envelope, size_t envelope_size,
+                               uint64_t expires_at);
+
+int gossip_store_fetch_recent_envelopes(uint32_t limit,
+                                        GossipStoredEnvelope** out,
+                                        size_t* count);
+
+void gossip_store_free_envelopes(GossipStoredEnvelope* envs, size_t count);
+
+// SQL query constants (for use by permissions.c and other modules)
 extern const char* SQL_SELECT_USER_BY_PUBKEY;
-extern const char* SQL_SELECT_USER_BY_USERNAME;
-extern const char* SQL_SELECT_ALL_USERS;
-extern const char* SQL_DELETE_USER;
-
-extern const char* SQL_INSERT_ROLE;
-extern const char* SQL_UPDATE_ROLE;
-extern const char* SQL_SELECT_ROLE_BY_NAME;
-extern const char* SQL_SELECT_ALL_ROLES;
-extern const char* SQL_DELETE_ROLE;
-
-extern const char* SQL_INSERT_PERMISSION;
-extern const char* SQL_UPDATE_PERMISSION;
-extern const char* SQL_SELECT_PERMISSION_BY_NAME;
-extern const char* SQL_SELECT_ALL_PERMISSIONS;
-extern const char* SQL_DELETE_PERMISSION;
-
-extern const char* SQL_INSERT_USER_ROLE;
-extern const char* SQL_DELETE_USER_ROLE;
 extern const char* SQL_SELECT_USER_ROLES;
-extern const char* SQL_SELECT_ROLE_USERS;
-
-extern const char* SQL_INSERT_ROLE_PERMISSION;
-extern const char* SQL_DELETE_ROLE_PERMISSION;
 extern const char* SQL_SELECT_ROLE_PERMISSIONS;
-extern const char* SQL_SELECT_PERMISSION_ROLES;
+extern const char* SQL_INSERT_ROLE_PERMISSION;
 
-// Schema management functions
-int schema_create_all_tables(sqlite3* db);
-int schema_create_all_indexes(sqlite3* db);
+// Schema versioning functions (for migration support)
+#define CURRENT_SCHEMA_VERSION 1  // Will be updated to 2 when nodes table is added
 int schema_check_version(sqlite3* db, int* version);
 int schema_set_version(sqlite3* db, int version);
 int schema_migrate(sqlite3* db, int from_version, int to_version);
 
-#endif // SCHEMA_H 
+#endif // SCHEMA_H
+
