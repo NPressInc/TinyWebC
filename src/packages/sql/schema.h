@@ -48,11 +48,24 @@ extern const char* SQL_SELECT_USER_ROLES;
 extern const char* SQL_SELECT_ROLE_PERMISSIONS;
 extern const char* SQL_INSERT_ROLE_PERMISSION;
 
+// SQL query constants for nodes table
+extern const char* SQL_INSERT_OR_UPDATE_NODE;
+extern const char* SQL_SELECT_NODE_BY_ID;
+
 // Schema versioning functions (for migration support)
-#define CURRENT_SCHEMA_VERSION 1  // Will be updated to 2 when nodes table is added
+#define CURRENT_SCHEMA_VERSION 2  // Updated to 2 when nodes table was added
 int schema_check_version(sqlite3* db, int* version);
 int schema_set_version(sqlite3* db, int version);
 int schema_migrate(sqlite3* db, int from_version, int to_version);
+
+// Nodes table functions
+int nodes_insert_or_update(const char* node_id, const char* node_name, const char* hostname,
+                          uint16_t gossip_port, uint16_t api_port, const char* discovery_mode,
+                          const char* hostname_prefix, const char* dns_domain);
+int nodes_get_by_id(const char* node_id, char* node_name, size_t name_len, char* hostname,
+                   size_t hostname_len, uint16_t* gossip_port, uint16_t* api_port,
+                   char* discovery_mode, size_t mode_len, char* hostname_prefix,
+                   size_t prefix_len, char* dns_domain, size_t domain_len);
 
 #endif // SCHEMA_H
 

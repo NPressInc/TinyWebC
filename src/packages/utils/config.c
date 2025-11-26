@@ -30,6 +30,11 @@ void config_set_defaults(NodeConfig* config) {
     
     // Default debug mode
     config->debug_mode = false;
+    
+    // Default discovery settings
+    strncpy(config->discovery_mode, "static", sizeof(config->discovery_mode) - 1);
+    config->hostname_prefix[0] = '\0';
+    config->dns_domain[0] = '\0';
 }
 
 int config_load_node_from_network_config(const char* config_file_path, const char* node_id, NodeConfig* config) {
@@ -208,6 +213,37 @@ int config_load_node_from_network_config(const char* config_file_path, const cha
         }
     }
     
+    // Load discovery settings from docker.discovery.* section
+    cJSON* docker = cJSON_GetObjectItem(root, "docker");
+    if (docker) {
+        cJSON* discovery = cJSON_GetObjectItem(docker, "discovery");
+        if (discovery) {
+            // Read discovery_mode
+            cJSON* mode = cJSON_GetObjectItem(discovery, "mode");
+            if (cJSON_IsString(mode)) {
+                strncpy(config->discovery_mode, mode->valuestring, sizeof(config->discovery_mode) - 1);
+                config->discovery_mode[sizeof(config->discovery_mode) - 1] = '\0';
+            }
+            
+            // Read hostname_prefix
+            cJSON* hostname_prefix = cJSON_GetObjectItem(discovery, "hostname_prefix");
+            if (cJSON_IsString(hostname_prefix)) {
+                strncpy(config->hostname_prefix, hostname_prefix->valuestring, sizeof(config->hostname_prefix) - 1);
+                config->hostname_prefix[sizeof(config->hostname_prefix) - 1] = '\0';
+            }
+            
+            // Read dns_pattern.domain (for DNS pattern mode)
+            cJSON* dns_pattern = cJSON_GetObjectItem(discovery, "dns_pattern");
+            if (dns_pattern) {
+                cJSON* domain = cJSON_GetObjectItem(dns_pattern, "domain");
+                if (cJSON_IsString(domain)) {
+                    strncpy(config->dns_domain, domain->valuestring, sizeof(config->dns_domain) - 1);
+                    config->dns_domain[sizeof(config->dns_domain) - 1] = '\0';
+                }
+            }
+        }
+    }
+    
     // Store config file path and mtime
     strncpy(config->config_file_path, config_file_path, sizeof(config->config_file_path) - 1);
     struct stat st;
@@ -263,6 +299,25 @@ int config_load_from_env(NodeConfig* config) {
         config->message_ttl_seconds = (uint64_t)atoll(message_ttl);
     }
     
+    // Optional discovery settings from environment
+    const char* discovery_mode = getenv("TINYWEB_DISCOVERY_MODE");
+    if (discovery_mode) {
+        strncpy(config->discovery_mode, discovery_mode, sizeof(config->discovery_mode) - 1);
+        config->discovery_mode[sizeof(config->discovery_mode) - 1] = '\0';
+    }
+    
+    const char* hostname_prefix = getenv("TINYWEB_HOSTNAME_PREFIX");
+    if (hostname_prefix) {
+        strncpy(config->hostname_prefix, hostname_prefix, sizeof(config->hostname_prefix) - 1);
+        config->hostname_prefix[sizeof(config->hostname_prefix) - 1] = '\0';
+    }
+    
+    const char* dns_domain = getenv("TINYWEB_DNS_DOMAIN");
+    if (dns_domain) {
+        strncpy(config->dns_domain, dns_domain, sizeof(config->dns_domain) - 1);
+        config->dns_domain[sizeof(config->dns_domain) - 1] = '\0';
+    }
+    
     return 0;
 }
 
@@ -310,6 +365,20 @@ int config_merge(NodeConfig* dest, const NodeConfig* src) {
     }
     if (src->max_delay_ms != 0) {
         dest->max_delay_ms = src->max_delay_ms;
+    }
+    
+    // Merge discovery settings (only if non-empty in src)
+    if (src->discovery_mode[0] != '\0') {
+        strncpy(dest->discovery_mode, src->discovery_mode, sizeof(dest->discovery_mode) - 1);
+        dest->discovery_mode[sizeof(dest->discovery_mode) - 1] = '\0';
+    }
+    if (src->hostname_prefix[0] != '\0') {
+        strncpy(dest->hostname_prefix, src->hostname_prefix, sizeof(dest->hostname_prefix) - 1);
+        dest->hostname_prefix[sizeof(dest->hostname_prefix) - 1] = '\0';
+    }
+    if (src->dns_domain[0] != '\0') {
+        strncpy(dest->dns_domain, src->dns_domain, sizeof(dest->dns_domain) - 1);
+        dest->dns_domain[sizeof(dest->dns_domain) - 1] = '\0';
     }
     
     return 0;

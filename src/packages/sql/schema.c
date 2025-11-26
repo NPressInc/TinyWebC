@@ -140,6 +140,24 @@
 #define GOSSIP_CREATE_INDEX_SEEN_EXPIRES \
     "CREATE INDEX IF NOT EXISTS idx_gossip_seen_expires ON gossip_seen(expires_at);"
 
+// Nodes table for storing current node's configuration
+#define GOSSIP_CREATE_NODES \
+    "CREATE TABLE IF NOT EXISTS nodes (" \
+    "    node_id TEXT PRIMARY KEY," \
+    "    node_name TEXT NOT NULL," \
+    "    hostname TEXT NOT NULL," \
+    "    gossip_port INTEGER NOT NULL," \
+    "    api_port INTEGER NOT NULL," \
+    "    discovery_mode TEXT NOT NULL," \
+    "    hostname_prefix TEXT," \
+    "    dns_domain TEXT," \
+    "    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))," \
+    "    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))" \
+    ");"
+
+#define GOSSIP_CREATE_INDEX_NODES_NODE_ID \
+    "CREATE INDEX IF NOT EXISTS idx_nodes_node_id ON nodes(node_id);"
+
 // SQL query constants for permissions.c and other modules
 const char* SQL_SELECT_USER_BY_PUBKEY =
     "SELECT id, pubkey, username, age, created_at, updated_at, is_active "
@@ -162,6 +180,20 @@ const char* SQL_SELECT_ROLE_PERMISSIONS =
 const char* SQL_INSERT_ROLE_PERMISSION =
     "INSERT OR REPLACE INTO role_permissions (role_id, permission_id, granted_by_user_id, scope_flags, condition_flags, time_start, time_end) "
     "VALUES (?, ?, ?, ?, ?, ?, ?);";
+
+// SQL statements for nodes table
+const char* SQL_INSERT_OR_UPDATE_NODE =
+    "INSERT INTO nodes (node_id, node_name, hostname, gossip_port, api_port, discovery_mode, hostname_prefix, dns_domain, updated_at) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now')) "
+    "ON CONFLICT(node_id) DO UPDATE SET "
+    "  node_name=excluded.node_name, hostname=excluded.hostname, "
+    "  gossip_port=excluded.gossip_port, api_port=excluded.api_port, "
+    "  discovery_mode=excluded.discovery_mode, hostname_prefix=excluded.hostname_prefix, "
+    "  dns_domain=excluded.dns_domain, updated_at=strftime('%s','now');";
+
+const char* SQL_SELECT_NODE_BY_ID =
+    "SELECT node_id, node_name, hostname, gossip_port, api_port, discovery_mode, hostname_prefix, dns_domain "
+    "FROM nodes WHERE node_id = ?;";;
 
 int gossip_store_init(void) {
     if (!db_is_initialized()) {
@@ -224,12 +256,14 @@ int gossip_store_init(void) {
         GOSSIP_CREATE_ROLE_PERMISSIONS,
         GOSSIP_CREATE_TRANSACTION_PERMISSIONS,
         GOSSIP_CREATE_SEEN_DIGESTS,
+        GOSSIP_CREATE_NODES,
         GOSSIP_CREATE_INDEX_USERS_PUBKEY,
         GOSSIP_CREATE_INDEX_ROLES_NAME,
         GOSSIP_CREATE_INDEX_USER_ROLES_USER,
         GOSSIP_CREATE_INDEX_USER_ROLES_ROLE,
         GOSSIP_CREATE_INDEX_ROLE_PERMISSIONS_ROLE,
         GOSSIP_CREATE_INDEX_SEEN_EXPIRES,
+        GOSSIP_CREATE_INDEX_NODES_NODE_ID,
         NULL
     };
 
@@ -422,7 +456,7 @@ void gossip_store_free_envelopes(GossipStoredEnvelope* envs, size_t count) {
 }
 
 // Schema versioning functions (needed for migration to version 2 with nodes table)
-#define CURRENT_SCHEMA_VERSION 1  // Will be updated to 2 when nodes table is added
+#define CURRENT_SCHEMA_VERSION 2  // Updated to 2 when nodes table was added
 
 int schema_check_version(sqlite3* db, int* version) {
     if (!db || !version) return -1;
@@ -609,9 +643,174 @@ int schema_migrate(sqlite3* db, int from_version, int to_version) {
         return 0;
     }
     
-    // Future: Add migration from 1 to 2 (add nodes table) here
+    // Migration from 1 to 2: Add nodes table
+    if (from_version == 1 && to_version >= 2) {
+        char* error_msg = NULL;
+        int rc;
+        
+        // Create nodes table
+        rc = sqlite3_exec(db, GOSSIP_CREATE_NODES, NULL, NULL, &error_msg);
+        if (rc != SQLITE_OK) {
+            if (error_msg) {
+                fprintf(stderr, "schema_migrate: failed to create nodes table: %s\n", error_msg);
+                sqlite3_free(error_msg);
+            }
+            return -1;
+        }
+        
+        // Create nodes index
+        rc = sqlite3_exec(db, GOSSIP_CREATE_INDEX_NODES_NODE_ID, NULL, NULL, &error_msg);
+        if (rc != SQLITE_OK) {
+            if (error_msg) {
+                fprintf(stderr, "schema_migrate: failed to create nodes index: %s\n", error_msg);
+                sqlite3_free(error_msg);
+            }
+            return -1;
+        }
+        
+        // Set version to 2
+        if (schema_set_version(db, 2) != 0) {
+            return -1;
+        }
+        
+        return 0;
+    }
     
     fprintf(stderr, "No migration path from version %d to %d\n", from_version, to_version);
     return -1;
+}
+
+// Nodes table functions
+int nodes_insert_or_update(const char* node_id, const char* node_name, const char* hostname,
+                          uint16_t gossip_port, uint16_t api_port, const char* discovery_mode,
+                          const char* hostname_prefix, const char* dns_domain) {
+    if (!db_is_initialized()) {
+        return -1;
+    }
+    
+    sqlite3* db = db_get_handle();
+    if (!db || !node_id || !node_name || !hostname || !discovery_mode) {
+        return -1;
+    }
+    
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, SQL_INSERT_OR_UPDATE_NODE, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        logger_error("nodes", "Failed to prepare insert/update statement: %s", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    sqlite3_bind_text(stmt, 1, node_id, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, node_name, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, hostname, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 4, gossip_port);
+    sqlite3_bind_int(stmt, 5, api_port);
+    sqlite3_bind_text(stmt, 6, discovery_mode, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 7, hostname_prefix ? hostname_prefix : "", hostname_prefix ? -1 : 0, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 8, dns_domain ? dns_domain : "", dns_domain ? -1 : 0, SQLITE_STATIC);
+    
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        logger_error("nodes", "Failed to insert/update node: %s", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    return 0;
+}
+
+int nodes_get_by_id(const char* node_id, char* node_name, size_t name_len, char* hostname,
+                   size_t hostname_len, uint16_t* gossip_port, uint16_t* api_port,
+                   char* discovery_mode, size_t mode_len, char* hostname_prefix,
+                   size_t prefix_len, char* dns_domain, size_t domain_len) {
+    if (!db_is_initialized()) {
+        return -1;
+    }
+    
+    sqlite3* db = db_get_handle();
+    if (!db || !node_id) {
+        return -1;
+    }
+    
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, SQL_SELECT_NODE_BY_ID, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        logger_error("nodes", "Failed to prepare select statement: %s", sqlite3_errmsg(db));
+        return -1;
+    }
+    
+    sqlite3_bind_text(stmt, 1, node_id, -1, SQLITE_STATIC);
+    
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        // Extract node_name
+        if (node_name && name_len > 0) {
+            const char* name = (const char*)sqlite3_column_text(stmt, 1);
+            if (name) {
+                strncpy(node_name, name, name_len - 1);
+                node_name[name_len - 1] = '\0';
+            }
+        }
+        
+        // Extract hostname
+        if (hostname && hostname_len > 0) {
+            const char* hname = (const char*)sqlite3_column_text(stmt, 2);
+            if (hname) {
+                strncpy(hostname, hname, hostname_len - 1);
+                hostname[hostname_len - 1] = '\0';
+            }
+        }
+        
+        // Extract ports
+        if (gossip_port) {
+            *gossip_port = (uint16_t)sqlite3_column_int(stmt, 3);
+        }
+        if (api_port) {
+            *api_port = (uint16_t)sqlite3_column_int(stmt, 4);
+        }
+        
+        // Extract discovery_mode
+        if (discovery_mode && mode_len > 0) {
+            const char* mode = (const char*)sqlite3_column_text(stmt, 5);
+            if (mode) {
+                strncpy(discovery_mode, mode, mode_len - 1);
+                discovery_mode[mode_len - 1] = '\0';
+            }
+        }
+        
+        // Extract hostname_prefix (nullable)
+        if (hostname_prefix && prefix_len > 0) {
+            const char* prefix = (const char*)sqlite3_column_text(stmt, 6);
+            if (prefix) {
+                strncpy(hostname_prefix, prefix, prefix_len - 1);
+                hostname_prefix[prefix_len - 1] = '\0';
+            } else {
+                hostname_prefix[0] = '\0';
+            }
+        }
+        
+        // Extract dns_domain (nullable)
+        if (dns_domain && domain_len > 0) {
+            const char* domain = (const char*)sqlite3_column_text(stmt, 7);
+            if (domain) {
+                strncpy(dns_domain, domain, domain_len - 1);
+                dns_domain[domain_len - 1] = '\0';
+            } else {
+                dns_domain[0] = '\0';
+            }
+        }
+        
+        sqlite3_finalize(stmt);
+        return 0;
+    } else if (rc == SQLITE_DONE) {
+        // No row found
+        sqlite3_finalize(stmt);
+        return 1;  // Not found
+    } else {
+        logger_error("nodes", "Failed to fetch node: %s", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return -1;
+    }
 }
 

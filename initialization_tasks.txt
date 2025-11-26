@@ -20,6 +20,8 @@ Create a Docker Compose system for easy initialization and testing:
 - [x] Standardize node ID format to 2 digits (`node_01`)
 - [x] Standardize state directory to `state/` (no node subdirectories)
 - [x] Update directory structure to use `storage/` instead of `blockchain/`
+- [x] **Task 1.5**: Update Configuration System - Added discovery_mode, hostname_prefix, dns_domain fields to NodeConfig
+- [x] **Task 1.8**: Update Database Schema - Added nodes table with discovery parameters, schema migration from v1 to v2
 
 ---
 
@@ -138,22 +140,24 @@ Create a Docker Compose system for easy initialization and testing:
 **Dependencies**:
 - Standard DNS resolution via `getaddrinfo()`
 
-### 1.5 Update Configuration System
+### 1.5 Update Configuration System (COMPLETED)
 
 **File**: `src/packages/utils/config.h` (MODIFY)
-- [ ] Add field to `NodeConfig` struct:
+- [x] Add field to `NodeConfig` struct:
   ```c
-  DiscoveryMode discovery_mode;  // or char discovery_mode[32] for string-based
+  char discovery_mode[32];        // 'tailscale', 'dns_pattern', 'static', or 'none'
   char hostname_prefix[64];       // For discovery pattern matching
   char dns_domain[256];           // For DNS pattern mode
   ```
 
 **File**: `src/packages/utils/config.c` (MODIFY)
-- [ ] Update `config_load_node_from_network_config()` to read:
+- [x] Update `config_load_node_from_network_config()` to read:
   - `discovery_mode` from `docker.discovery.mode` field
   - `hostname_prefix` from `docker.discovery.hostname_prefix` field
   - `dns_domain` from `docker.discovery.dns_pattern.domain` field (if DNS pattern mode)
-- [ ] Update `config_set_defaults()` to set default discovery_mode
+- [x] Update `config_set_defaults()` to set default discovery_mode to "static"
+- [x] Update `config_merge()` to merge discovery fields
+- [x] Update `config_load_from_env()` to support `TINYWEB_DISCOVERY_MODE`, `TINYWEB_HOSTNAME_PREFIX`, `TINYWEB_DNS_DOMAIN` environment variables
 
 ### 1.7 Resolve Schema Duplication (COMPLETED)
 
@@ -175,10 +179,10 @@ Create a Docker Compose system for easy initialization and testing:
 - Schema versioning functions are available for future migrations
 - All code now uses unified schema initialization via `gossip_store_init()`
 
-### 1.8 Update Database Schema for Discovery Parameters
+### 1.8 Update Database Schema for Discovery Parameters (COMPLETED)
 
 **File**: `src/packages/sql/schema.c` (MODIFY)
-- [ ] Add `nodes` table to store current node's configuration:
+- [x] Add `nodes` table to store current node's configuration:
   ```sql
   CREATE TABLE IF NOT EXISTS nodes (
       node_id TEXT PRIMARY KEY,
@@ -189,27 +193,32 @@ Create a Docker Compose system for easy initialization and testing:
       discovery_mode TEXT NOT NULL,  -- 'tailscale', 'dns_pattern', 'static'
       hostname_prefix TEXT,           -- For discovery pattern matching
       dns_domain TEXT,                -- For DNS pattern mode
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+      updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   );
   ```
-- [ ] Add index: `CREATE INDEX IF NOT EXISTS idx_nodes_node_id ON nodes(node_id);`
-- [ ] Add SQL statements for node CRUD operations:
-  - `SQL_INSERT_NODE` - Insert or update node config
+- [x] Add index: `CREATE INDEX IF NOT EXISTS idx_nodes_node_id ON nodes(node_id);`
+- [x] Add SQL statements for node CRUD operations:
+  - `SQL_INSERT_OR_UPDATE_NODE` - Insert or update node config (with ON CONFLICT)
   - `SQL_SELECT_NODE_BY_ID` - Get node config by node_id
-- [ ] Add nodes table creation to `gossip_store_init()` function (in schema.c)
-  - Add `GOSSIP_CREATE_NODES` SQL definition
-  - Add `GOSSIP_CREATE_INDEX_NODES_NODE_ID` SQL definition
-  - Add both to the `schema_statements[]` array in `gossip_store_init()`
-- [ ] Update `schema_migrate()` to handle schema version 1 → 2 (add nodes table)
-  - Add migration path: `if (from_version == 1 && to_version >= 2) { ... }`
-  - Create nodes table and set version to 2
-- [ ] Update `CURRENT_SCHEMA_VERSION` from 1 to 2 in `schema.h` and `schema.c`
+- [x] Add nodes table creation to `gossip_store_init()` function (in schema.c)
+  - Added `GOSSIP_CREATE_NODES` SQL definition
+  - Added `GOSSIP_CREATE_INDEX_NODES_NODE_ID` SQL definition
+  - Added both to the `schema_statements[]` array in `gossip_store_init()`
+- [x] Update `schema_migrate()` to handle schema version 1 → 2 (add nodes table)
+  - Added migration path: `if (from_version == 1 && to_version >= 2) { ... }`
+  - Creates nodes table and index, sets version to 2
+- [x] Update `CURRENT_SCHEMA_VERSION` from 1 to 2 in `schema.h` and `schema.c`
 
 **File**: `src/packages/sql/schema.h` (MODIFY)
-- [ ] Add function declarations:
+- [x] Add extern declarations for SQL constants:
+  - `extern const char* SQL_INSERT_OR_UPDATE_NODE;`
+  - `extern const char* SQL_SELECT_NODE_BY_ID;`
+- [x] Add function declarations:
   - `int nodes_insert_or_update(const char* node_id, const char* node_name, const char* hostname, uint16_t gossip_port, uint16_t api_port, const char* discovery_mode, const char* hostname_prefix, const char* dns_domain);`
-  - `int nodes_get_by_id(const char* node_id, ...);`
+  - `int nodes_get_by_id(const char* node_id, char* node_name, size_t name_len, char* hostname, size_t hostname_len, uint16_t* gossip_port, uint16_t* api_port, char* discovery_mode, size_t mode_len, char* hostname_prefix, size_t prefix_len, char* dns_domain, size_t domain_len);`
+- [x] Implement `nodes_insert_or_update()` function in schema.c
+- [x] Implement `nodes_get_by_id()` function in schema.c
 
 **File**: `src/packages/sql/gossip_peers.c` (MODIFY - optional enhancement)
 - [ ] Consider adding `discovery_mode` column to `gossip_peers` table to track how each peer was discovered:
@@ -229,65 +238,9 @@ Create a Docker Compose system for easy initialization and testing:
   - Call `nodes_insert_or_update()` with loaded config values
   - This ensures database has current node configuration even if config file is missing
 
-### 1.6 Update Database Schema for Discovery Parameters
+### 1.6 Update Database Schema for Discovery Parameters (COMPLETED - See 1.8)
 
-**File**: `src/packages/sql/schema.c` (MODIFY)
-- [ ] Add `nodes` table to store current node's configuration:
-  ```sql
-  CREATE TABLE IF NOT EXISTS nodes (
-      node_id TEXT PRIMARY KEY,
-      node_name TEXT NOT NULL,
-      hostname TEXT NOT NULL,
-      gossip_port INTEGER NOT NULL,
-      api_port INTEGER NOT NULL,
-      discovery_mode TEXT NOT NULL,  -- 'tailscale', 'dns_pattern', 'static'
-      hostname_prefix TEXT,           -- For discovery pattern matching (nullable)
-      dns_domain TEXT,                -- For DNS pattern mode (nullable)
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-  ```
-- [ ] Add index: `CREATE INDEX IF NOT EXISTS idx_nodes_node_id ON nodes(node_id);`
-- [ ] Add SQL statements for node operations:
-  ```c
-  const char* SQL_INSERT_OR_UPDATE_NODE = 
-      "INSERT INTO nodes (node_id, node_name, hostname, gossip_port, api_port, discovery_mode, hostname_prefix, dns_domain, updated_at) "
-      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) "
-      "ON CONFLICT(node_id) DO UPDATE SET "
-      "  node_name=excluded.node_name, hostname=excluded.hostname, "
-      "  gossip_port=excluded.gossip_port, api_port=excluded.api_port, "
-      "  discovery_mode=excluded.discovery_mode, hostname_prefix=excluded.hostname_prefix, "
-      "  dns_domain=excluded.dns_domain, updated_at=CURRENT_TIMESTAMP;";
-  
-  const char* SQL_SELECT_NODE_BY_ID = 
-      "SELECT node_id, node_name, hostname, gossip_port, api_port, discovery_mode, hostname_prefix, dns_domain "
-      "FROM nodes WHERE node_id = ?;";
-  ```
-- [ ] Update `schema_create_all_tables()` to include nodes table creation
-- [ ] Update `schema_migrate()` to handle migration from version 1 to version 2:
-  - Add nodes table creation
-  - Update schema version to 2
-  - Update `CURRENT_SCHEMA_VERSION` in `schema.h` to 2
-
-**File**: `src/packages/sql/schema.h` (MODIFY)
-- [ ] Update `CURRENT_SCHEMA_VERSION` from 1 to 2
-- [ ] Add extern declarations:
-  ```c
-  extern const char* SQL_CREATE_NODES;
-  extern const char* SQL_CREATE_INDEX_NODES_NODE_ID;
-  extern const char* SQL_INSERT_OR_UPDATE_NODE;
-  extern const char* SQL_SELECT_NODE_BY_ID;
-  ```
-- [ ] Add function declarations:
-  ```c
-  int nodes_insert_or_update(const char* node_id, const char* node_name, const char* hostname, 
-                             uint16_t gossip_port, uint16_t api_port, const char* discovery_mode, 
-                             const char* hostname_prefix, const char* dns_domain);
-  int nodes_get_by_id(const char* node_id, char* node_name, size_t name_len, char* hostname, 
-                      size_t hostname_len, uint16_t* gossip_port, uint16_t* api_port,
-                      char* discovery_mode, size_t mode_len, char* hostname_prefix, 
-                      size_t prefix_len, char* dns_domain, size_t domain_len);
-  ```
+**Note**: This section is a duplicate of section 1.8. All tasks have been completed in section 1.8.
 
 **File**: `src/packages/sql/gossip_peers.c` (MODIFY - optional enhancement)
 - [ ] Consider adding `discovery_mode` column to `gossip_peers` table to track how each peer was discovered:

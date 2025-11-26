@@ -37,6 +37,11 @@ typedef struct {
     char db_path[512];
     char state_path[512];
     
+    // Discovery settings (from docker.discovery.* in config)
+    char discovery_mode[32];        // 'tailscale', 'dns_pattern', 'static', or 'none'
+    char hostname_prefix[64];       // For discovery pattern matching (e.g., 'tw_node', 'smithfam_tw_node')
+    char dns_domain[256];           // For DNS pattern mode (e.g., 'duckdns.org', 'tinyweb.win')
+    
     // Debug mode
     bool debug_mode;
     
