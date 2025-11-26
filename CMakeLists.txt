@@ -140,7 +140,7 @@ list(FILTER TEST_SOURCES EXCLUDE REGEX "src/tests/test_runner.c")
 set(TEST_MAIN "src/tests/test_runner.c")
 
 add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES} 
-    src/packages/initialization/init.c
+    scripts/init.c
     src/packages/comm/httpClient.c
     src/packages/sql/schema.c)
 target_sources(tinyweb_tests PRIVATE ${GENERATED_SOURCES} ${GOSSIP_DB_SOURCES})
@@ -165,6 +165,7 @@ target_include_directories(tinyweb_tests PRIVATE
     ${PROTOBUFC_INCLUDE_DIRS}
     ${GEN_DIR}
     src
+    scripts
     src/external/mongoose  # Add mongoose include directory
 )
 
@@ -178,8 +179,8 @@ add_test(NAME MongooseTest COMMAND tinyweb_tests mongoose)
 
 # Add init_tool executable (before blockchain subdirectory)
 add_executable(init_tool 
-    src/packages/initialization/init_tool.c 
-    src/packages/initialization/init.c
+    scripts/init_tool.c 
+    scripts/init.c
     src/packages/sql/gossip_store.c
     src/packages/sql/gossip_peers.c
     src/packages/utils/logger.c
@@ -198,5 +199,6 @@ target_include_directories(init_tool PRIVATE
     ${SODIUM_INCLUDE_DIRS} 
     /usr/include/cjson 
     src
+    scripts
 )
 

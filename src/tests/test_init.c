@@ -1,5 +1,5 @@
 #include "test_init.h"
-#include "packages/initialization/init.h"
+#include "init.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 #define TEST_BASE_PATH "test_state"
-#define CONFIG_PATH "src/packages/initialization/configs/network_config.json"
+#define CONFIG_PATH "scripts/configs/network_config.json"
 
 static char test_db_path[512] = {0};
 static char test_keys_dir[512] = {0};
@@ -82,9 +82,6 @@ static int parse_test_config(InitNetworkConfig* out_config,
                     
                     cJSON* name = cJSON_GetObjectItem(node, "name");
                     if (cJSON_IsString(name)) nc->name = strdup(name->valuestring);
-                    
-                    cJSON* type = cJSON_GetObjectItem(node, "type");
-                    if (cJSON_IsString(type)) nc->type = strdup(type->valuestring);
                     
                     cJSON* hostname = cJSON_GetObjectItem(node, "hostname");
                     if (cJSON_IsString(hostname)) nc->hostname = strdup(hostname->valuestring);
@@ -192,7 +189,6 @@ static void free_test_config(InitNetworkConfig* config, InitNodeConfig* nodes, I
         for (uint32_t i = 0; i < config->node_count; ++i) {
             free(nodes[i].id);
             free(nodes[i].name);
-            free(nodes[i].type);
             free(nodes[i].hostname);
             if (nodes[i].peers) {
                 for (uint32_t p = 0; p < nodes[i].peer_count; ++p) {
@@ -269,7 +265,7 @@ int test_init_environment(void) {
     free_test_config(&config, nodes, users);
 
     // Set up static paths for tests
-    snprintf(test_db_path, sizeof(test_db_path), "%s/database/gossip.db", TEST_BASE_PATH);
+    snprintf(test_db_path, sizeof(test_db_path), "%s/storage/tinyweb.db", TEST_BASE_PATH);
     snprintf(test_keys_dir, sizeof(test_keys_dir), "%s/keys/users", TEST_BASE_PATH);
 
     printf("Test environment initialized in %s/\n", TEST_BASE_PATH);

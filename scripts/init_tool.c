@@ -22,7 +22,7 @@ static void print_usage(const char* program_name) {
     printf("  -t, --test          Use test_state/ directory instead of state/\n");
     printf("  -v, --verbose       Enable verbose output\n");
     printf("\nExample:\n");
-    printf("  %s --config src/packages/initialization/configs/network_config.json\n", program_name);
+    printf("  %s --config scripts/configs/network_config.json\n", program_name);
     printf("  %s --config config.json --test\n", program_name);
 }
 
@@ -116,10 +116,6 @@ static int parse_json_config(const char* path, InitNetworkConfig* out_config,
         cJSON* name = cJSON_GetObjectItem(node, "name");
         if (cJSON_IsString(name)) {
             nc->name = strdup(name->valuestring);
-        }
-        cJSON* type = cJSON_GetObjectItem(node, "type");
-        if (cJSON_IsString(type)) {
-            nc->type = strdup(type->valuestring);
         }
         cJSON* hostname = cJSON_GetObjectItem(node, "hostname");
         if (cJSON_IsString(hostname)) {
@@ -274,7 +270,6 @@ static void free_config(InitNetworkConfig* config, InitNodeConfig* nodes, InitUs
         for (uint32_t i = 0; i < config->node_count; ++i) {
             free(nodes[i].id);
             free(nodes[i].name);
-            free(nodes[i].type);
             free(nodes[i].hostname);
             free(nodes[i].tags);
             if (nodes[i].peers) {

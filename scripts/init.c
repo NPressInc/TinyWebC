@@ -71,12 +71,12 @@ static int build_keys_dir(const char* base_path, char* out_path, size_t path_len
     return 0;
 }
 
-// Build path: {base_path}/database/gossip.db
+// Build path: {base_path}/storage/tinyweb.db
 static int build_db_path(const char* base_path, char* out_path, size_t path_len) {
     if (!base_path || !out_path || path_len == 0) {
         return -1;
     }
-    int ret = snprintf(out_path, path_len, "%s/database/gossip.db", base_path);
+    int ret = snprintf(out_path, path_len, "%s/storage/tinyweb.db", base_path);
     if (ret < 0 || (size_t)ret >= path_len) {
         return -1;
     }
@@ -546,7 +546,7 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     // Build paths
     char db_dir[PATH_MAX];
     char db_path[PATH_MAX];
-    snprintf(db_dir, sizeof(db_dir), "%s/database", base_path);
+    snprintf(db_dir, sizeof(db_dir), "%s/storage", base_path);
     if (build_db_path(base_path, db_path, sizeof(db_path)) != 0) {
         logger_error("init", "Failed to build database path");
         return -1;
@@ -735,10 +735,6 @@ int init_save_node_config(const char* original_config_path, const InitNetworkCon
     if (network_config->network_description) {
         fprintf(f, "    \"description\": \"%s\",\n", network_config->network_description);
     }
-    if (network_config->base_port > 0) {
-        fprintf(f, "    \"base_port\": %u,\n", network_config->base_port);
-    }
-    fprintf(f, "    \"max_connections\": 10,\n");
     
     // Network-level settings with defaults (these should come from the original JSON)
     fprintf(f, "    \"validation\": {\n");

@@ -13,7 +13,7 @@
 #include "packages/utils/logger.h"
 #include "packages/keystore/keystore.h"
 #include "packages/comm/gossip/gossip.h"
-#include "packages/initialization/init.h"
+#include "init.h"
 
 #define TEST_BASE_PATH "test_state_integration"
 #define TEST_CONFIG_PATH "test_state_integration/test_network_config.json"
@@ -122,9 +122,8 @@ static int test_configuration_management(void) {
     fprintf(config_file, "  },\n");
     fprintf(config_file, "  \"nodes\": [\n");
     fprintf(config_file, "    {\n");
-    fprintf(config_file, "      \"id\": \"node_001\",\n");
+    fprintf(config_file, "      \"id\": \"node_01\",\n");
     fprintf(config_file, "      \"name\": \"Test Node 1\",\n");
-    fprintf(config_file, "      \"type\": \"primary\",\n");
     fprintf(config_file, "      \"hostname\": \"test1.example.com\",\n");
     fprintf(config_file, "      \"gossip_port\": 9100,\n");
     fprintf(config_file, "      \"api_port\": 8100,\n");
@@ -139,9 +138,9 @@ static int test_configuration_management(void) {
     
     // Test config loading
     NodeConfig config;
-    int result = config_load_node_from_network_config(TEST_CONFIG_PATH, "node_001", &config);
+    int result = config_load_node_from_network_config(TEST_CONFIG_PATH, "node_01", &config);
     ASSERT_TEST(result == 0, "Config loads from file");
-    ASSERT_TEST(strcmp(config.node_id, "node_001") == 0, "Node ID is correct");
+        ASSERT_TEST(strcmp(config.node_id, "node_01") == 0, "Node ID is correct");
     ASSERT_TEST(strcmp(config.node_name, "Test Node 1") == 0, "Node name is correct");
     ASSERT_TEST(config.gossip_port == 9100, "Gossip port is correct");
     ASSERT_TEST(config.api_port == 8100, "API port is correct");
@@ -429,7 +428,7 @@ static int test_config_save_load_cycle(void) {
     network_config.node_count = 1;
     
     InitNodeConfig node = {0};
-    node.id = strdup("node_001");
+    node.id = strdup("node_01");
     node.name = strdup("Test Node");
     node.hostname = strdup("test.example.com");
     node.gossip_port = 9000;
@@ -443,7 +442,7 @@ static int test_config_save_load_cycle(void) {
     
     // Create node directory
     char node_path[256];
-    snprintf(node_path, sizeof(node_path), "%s/node_001", TEST_BASE_PATH);
+    snprintf(node_path, sizeof(node_path), "%s/node_01", TEST_BASE_PATH);
     mkdir(TEST_BASE_PATH, 0755);
     mkdir(node_path, 0755);
     
@@ -463,10 +462,10 @@ static int test_config_save_load_cycle(void) {
     // Load config back
     NodeConfig loaded_config;
     memset(&loaded_config, 0, sizeof(loaded_config));
-    result = config_load_node_from_network_config(saved_config_path, "node_001", &loaded_config);
+    result = config_load_node_from_network_config(saved_config_path, "node_01", &loaded_config);
     ASSERT_TEST(result == 0, "Config loads from saved file");
     if (result == 0) {
-        ASSERT_TEST(strcmp(loaded_config.node_id, "node_001") == 0, "Loaded node ID matches");
+        ASSERT_TEST(strcmp(loaded_config.node_id, "node_01") == 0, "Loaded node ID matches");
         ASSERT_TEST(loaded_config.gossip_port == 9000, "Loaded gossip port matches");
         ASSERT_TEST(loaded_config.api_port == 8000, "Loaded API port matches");
         ASSERT_TEST(loaded_config.peer_count == 2, "Loaded peer count matches");
@@ -527,7 +526,7 @@ int foundational_features_test_main(void) {
     // Cleanup test files
     unlink(TEST_CONFIG_PATH);
     char saved_config_path[256];
-    snprintf(saved_config_path, sizeof(saved_config_path), "%s/node_001/network_config.json", TEST_BASE_PATH);
+    snprintf(saved_config_path, sizeof(saved_config_path), "%s/node_01/network_config.json", TEST_BASE_PATH);
     unlink(saved_config_path);
     rmdir(saved_config_path); // Remove directory if empty
     

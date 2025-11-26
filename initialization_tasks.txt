@@ -1,0 +1,485 @@
+# Docker-based Initialization and Integration Testing Plan
+
+## Overview
+Create a Docker Compose system for easy initialization and testing:
+- **Pluggable discovery mechanism**: Support multiple discovery backends (Tailscale, DNS pattern, static config)
+- **Tailscale mode (initial)**: Use Tailscale sidecars for peer discovery via API
+- **DNS pattern mode**: Support DNS-based discovery for any DNS service (Cloudflare, DuckDNS, etc.)
+- Dynamic peer addition: When receiving messages from unknown peers
+- Fixed ports: All nodes use `api_port=8000`, `gossip_port=9000` (isolated network namespaces)
+- All nodes equal (no primary/bootstrap)
+- Discovery flow: Node2 queries discovery backend → finds node1 → sends `CONTENT_NODE_REGISTRATION` → node1 discovers node2
+- Fully containerized: No host setup required (for Tailscale mode, just provide `TS_AUTHKEY`)
+
+## Completed Tasks
+- [x] Move init.c, init.h, init_tool.c to scripts/ directory
+- [x] Update CMakeLists.txt with new paths
+- [x] Update test file includes
+- [x] Update config paths in test files
+
+## Core Components
+
+### 1. Discovery Infrastructure (CORE - Must implement first)
+- [ ] Create discovery module structure: `src/packages/discovery/`
+- [ ] Create `src/packages/discovery/discovery.h`:
+  ```c
+  typedef enum {
+      DISCOVERY_TAILSCALE,
+      DISCOVERY_DNS_PATTERN,
+      DISCOVERY_STATIC,
+      DISCOVERY_NONE
+  } DiscoveryMode;
+  
+  typedef int (*PeerDiscoveryFunc)(GossipService* service, const NodeConfig* config);
+  int discover_peers(GossipService* service, const NodeConfig* config);
+  ```
+- [ ] Create `src/packages/discovery/tailscale_discovery.c`:
+  - Function: `discover_tailscale_peers(GossipService* service, const NodeConfig* config)`
+  - Query Tailscale API: `tailscale status --json` (runs in container, shares network with sidecar)
+  - Parse JSON to find devices matching `{hostname_prefix}*` pattern
+  - Add discovered peers via `gossip_service_add_peer()` and `gossip_peers_add_or_update()`
+  - Retry logic: Wait up to 60 seconds for Tailscale to be connected
+- [ ] Create `src/packages/discovery/dns_pattern_discovery.c`:
+  - Function: `discover_dns_pattern_peers(GossipService* service, const NodeConfig* config)`
+  - Iterate through `{hostname_prefix}01.{domain}` through `{hostname_prefix}99.{domain}`
+  - Resolve each hostname and add as peer if it resolves
+- [ ] Create `src/packages/discovery/static_discovery.c`:
+  - Function: `discover_static_peers(GossipService* service, const NodeConfig* config)`
+  - Read peers from `config->peers` array
+- [ ] Create `src/packages/discovery/discovery.c`:
+  - Router function that calls appropriate discovery based on `config->discovery_mode`
+- [ ] Update `NodeConfig` struct in `src/packages/utils/config.h`:
+  - Add field: `DiscoveryMode discovery_mode;` (or `char discovery_mode[32]`)
+- [ ] Update `config_load_node_from_network_config()` to read `discovery_mode` from config
+- [ ] Modify `gossip_receive_handler()` in `src/main.c` for dynamic peer addition:
+  - Extract source address from `sockaddr_in`
+  - Resolve hostname via `gethostbyaddr()`
+  - Add unknown peers dynamically via `gossip_service_add_peer()` and `gossip_peers_add_or_update()`
+- [ ] Create `send_node_announcement()` helper function:
+  - Creates `CONTENT_NODE_REGISTRATION` envelope
+  - Broadcasts to all known peers after discovery completes
+- [ ] Update `start_gossip_service()` in `src/main.c`:
+  - Call `discover_peers()` BEFORE `bootstrap_known_peers()`
+  - Call `send_node_announcement()` after discovery completes
+- [ ] Handle `CONTENT_NODE_REGISTRATION` messages in `gossip_receive_handler()`:
+  - Extract node info and add as peer
+
+### 2. Master Config Processor (`scripts/docker_config_generator.py`)
+- [ ] Create Python script to process master config
+- [ ] Parse simplified config (nodes only, no ports, no peers in master config)
+- [ ] Validate node count: Maximum 99 nodes per network (hostname format uses 2 digits: 01-99)
+- [ ] Parse `docker.discovery.mode` from config: `"tailscale"` (default), `"dns_pattern"` (DNS wildcard query), or `"static"` (manual peer list)
+- [ ] Use fixed ports for all nodes: `api_port = 8000`, `gossip_port = 9000` (each container has isolated network namespace, no conflicts)
+- [ ] Generate hostnames based on discovery mode (extract node index from `node_01` → `1`, format as 2-digit zero-padded string: `"01"`):
+  - **Tailscale mode**: Extract index from `node_01` → `1`, format as `"01"` (zero-padded), combine: `{hostname_prefix}{index}` → `tw_node01` (short hostname, MagicDNS resolves)
+    - Examples: prefix `"tw_node"`, node `node_01` → `tw_node01`; node `node_22` → `tw_node22`; node `node_03` → `tw_node03`
+    - Examples: prefix `"smithfam_tw_node"`, node `node_01` → `smithfam_tw_node01`; node `node_22` → `smithfam_tw_node22`
+  - **DNS pattern mode**: Extract index from `node_01` → `1`, format as `"01"` (zero-padded), combine: `{hostname_prefix}{index}.{domain}` → `tw_node01.{domain}` (full domain)
+    - Examples: prefix `"tw_node"`, domain `"duckdns.org"`, node `node_01` → `tw_node01.duckdns.org`; node `node_22` → `tw_node22.duckdns.org`
+    - Examples: prefix `"smithfam_tw_node"`, domain `"duckdns.org"`, node `node_01` → `smithfam_tw_node01.duckdns.org`
+  - **Static mode**: Use hostname from master config `nodes[].hostname` field (user-provided, `hostname_prefix` ignored)
+    - Example: `"myhost.duckdns.org"` or `"smithfam_tw_node01.duckdns.org"` (user provides full hostname)
+- [ ] For each node, generate node-specific config in `docker_configs/<node_id>/network_config.json` with:
+  - `id`: from master config (e.g., `node_01`)
+  - `name`: from master config (e.g., `Family Node 1`)
+  - `hostname`: generated or from config (format depends on discovery mode)
+  - `gossip_port`: `9000` (fixed)
+  - `api_port`: `8000` (fixed)
+  - `peers`: 
+    - **Tailscale/DNS pattern modes**: empty array `[]` (dynamic discovery handles this)
+    - **Static mode**: array of peer hostnames from master config (e.g., `["peer1.duckdns.org:9000", "peer2.duckdns.org:9000"]`)
+  - `discovery_mode`: from master config (e.g., `"tailscale"`, `"dns_pattern"`, or `"static"`)
+  - `dns_pattern` (if mode == "dns_pattern"): pattern like `"tw_node*.tinyweb.win"` or `"tw_node*.duckdns.org"`
+- [ ] Create `docker_configs/<node_id>/state/` directory structure
+- [ ] For each node, run `init_tool` to initialize state:
+  - Option A: Modify `init_tool` to accept `--node-id <node_id>` to initialize only one node
+  - Option B: Create temporary master config with single node, run `init_tool --config <temp_config>`, then copy `state/` to `docker_configs/node_XX/state/`
+  - `init_tool` will generate keys, initialize database, seed users, etc. in the state directory
+  - After initialization, copy generated `network_config.json` from state to `docker_configs/<node_id>/network_config.json` (or ensure init_tool saves it correctly)
+- [ ] Generate `docker-compose.yml` (production)
+- [ ] Generate `docker-compose.test.yml` (test mode)
+
+### 2. Simplified Master Config Format
+- [x] Master config does NOT include ports or peers (already done)
+- [x] Master config includes docker section (already done)
+- [ ] Update docker section to support discovery mode:
+  ```json
+  "docker": {
+    "mode": "production",
+    "discovery": {
+      "mode": "tailscale",  // "tailscale" (default), "dns_pattern" (DNS wildcard), or "static" (manual list)
+      "hostname_prefix": "tw_node",  // General prefix for all modes (e.g., "tw_node", "smithfam_tw_node", "jims_tw_node")
+      "dns_pattern": {  // Only used if mode == "dns_pattern"
+        "pattern": "{prefix}*.{domain}",  // Optional: e.g., "tw_node*.tinyweb.win" or "smithfam_tw_node*.duckdns.org"
+        "domain": "tinyweb.win"  // Required if pattern not provided: used to build pattern from hostname_prefix
+      }
+    }
+  }
+  ```
+- [ ] For **Static mode**, master config nodes can include `hostname` and `peers`:
+  ```json
+  "nodes": [
+    {
+      "id": "node_01",
+      "name": "Home Server",
+      "hostname": "myhost.duckdns.org"  // User-provided full hostname (hostname_prefix ignored in static mode)
+    },
+    {
+      "id": "node_02",
+      "name": "Raspberry Pi",
+      "hostname": "pi.duckdns.org",
+      "peers": ["myhost.duckdns.org:9000"]  // Optional: explicit peer list (if not provided, will be empty array)
+    }
+  ]
+  ```
+  Note: In static mode, `hostname_prefix` from docker.discovery is ignored - users provide full hostnames in nodes array
+- [ ] **Important distinction**: 
+  - **Master config** (input): No ports, no peers, no hostnames, but includes discovery mode
+  - **Node-specific configs** (generated): Include hostname (format depends on mode), ports (8000/9000), empty peers array, discovery_mode
+- [ ] Config schema validation:
+  - Master config schema: nodes don't require ports/peers/hostname, but docker.discovery.mode is required
+  - Node-specific config schema: nodes require hostname, gossip_port, api_port, discovery_mode (peers optional, defaults to empty)
+
+### 3. Dockerfile (`scripts/Dockerfile.node`)
+- [ ] Create Dockerfile with lightweight base (debian-slim or alpine)
+- [ ] Install runtime deps: libsodium, sqlite3, curl
+- [ ] Conditionally install discovery tools:
+  - **Tailscale mode**: Install `tailscale` CLI (for `tailscale status` command)
+  - **DNS pattern/Static modes**: No additional tools needed (uses standard DNS via `getaddrinfo()`)
+- [ ] Copy pre-built `tinyweb` binary
+- [ ] Copy pre-initialized state directory from `docker_configs/<node_id>/state/` to `/app/state/`
+- [ ] Copy node-specific config from `docker_configs/<node_id>/network_config.json` to `/app/state/network_config.json`
+- [ ] Set working directory to `/app`
+- [ ] Set entrypoint: `/app/tinyweb` (node_id comes from `TINYWEB_NODE_ID` env var, config loaded from `/app/state/network_config.json`)
+- [ ] Expose gossip_port 9000 (UDP) and api_port 8000 (TCP)
+- [ ] Note: Discovery mode is determined at runtime from config, not build time
+
+### 4. Docker Compose Generation
+- [ ] Generate node services based on discovery mode:
+  
+  **For Tailscale mode (default):**
+  - `build`: reference to Dockerfile.node
+  - `network_mode: service:tailscale_XXX` (share Tailscale sidecar's network namespace)
+  - `environment`:
+    - `TINYWEB_NODE_ID`: node index (e.g., `1`, `2`, `3`) - extracted from `node_01` → `1` (parse `node_XX` format, extract number)
+    - `TINYWEB_DISCOVERY_MODE`: `tailscale`
+  - `volumes`:
+    - Mount `docker_configs/<node_id>/state/` to `/app/state/` (read-only or read-write for persistence)
+  - `depends_on`:
+    - `tailscale_XXX` with condition: `service_healthy` (wait for Tailscale to be connected)
+  - `healthcheck`: HTTP GET on `http://localhost:8000/health` (or similar endpoint)
+  - `restart`: `unless-stopped` (production) or `no` (test mode)
+  - `ports` (optional, for external API access):
+    - Map host port `8000 + index` to container port `8000` (e.g., `8001:8000`, `8002:8000`)
+  
+  **For DNS pattern mode:**
+  - `build`: reference to Dockerfile.node
+  - `network_mode: bridge` or `host` (user's choice, depends on tunnel/port forwarding setup)
+  - `environment`:
+    - `TINYWEB_NODE_ID`: node index
+    - `TINYWEB_DISCOVERY_MODE`: `dns_pattern`
+  - `volumes`: Same as Tailscale mode
+  - `depends_on`: None (or tunnel container if user has one)
+  - `healthcheck`: Same as Tailscale mode
+  - `restart`: Same as Tailscale mode
+  - `ports`: Expose ports based on user's setup (tunnel, port forwarding, etc.)
+  
+  **For Static mode (DuckDNS/direct IP):**
+  - `build`: reference to Dockerfile.node
+  - `network_mode: bridge` or `host` (user's choice)
+  - `environment`:
+    - `TINYWEB_NODE_ID`: node index
+    - `TINYWEB_DISCOVERY_MODE`: `static`
+  - `volumes`: Same as Tailscale mode
+  - `depends_on`: None
+  - `healthcheck`: Same as Tailscale mode
+  - `restart`: Same as Tailscale mode
+  - `ports`: Expose ports directly to host:
+    - UDP `9000:9000` (gossip)
+    - TCP `8000:8000` (API)
+  - User must configure port forwarding on router for external access
+  
+- [ ] **Generate Tailscale sidecar services** (only if discovery mode == "tailscale"):
+  - `image: tailscale/tailscale:latest`
+  - `environment`:
+    - `TS_AUTHKEY`: `${TS_AUTHKEY}` (from environment variable)
+    - `TS_HOSTNAME`: generated hostname (e.g., `tw_node01`, `tw_node02`)
+    - `TS_STATE_DIR`: `/var/lib/tailscale`
+  - `volumes`:
+    - Named volume for Tailscale state: `tailscale_XXX_state:/var/lib/tailscale`
+  - `cap_add`: `NET_ADMIN` (required for Tailscale)
+  - `healthcheck`: Verify Tailscale is connected (e.g., `tailscale status --json` returns connected devices)
+  - `restart`: `unless-stopped` (production) or `no` (test mode)
+- [ ] Test mode: Same setup as production, just different cleanup behavior (volumes removed on `down -v`)
+
+### 5. (Discovery infrastructure moved to section 1 - CORE implementation)
+
+### 6. Integration Test Runner (`scripts/docker_test_runner.sh`)
+- [ ] Create shell script for test orchestration
+- [ ] Parse master config
+- [ ] Call config generator in test mode
+- [ ] Build Docker images: `docker-compose build`
+- [ ] Start containers: `docker-compose -f docker-compose.test.yml up -d`
+- [ ] Wait for health checks (poll until all healthy)
+- [ ] Run test suite (optional argument)
+- [ ] Cleanup: `docker-compose -f docker-compose.test.yml down -v`
+
+### 7. Naming Convention Updates
+- [ ] Update all references from `node-001` to `tw_node01` format (2 digits, zero-padded, max 99 nodes)
+- [ ] Update hostname generation: Extract index from `node_01` → `1`, format as 2-digit zero-padded string `"01"`, combine with prefix: `{prefix}01` → `tw_node01`
+- [ ] Ensure all hostname generation uses 2-digit zero-padded format (01-99) for node indices
+  - Examples: `tw_node01`, `tw_node22`, `tw_node03` (always 2 digits, zero-padded)
+- [ ] Node ID format: `node_01` through `node_99` (internal format, 2 digits, zero-padded)
+- [ ] Hostname format: `{prefix}01` through `{prefix}99` (external format, 2 digits, zero-padded)
+- [ ] Pattern matching: Use `{hostname_prefix}*` pattern to match all nodes (e.g., `tw_node*` matches `tw_node01`, `tw_node22`, `tw_node03`, etc.)
+- [ ] Update Docker service names to match node IDs (e.g., `node_01`, `node_02`)
+- [ ] Update documentation/examples
+
+## File Structure
+```
+scripts/
+├── docker_config_generator.py  # Main config processor
+├── Dockerfile.node              # Docker image definition
+├── docker_test_runner.sh        # Integration test orchestrator
+└── docker_configs/              # Generated (gitignored)
+    ├── node_01/
+    │   ├── network_config.json  # Node-specific config (with hostname, ports)
+    │   └── state/                # Pre-initialized with keys
+    │       ├── network_config.json  # Same as above (copied by init_tool)
+    │       ├── keys/             # Ed25519 keypairs
+    │       └── storage/         # SQLite database (tinyweb.db)
+    └── node_02/
+        └── ...
+
+# Generated in project root:
+docker-compose.yml           # Production services
+docker-compose.test.yml      # Integration testing
+```
+
+**Volume Mounting Strategy:**
+- `docker_configs/<node_id>/state/` → `/app/state/` in container
+- Container reads config from `/app/state/network_config.json`
+- Container uses `/app/state/` for database and keys (persistent across restarts)
+
+## Usage Examples
+
+**Test mode (Tailscale discovery):**
+```bash
+export TS_AUTHKEY=tskey-auth-xxxxx  # Required for Tailscale mode
+python3 scripts/docker_config_generator.py --master-config config.json --mode test
+docker-compose -f docker-compose.test.yml up -d
+# Nodes discover each other via Tailscale API, then communicate
+```
+
+**Production mode (Tailscale discovery):**
+```bash
+export TS_AUTHKEY=tskey-auth-xxxxx
+python3 scripts/docker_config_generator.py --master-config config.json --mode production
+docker-compose up -d
+# Same discovery mechanism, just different cleanup behavior
+```
+
+**Production mode (Static discovery - DuckDNS/direct IP):**
+```bash
+# No special setup needed
+python3 scripts/docker_config_generator.py --master-config config.json --mode production
+# Master config has: "docker": { "discovery": { "mode": "static" } }
+# Nodes have hostnames and peers configured in config
+docker-compose up -d
+# Nodes read peers from config, resolve via DNS (works with DuckDNS, direct IP, etc.)
+# Make sure ports 9000 (UDP) and 8000 (TCP) are forwarded on router
+```
+
+**Production mode (DNS pattern discovery):**
+```bash
+# No TS_AUTHKEY needed
+python3 scripts/docker_config_generator.py --master-config config.json --mode production
+# Master config has: "docker": { "discovery": { "mode": "dns_pattern", "dns_pattern": { "pattern": "tw_node*.tinyweb.win" } } }
+docker-compose up -d
+# Nodes discover each other via DNS queries for tw_node*.tinyweb.win (or tw_node*.duckdns.org, etc.)
+# Works with any DNS service that supports the pattern
+```
+
+## Key Features
+- [x] Simple: Just docker-compose, no orchestration complexity
+- [ ] Tailscale-based discovery: Always use Tailscale API to find peers
+- [ ] Dynamic peer addition: Add peers when receiving messages
+- [ ] Auto-configured: Ports and hostnames assigned automatically
+- [ ] Fully containerized: Tailscale sidecars, no host setup
+- [ ] Equal nodes: No primary/bootstrap node required
+- [ ] Conflict-free naming: `tw_node01` avoids conflicts with other devices
+- [ ] Bidirectional discovery: Node2 finds Node1 via API, Node1 learns Node2 via announcement
+
+## Discovery Flow
+
+### Tailscale Mode
+
+1. **Container startup sequence:**
+   - Tailscale sidecar starts first
+   - Tailscale authenticates with `TS_AUTHKEY`
+   - Tailscale healthcheck passes (connected to tailnet)
+   - Node container starts (depends on Tailscale sidecar being healthy)
+
+2. **Node1 starts (first node):**
+   - Loads config from `/app/state/network_config.json` (hostname: `tw_node01`, ports: 8000/9000, discovery_mode: `tailscale`)
+   - Calls `discover_peers()` which routes to `discover_tailscale_peers()` with retry logic
+   - Queries Tailscale API: `tailscale status --json`
+   - Finds no other devices matching `{hostname_prefix}*` pattern (first node, e.g., `tw_node*` or `smithfam_tw_node*`)
+   - Calls `bootstrap_known_peers()` (loads from DB, empty initially)
+   - Starts listening on port 9000, no peers initially
+   - Sends `CONTENT_NODE_REGISTRATION` announcement (no peers to send to, but ready for future)
+
+3. **Node2 starts:**
+   - Loads config (hostname: `tw_node02`, ports: 8000/9000, discovery_mode: `tailscale`)
+   - Calls `discover_peers()` which routes to `discover_tailscale_peers()` with retry logic
+   - Queries Tailscale API: `tailscale status --json`
+   - Finds `tw_node01` device (Node1)
+   - Adds `tw_node01:9000` as peer via `gossip_service_add_peer()`
+   - Stores in database via `gossip_peers_add_or_update()`
+   - Calls `bootstrap_known_peers()` (loads from DB, now includes Node1)
+   - Starts listening on port 9000
+   - Sends `CONTENT_NODE_REGISTRATION` announcement to Node1
+
+4. **Node1 receives announcement:**
+   - `gossip_receive_handler()` processes `CONTENT_NODE_REGISTRATION` message
+   - Extracts Node2's hostname (`tw_node02`) and port (9000) from payload
+   - Verifies source address matches announcement
+   - Adds `tw_node02:9000` as peer dynamically via `gossip_service_add_peer()`
+   - Stores in database via `gossip_peers_add_or_update()`
+
+5. **Both nodes now know each other:**
+   - Can send messages bidirectionally
+   - Peer list persists in database
+   - Future restarts will discover peers from both discovery backend and database
+
+### DNS Pattern Mode
+
+1. **Container startup sequence:**
+   - Tunnel/port forwarding configured by user (Cloudflare tunnel, port forwarding, etc.)
+   - Node container starts
+
+2. **Node1 starts (first node):**
+   - Loads config (hostname: `tw_node01.tinyweb.win`, ports: 8000/9000, discovery_mode: `dns_pattern`, pattern: `tw_node*.tinyweb.win`)
+   - Calls `discover_peers()` which routes to `discover_dns_pattern_peers()`
+   - Queries DNS for pattern `tw_node*.tinyweb.win` (or iterates through possible hostnames)
+   - Finds no other nodes (first node, or DNS doesn't support wildcard enumeration)
+   - Calls `bootstrap_known_peers()` (loads from DB, empty initially)
+   - Starts listening on port 9000, no peers initially
+
+3. **Node2 starts:**
+   - Loads config (hostname: `tw_node02.tinyweb.win`, ports: 8000/9000, discovery_mode: `dns_pattern`)
+   - Calls `discover_peers()` which routes to `discover_dns_pattern_peers()`
+   - Queries DNS for pattern `tw_node*.tinyweb.win`
+   - Finds `tw_node01.tinyweb.win` (Node1) via DNS resolution
+   - Adds `tw_node01.tinyweb.win:9000` as peer
+   - Rest of flow same as Tailscale mode
+
+**Note**: DNS pattern discovery may be limited by DNS provider capabilities. Some providers don't support wildcard enumeration, so this mode may fall back to static discovery or require manual peer configuration.
+
+## Testing Checklist
+- [ ] Test Tailscale API query on startup (with retry logic)
+- [ ] Test discovery when Node1 starts first (no peers found)
+- [ ] Test discovery when Node2 starts (finds Node1 via API)
+- [ ] Test `CONTENT_NODE_REGISTRATION` message sending/receiving
+- [ ] Test dynamic peer addition when receiving from unknown peer
+- [ ] Test Tailscale sidecar networking (network_mode: service)
+- [ ] Test fixed ports (8000/9000) work for all nodes
+- [ ] Test environment variable `TINYWEB_NODE_ID` is set correctly
+- [ ] Test volume mounting (`docker_configs/` → `/app/state/`)
+- [ ] Test Tailscale sidecar healthcheck and dependencies
+- [ ] Test integration test runner end-to-end
+- [ ] Verify nodes discover each other via Tailscale API + announcements
+- [ ] Test graceful fallback when Tailscale API unavailable
+- [ ] Test node-specific config generation with all required fields
+- [ ] Test discovery mode is correctly read from config
+- [ ] Test discovery abstraction (can switch between modes)
+
+## Static Discovery Mode (DuckDNS / Direct IP)
+
+### Overview
+Support for users who expose ports directly (via port forwarding) and use dynamic DNS services like DuckDNS, or even direct IP addresses.
+
+### How It Works
+- **Discovery mode**: `"static"` reads peers from node-specific config's `peers` array
+- **Hostname resolution**: Uses standard DNS (`getaddrinfo()`) - works with any DNS-resolvable hostname
+- **No special infrastructure**: Just needs port forwarding and DNS (or direct IP)
+- **Manual configuration**: Users provide peer hostnames in config
+
+### Use Cases
+- DuckDNS users: `myhost.duckdns.org:9000`
+- Direct IP: `192.168.1.100:9000` (local network) or `1.2.3.4:9000` (public IP)
+- Custom domains: `node1.example.com:9000`
+- Mix of methods: Some peers via DuckDNS, some via direct IP
+
+### Configuration Example
+```json
+{
+  "network": { "name": "My Network" },
+  "nodes": [
+    {
+      "id": "node_01",
+      "name": "Home Server",
+      "hostname": "myhost.duckdns.org"
+    },
+    {
+      "id": "node_02",
+      "name": "Raspberry Pi",
+      "hostname": "pi.duckdns.org",
+      "peers": ["myhost.duckdns.org:9000"]
+    }
+  ],
+  "docker": {
+    "discovery": {
+      "mode": "static"
+    }
+  }
+}
+```
+
+### Implementation
+- Already planned in section 5: `discover_static_peers()` function
+- Reads from `config->peers` array
+- Uses `getaddrinfo()` for DNS resolution (works with any hostname)
+- No special dependencies needed
+
+### Benefits
+- **No infrastructure required**: Works with any DNS service or direct IP
+- **Simple setup**: Just configure peer hostnames
+- **Flexible**: Mix DuckDNS, direct IPs, custom domains
+- **Works everywhere**: Home networks, VPS, anywhere with port forwarding
+
+## DNS Pattern Discovery Mode
+
+### Overview
+Support for DNS-based peer discovery using wildcard patterns. Works with any DNS service (Cloudflare, DuckDNS, custom domains, etc.) that can resolve hostnames matching a pattern.
+
+### How It Works
+- **Discovery mode**: `"dns_pattern"` queries DNS for hostnames matching a pattern
+- **Pattern format**: `{prefix}*.{domain}` (e.g., `tw_node*.tinyweb.win` or `tw_node*.duckdns.org`)
+- **DNS resolution**: Uses standard DNS queries - works with any DNS provider
+- **Limitation**: Not all DNS providers support wildcard enumeration, may need to iterate through possible hostnames
+
+### Use Cases
+- Cloudflare tunnels: `tw_node*.tinyweb.win`
+- DuckDNS: `tw_node*.duckdns.org` (if DNS supports pattern queries)
+- Custom domains: `node*.example.com`
+- Any DNS service with predictable hostname patterns
+
+### Implementation Notes
+- DNS wildcard enumeration may not be supported by all providers
+- Fallback options:
+  1. Iterate through possible hostnames (tw_node01, tw_node02, etc.) and resolve each
+  2. Fall back to static discovery if DNS pattern fails
+  3. Use static mode for providers that don't support wildcard queries
+
+### Benefits
+- Works with any DNS service (not Cloudflare-specific)
+- Automatic peer discovery if DNS supports it
+- Full domain names for better DNS management
+- Each node can run independently on different machines
+
+### When to Use
+- **DNS pattern mode**: When you have a predictable hostname pattern and DNS supports wildcard queries
+- **Static mode**: When DNS doesn't support wildcards, or you prefer explicit peer configuration
+- **Tailscale mode**: When you want automatic discovery without DNS configuration
+

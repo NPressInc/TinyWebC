@@ -68,27 +68,30 @@ Content types include:
 - Messages are stored in `gossip_messages` with protobuf-encoded payloads and expiry timestamps.
 - TTL cleanup runs every 60 seconds.
 
-## Networking (Tailscale Optional)
+## Docker Deployment (Recommended)
 
-If you want painless private networking across home devices and cloud hosts, use Tailscale.
+TinyWeb supports easy deployment via Docker Compose with automatic peer discovery using Tailscale sidecars.
 
-Quick setup:
+**Quick setup:**
 
 ```bash
-# 1) Create an auth key in the Tailscale admin console (prefer a tag key like tag:tinyweb-node)
-# 2) On each node (Raspberry Pi, EC2, etc.):
-TS_AUTHKEY=tskey-abcdef TS_HOSTNAME=my-tinyweb-node TS_TAGS=tag:tinyweb-node \
-sudo ./scripts/setup_tailscale.sh
+# 1) Get Tailscale auth key from admin console
+export TS_AUTHKEY=tskey-auth-xxxxx
 
-# Verify
-tailscale status
-tailscale ip -4
+# 2) Generate configs and docker-compose files
+python3 scripts/docker_config_generator.py --master-config scripts/configs/network_config.json
+
+# 3) Start all nodes
+docker-compose up -d
 ```
 
-Notes:
-- Works with MagicDNS (hostname resolution like `node.tailnet.ts.net`).
-- Non-interactive if `TS_AUTHKEY` is provided; otherwise it will prompt with a login URL.
-- Open egress to Tailscale (TCP 443/HTTPS, UDP 41641). No inbound ports required.
+**Features:**
+- **Automatic peer discovery**: Nodes discover each other via Tailscale API
+- **No manual configuration**: Just provide auth key and run docker-compose
+- **Fully containerized**: Tailscale runs in sidecar containers, no host setup needed
+- **Dynamic networking**: Nodes automatically find and connect to each other
+
+See `initialization_tasks.txt` for detailed setup instructions.
 
 ## Contributing
 

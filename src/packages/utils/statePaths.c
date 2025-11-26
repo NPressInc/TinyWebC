@@ -33,27 +33,14 @@ bool state_paths_init(uint32_t node_id, bool debug_mode, NodeStatePaths* paths) 
     paths->node_id = node_id;
     paths->debug_mode = debug_mode;
 
-    if (debug_mode) {
-        // Debug mode: Use isolated test directories for each node (multiple nodes on same machine)
-        printf("🔧 Debug mode: Using isolated test directories for node %u\n", node_id);
-        snprintf(paths->base_dir, sizeof(paths->base_dir), "test_state/node_%u", node_id);
-        snprintf(paths->blockchain_dir, sizeof(paths->blockchain_dir), "test_state/node_%u/blockchain", node_id);
-        snprintf(paths->keys_dir, sizeof(paths->keys_dir), "test_state/node_%u/keys", node_id);
-        snprintf(paths->blockchain_file, sizeof(paths->blockchain_file), "test_state/node_%u/blockchain/blockchain.dat", node_id);
-        snprintf(paths->blockchain_json, sizeof(paths->blockchain_json), "test_state/node_%u/blockchain/blockchain.json", node_id);
-        snprintf(paths->database_file, sizeof(paths->database_file), "test_state/node_%u/blockchain/blockchain.db", node_id);
-        snprintf(paths->private_key_file, sizeof(paths->private_key_file), "test_state/node_%u/keys/node_private.key", node_id);
-    } else {
-        // Production mode: Simple paths (one node per machine)
-        printf("🏭 Production mode: Using simple directories for node %u\n", node_id);
-        snprintf(paths->base_dir, sizeof(paths->base_dir), "state");
-        snprintf(paths->blockchain_dir, sizeof(paths->blockchain_dir), "state/blockchain");
-        snprintf(paths->keys_dir, sizeof(paths->keys_dir), "state/keys");
-        snprintf(paths->blockchain_file, sizeof(paths->blockchain_file), "state/blockchain/blockchain.dat");
-        snprintf(paths->blockchain_json, sizeof(paths->blockchain_json), "state/blockchain/blockchain.json");
-        snprintf(paths->database_file, sizeof(paths->database_file), "state/blockchain/blockchain.db");
-        snprintf(paths->private_key_file, sizeof(paths->private_key_file), "state/keys/node_private.key");
-    }
+    // Always use simple state/ paths - each container/node has isolated state directory
+    snprintf(paths->base_dir, sizeof(paths->base_dir), "state");
+    snprintf(paths->blockchain_dir, sizeof(paths->blockchain_dir), "state/storage");
+    snprintf(paths->keys_dir, sizeof(paths->keys_dir), "state/keys");
+    snprintf(paths->blockchain_file, sizeof(paths->blockchain_file), "state/storage/blockchain.dat");
+    snprintf(paths->blockchain_json, sizeof(paths->blockchain_json), "state/storage/blockchain.json");
+    snprintf(paths->database_file, sizeof(paths->database_file), "state/storage/tinyweb.db");
+    snprintf(paths->private_key_file, sizeof(paths->private_key_file), "state/keys/node_private.key");
 
     // Create all directories
     return state_paths_ensure_directories(paths);
@@ -74,7 +61,7 @@ bool state_paths_ensure_directories(const NodeStatePaths* paths) {
         return false;
     }
     
-    // Create blockchain subdirectory
+    // Create storage subdirectory
     if (!ensure_directory_exists(paths->blockchain_dir)) {
         return false;
     }
@@ -93,13 +80,8 @@ bool state_paths_get_blockchain_dir(const NodeStatePaths* paths, char* buffer, s
         return false;
     }
 
-    if (paths->debug_mode) {
-        int result = snprintf(buffer, buffer_size, "test_state/node_%u/blockchain", paths->node_id);
-        return result > 0 && (size_t)result < buffer_size;
-    } else {
-        int result = snprintf(buffer, buffer_size, "state/blockchain");
-        return result > 0 && (size_t)result < buffer_size;
-    }
+    int result = snprintf(buffer, buffer_size, "state/storage");
+    return result > 0 && (size_t)result < buffer_size;
 }
 
 bool state_paths_get_database_file(const NodeStatePaths* paths, char* buffer, size_t buffer_size) {
@@ -107,13 +89,8 @@ bool state_paths_get_database_file(const NodeStatePaths* paths, char* buffer, si
         return false;
     }
 
-    if (paths->debug_mode) {
-        int result = snprintf(buffer, buffer_size, "test_state/node_%u/blockchain/blockchain.db", paths->node_id);
-        return result > 0 && (size_t)result < buffer_size;
-    } else {
-        int result = snprintf(buffer, buffer_size, "state/blockchain/blockchain.db");
-        return result > 0 && (size_t)result < buffer_size;
-    }
+    int result = snprintf(buffer, buffer_size, "state/storage/tinyweb.db");
+    return result > 0 && (size_t)result < buffer_size;
 }
 
 bool state_paths_get_private_key_file(const NodeStatePaths* paths, char* buffer, size_t buffer_size) {
@@ -121,13 +98,8 @@ bool state_paths_get_private_key_file(const NodeStatePaths* paths, char* buffer,
         return false;
     }
 
-    if (paths->debug_mode) {
-        int result = snprintf(buffer, buffer_size, "test_state/node_%u/keys/node_private.key", paths->node_id);
-        return result > 0 && (size_t)result < buffer_size;
-    } else {
-        int result = snprintf(buffer, buffer_size, "state/keys/node_private.key");
-        return result > 0 && (size_t)result < buffer_size;
-    }
+    int result = snprintf(buffer, buffer_size, "state/keys/node_private.key");
+    return result > 0 && (size_t)result < buffer_size;
 }
 
 bool state_paths_create_base_directory(void) {

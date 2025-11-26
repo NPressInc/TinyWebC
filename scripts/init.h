@@ -13,7 +13,6 @@
 typedef struct {
     char* id;
     char* name;
-    char* type;
     char* hostname;
     uint16_t gossip_port;
     uint16_t api_port;
@@ -44,7 +43,7 @@ typedef struct {
 } InitNetworkConfig;
 
 // Initialize network with all nodes and users
-// base_path: "state" for production, "test_state" for testing
+// base_path: "state" (each container/node has isolated state directory)
 // original_config_path: Path to the original network_config.json file (can be NULL)
 int initialize_network(const InitNetworkConfig* config, const char* base_path, const char* original_config_path);
 

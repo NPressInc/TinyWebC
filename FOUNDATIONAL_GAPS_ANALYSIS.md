@@ -341,3 +341,4 @@ static int keypair_loaded = 0; // Race condition possible
 
 **Recommendation**: Fix the 3 critical gaps before building more features. These are foundational and will cause issues as you scale.
 
+

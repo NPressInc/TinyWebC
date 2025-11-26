@@ -53,7 +53,7 @@ static void print_usage(const char* program_name) {
     printf("  -i, --id <node_id>       Node identifier (default: 0)\n");
     printf("  -g, --gossip-port <port> Gossip UDP port (default: 9000)\n");
     printf("  -p, --api-port <port>    HTTP API port (default: 8000)\n");
-    printf("  -d, --debug              Use test_state/ directories instead of state/\n");
+    printf("  -d, --debug              Enable debug logging (deprecated, kept for compatibility)\n");
     printf("  -h, --help               Show this help message\n");
 }
 
@@ -108,7 +108,7 @@ static int parse_arguments(int argc, char* argv[], NodeConfig* config) {
     
     // Command-line arguments override everything
     if (node_id > 0) {
-        snprintf(config->node_id, sizeof(config->node_id), "node_%03u", node_id);
+        snprintf(config->node_id, sizeof(config->node_id), "node_%02u", node_id);
     }
     if (config->gossip_port == 0) {
         config->gossip_port = 9000; // Default
@@ -127,31 +127,23 @@ static int load_node_config(NodeConfig* config, uint32_t node_id, bool debug_mod
     
     // Build path to node's network_config.json
     char config_path[512];
-    if (debug_mode) {
-        snprintf(config_path, sizeof(config_path), "test_state/node_%03u/network_config.json", node_id);
-    } else {
-        // Try to find node_id from config file
-        if (node_id == 0) {
-            // Try to get from environment
-            const char* env_node_id = getenv("TINYWEB_NODE_ID");
-            if (env_node_id) {
-                node_id = (uint32_t)atoi(env_node_id);
-            }
-        }
-        if (node_id > 0) {
-            snprintf(config_path, sizeof(config_path), "state/node_%03u/network_config.json", node_id);
-        } else {
-            // Fallback: try state/network_config.json
-            snprintf(config_path, sizeof(config_path), "state/network_config.json");
+    // Try to find node_id from config file
+    if (node_id == 0) {
+        // Try to get from environment
+        const char* env_node_id = getenv("TINYWEB_NODE_ID");
+        if (env_node_id) {
+            node_id = (uint32_t)atoi(env_node_id);
         }
     }
+        // Config is always in state/network_config.json (each container has isolated state)
+        snprintf(config_path, sizeof(config_path), "state/network_config.json");
     
     char node_id_str[64];
     if (node_id > 0) {
-        snprintf(node_id_str, sizeof(node_id_str), "node_%03u", node_id);
+        snprintf(node_id_str, sizeof(node_id_str), "node_%02u", node_id);
     } else {
         // Try to extract from config file path or use default
-        strncpy(node_id_str, "node_001", sizeof(node_id_str) - 1);
+        strncpy(node_id_str, "node_01", sizeof(node_id_str) - 1);
     }
     
     // Load config from file
@@ -160,7 +152,7 @@ static int load_node_config(NodeConfig* config, uint32_t node_id, bool debug_mod
         logger_error("main", "Could not load config from %s, using defaults", config_path);
         config_set_defaults(config);
         if (node_id > 0) {
-            snprintf(config->node_id, sizeof(config->node_id), "node_%03u", node_id);
+            snprintf(config->node_id, sizeof(config->node_id), "node_%02u", node_id);
         }
         config->debug_mode = debug_mode;
         return 0; // Not fatal, use defaults
@@ -170,7 +162,7 @@ static int load_node_config(NodeConfig* config, uint32_t node_id, bool debug_mod
 }
 
 static int initialize_storage(const NodeConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len) {
-    // Extract node_id from config->node_id (format: "node_001")
+    // Extract node_id from config->node_id (format: "node_01")
     uint32_t node_id = 0;
     if (config->node_id[0] != '\0' && sscanf(config->node_id, "node_%u", &node_id) == 1) {
         // Successfully parsed

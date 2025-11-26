@@ -10,7 +10,7 @@
 #include "packages/sql/schema.h"
 #include "packages/sql/permissions.h"
 #include "structs/permission/permission.h"
-#include "packages/initialization/init.h"
+#include "init.h"
 
 #define ASSERT(condition, message) \
     do { \
