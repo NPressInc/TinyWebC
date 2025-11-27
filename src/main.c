@@ -288,6 +288,18 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
         return -1;
     }
 
+    // Authorization check: Only accept messages from nodes whose public key is in gossip_peers whitelist
+    if (envelope->header && envelope->header->sender_pubkey && envelope->header->sender_pubkey->len == 32) {
+        GossipPeerInfo peer;
+        if (gossip_peers_get_by_pubkey(envelope->header->sender_pubkey->data, &peer) != 0) {
+            logger_error("gossip", "Rejected message from unauthorized node (public key not in whitelist)");
+            return -1;
+        }
+    } else {
+        logger_error("gossip", "Rejected message with invalid sender public key");
+        return -1;
+    }
+
     // Serialize envelope to compute digest
     unsigned char* ser = NULL;
     size_t ser_len = 0;
@@ -418,7 +430,7 @@ static void discover_peer_from_source(GossipService* service, const struct socka
         
         // Store in database for persistence
         if (db_is_initialized()) {
-            if (gossip_peers_add_or_update(hostname, gossip_port, 0, NULL) == 0) {
+            if (gossip_peers_add_or_update(hostname, gossip_port, 0, NULL, NULL) == 0) {
                 logger_info("gossip", "Stored discovered peer in database: %s:%u", hostname, gossip_port);
             } else {
                 logger_info("gossip", "Failed to store discovered peer in database (non-fatal)");
@@ -501,7 +513,7 @@ static void handle_node_announcement(GossipService* service, const Tinyweb__Enve
         
         // Store in database for persistence
         if (db_is_initialized()) {
-            if (gossip_peers_add_or_update(peer_hostname, gossip_port, 0, NULL) == 0) {
+            if (gossip_peers_add_or_update(peer_hostname, gossip_port, 0, NULL, NULL) == 0) {
                 logger_info("gossip", "Stored announced peer in database: %s:%u", peer_hostname, gossip_port);
             } else {
                 logger_info("gossip", "Failed to store announced peer in database (non-fatal)");

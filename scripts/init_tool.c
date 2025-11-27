@@ -389,6 +389,9 @@ static int check_and_clean_existing_state(const char* state_path) {
 }
 
 int main(int argc, char* argv[]) {
+    // Set stdout to line buffered for real-time output when piped
+    setvbuf(stdout, NULL, _IOLBF, 0);  // Line buffered
+    setvbuf(stderr, NULL, _IOLBF, 0);  // Line buffered
     int verbose = 0;
     int use_test_state = 0;
     const char* config_path = NULL;
@@ -512,9 +515,9 @@ int main(int argc, char* argv[]) {
         }
     } else {
         base_path = use_test_state ? DEFAULT_TEST_STATE_PATH : DEFAULT_STATE_PATH;
-        if (use_test_state) {
-            printf("Using test state directory: %s/\n", base_path);
-        }
+    if (use_test_state) {
+        printf("Using test state directory: %s/\n", base_path);
+    }
     }
 
     // For single-node initialization, use base_path directly (not a subdirectory)
@@ -547,22 +550,22 @@ int main(int argc, char* argv[]) {
                base_path);
     } else {
         // Multi-node: use existing initialize_network which creates subdirectories
-        int clean_result = check_and_clean_existing_state(base_path);
-        if (clean_result < 0) {
-            free_config(&config, nodes, users);
-            return 0; // User cancelled intentionally
-        }
+    int clean_result = check_and_clean_existing_state(base_path);
+    if (clean_result < 0) {
+        free_config(&config, nodes, users);
+        return 0; // User cancelled intentionally
+    }
 
-        printf("\nInitializing gossip network...\n");
-        if (initialize_network(&config, base_path, config_path) != 0) {
-            fprintf(stderr, "Initialization failed.\n");
-            free_config(&config, nodes, users);
-            return 1;
-        }
+    printf("\nInitializing gossip network...\n");
+    if (initialize_network(&config, base_path, config_path) != 0) {
+        fprintf(stderr, "Initialization failed.\n");
+        free_config(&config, nodes, users);
+        return 1;
+    }
 
-        printf("\n✓ Network '%s' is ready in %s/\n", 
-               config.network_name ? config.network_name : "TinyWeb",
-               base_path);
+    printf("\n✓ Network '%s' is ready in %s/\n", 
+           config.network_name ? config.network_name : "TinyWeb",
+           base_path);
     }
     
     free_config(&config, nodes, users);

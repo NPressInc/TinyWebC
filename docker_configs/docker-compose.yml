@@ -1,11 +1,10 @@
-version: '3.8'
 services:
   tailscale_node_01:
-    image: tailscale/tailscale:latest
+    image: ! 'tailscale/tailscale:latest'
     environment:
-      TS_AUTHKEY: ${TS_AUTHKEY}
-      TS_HOSTNAME: tw_node01
-      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTHKEY: ! '${TS_AUTHKEY}'
+      TS_HOSTNAME: ! 'tw-node01'
+      TS_STATE_DIR: ! '/var/lib/tailscale'
     volumes:
     - tailscale_node_01_state:/var/lib/tailscale
     cap_add:
@@ -16,17 +15,17 @@ services:
       - tailscale
       - status
       - --json
-      interval: 10s
-      timeout: 5s
-      retries: '3'
-      start_period: 30s
-    restart: unless-stopped
+      interval: ! '10s'
+      timeout: ! '5s'
+      retries: ! '3'
+      start_period: ! '30s'
+    restart: ! 'unless-stopped'
   tailscale_node_02:
-    image: tailscale/tailscale:latest
+    image: ! 'tailscale/tailscale:latest'
     environment:
-      TS_AUTHKEY: ${TS_AUTHKEY}
-      TS_HOSTNAME: tw_node02
-      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTHKEY: ! '${TS_AUTHKEY}'
+      TS_HOSTNAME: ! 'tw-node02'
+      TS_STATE_DIR: ! '/var/lib/tailscale'
     volumes:
     - tailscale_node_02_state:/var/lib/tailscale
     cap_add:
@@ -37,17 +36,17 @@ services:
       - tailscale
       - status
       - --json
-      interval: 10s
-      timeout: 5s
-      retries: '3'
-      start_period: 30s
-    restart: unless-stopped
+      interval: ! '10s'
+      timeout: ! '5s'
+      retries: ! '3'
+      start_period: ! '30s'
+    restart: ! 'unless-stopped'
   tailscale_node_03:
-    image: tailscale/tailscale:latest
+    image: ! 'tailscale/tailscale:latest'
     environment:
-      TS_AUTHKEY: ${TS_AUTHKEY}
-      TS_HOSTNAME: tw_node03
-      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTHKEY: ! '${TS_AUTHKEY}'
+      TS_HOSTNAME: ! 'tw-node03'
+      TS_STATE_DIR: ! '/var/lib/tailscale'
     volumes:
     - tailscale_node_03_state:/var/lib/tailscale
     cap_add:
@@ -58,17 +57,17 @@ services:
       - tailscale
       - status
       - --json
-      interval: 10s
-      timeout: 5s
-      retries: '3'
-      start_period: 30s
-    restart: unless-stopped
+      interval: ! '10s'
+      timeout: ! '5s'
+      retries: ! '3'
+      start_period: ! '30s'
+    restart: ! 'unless-stopped'
   tailscale_node_04:
-    image: tailscale/tailscale:latest
+    image: ! 'tailscale/tailscale:latest'
     environment:
-      TS_AUTHKEY: ${TS_AUTHKEY}
-      TS_HOSTNAME: tw_node04
-      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTHKEY: ! '${TS_AUTHKEY}'
+      TS_HOSTNAME: ! 'tw-node04'
+      TS_STATE_DIR: ! '/var/lib/tailscale'
     volumes:
     - tailscale_node_04_state:/var/lib/tailscale
     cap_add:
@@ -79,108 +78,116 @@ services:
       - tailscale
       - status
       - --json
-      interval: 10s
-      timeout: 5s
-      retries: '3'
-      start_period: 30s
-    restart: unless-stopped
+      interval: ! '10s'
+      timeout: ! '5s'
+      retries: ! '3'
+      start_period: ! '30s'
+    restart: ! 'unless-stopped'
   node_node_01:
     build:
-      context: .
-      dockerfile: scripts/Dockerfile.node
+      context: ! '..'
+      dockerfile: ! 'scripts/Dockerfile.node'
     environment:
-      TINYWEB_NODE_ID: '1'
-      TINYWEB_DISCOVERY_MODE: tailscale
+      TINYWEB_NODE_ID: ! '1'
+      TINYWEB_DISCOVERY_MODE: ! 'tailscale'
     volumes:
-    - docker_configs/node_01/state:/app/state
+    - ./node_01/state/keys:/app/state/keys
+    - node_01_storage:/app/state/storage
     healthcheck:
       test:
       - CMD-SHELL
-      - curl -f http://localhost:8000/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: '3'
-      start_period: 40s
-    restart: unless-stopped
-    network_mode: service:tailscale_node_01
+      - ! 'curl -f http://localhost:8000/health || exit 1'
+      interval: ! '30s'
+      timeout: ! '10s'
+      retries: ! '3'
+      start_period: ! '40s'
+    restart: ! 'unless-stopped'
+    network_mode: ! 'service:tailscale_node_01'
     depends_on:
       tailscale_node_01:
-        condition: service_healthy
+        condition: ! 'service_healthy'
     ports:
-    - 8001:8000
+    - ! '8001:8000'
   node_node_02:
     build:
-      context: .
-      dockerfile: scripts/Dockerfile.node
+      context: ! '..'
+      dockerfile: ! 'scripts/Dockerfile.node'
     environment:
-      TINYWEB_NODE_ID: '2'
-      TINYWEB_DISCOVERY_MODE: tailscale
+      TINYWEB_NODE_ID: ! '2'
+      TINYWEB_DISCOVERY_MODE: ! 'tailscale'
     volumes:
-    - docker_configs/node_02/state:/app/state
+    - ./node_02/state/keys:/app/state/keys
+    - node_02_storage:/app/state/storage
     healthcheck:
       test:
       - CMD-SHELL
-      - curl -f http://localhost:8000/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: '3'
-      start_period: 40s
-    restart: unless-stopped
-    network_mode: service:tailscale_node_02
+      - ! 'curl -f http://localhost:8000/health || exit 1'
+      interval: ! '30s'
+      timeout: ! '10s'
+      retries: ! '3'
+      start_period: ! '40s'
+    restart: ! 'unless-stopped'
+    network_mode: ! 'service:tailscale_node_02'
     depends_on:
       tailscale_node_02:
-        condition: service_healthy
+        condition: ! 'service_healthy'
     ports:
-    - 8002:8000
+    - ! '8002:8000'
   node_node_03:
     build:
-      context: .
-      dockerfile: scripts/Dockerfile.node
+      context: ! '..'
+      dockerfile: ! 'scripts/Dockerfile.node'
     environment:
-      TINYWEB_NODE_ID: '3'
-      TINYWEB_DISCOVERY_MODE: tailscale
+      TINYWEB_NODE_ID: ! '3'
+      TINYWEB_DISCOVERY_MODE: ! 'tailscale'
     volumes:
-    - docker_configs/node_03/state:/app/state
+    - ./node_03/state/keys:/app/state/keys
+    - node_03_storage:/app/state/storage
     healthcheck:
       test:
       - CMD-SHELL
-      - curl -f http://localhost:8000/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: '3'
-      start_period: 40s
-    restart: unless-stopped
-    network_mode: service:tailscale_node_03
+      - ! 'curl -f http://localhost:8000/health || exit 1'
+      interval: ! '30s'
+      timeout: ! '10s'
+      retries: ! '3'
+      start_period: ! '40s'
+    restart: ! 'unless-stopped'
+    network_mode: ! 'service:tailscale_node_03'
     depends_on:
       tailscale_node_03:
-        condition: service_healthy
+        condition: ! 'service_healthy'
     ports:
-    - 8003:8000
+    - ! '8003:8000'
   node_node_04:
     build:
-      context: .
-      dockerfile: scripts/Dockerfile.node
+      context: ! '..'
+      dockerfile: ! 'scripts/Dockerfile.node'
     environment:
-      TINYWEB_NODE_ID: '4'
-      TINYWEB_DISCOVERY_MODE: tailscale
+      TINYWEB_NODE_ID: ! '4'
+      TINYWEB_DISCOVERY_MODE: ! 'tailscale'
     volumes:
-    - docker_configs/node_04/state:/app/state
+    - ./node_04/state/keys:/app/state/keys
+    - node_04_storage:/app/state/storage
     healthcheck:
       test:
       - CMD-SHELL
-      - curl -f http://localhost:8000/health || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: '3'
-      start_period: 40s
-    restart: unless-stopped
-    network_mode: service:tailscale_node_04
+      - ! 'curl -f http://localhost:8000/health || exit 1'
+      interval: ! '30s'
+      timeout: ! '10s'
+      retries: ! '3'
+      start_period: ! '40s'
+    restart: ! 'unless-stopped'
+    network_mode: ! 'service:tailscale_node_04'
     depends_on:
       tailscale_node_04:
-        condition: service_healthy
+        condition: ! 'service_healthy'
     ports:
-    - 8004:8000
+    - ! '8004:8000'
 volumes:
+  node_01_storage: {}
+  node_02_storage: {}
+  node_03_storage: {}
+  node_04_storage: {}
   tailscale_node_01_state: {}
   tailscale_node_02_state: {}
   tailscale_node_03_state: {}

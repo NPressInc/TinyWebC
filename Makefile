@@ -178,6 +178,19 @@ init_tool/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/build
 .PHONY : init_tool/fast
 
+#=============================================================================
+# Target rules for targets named docker_config_generator
+
+# Build rule for target.
+docker_config_generator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 docker_config_generator
+.PHONY : docker_config_generator
+
+# fast build rule for target.
+docker_config_generator/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/build
+.PHONY : docker_config_generator/fast
+
 generated/api.pb-c.o: generated/api.pb-c.c.o
 .PHONY : generated/api.pb-c.o
 
@@ -259,6 +272,30 @@ generated/envelope.pb-c.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/envelope.pb-c.c.s
 .PHONY : generated/envelope.pb-c.c.s
 
+scripts/docker_config_generator.o: scripts/docker_config_generator.c.o
+.PHONY : scripts/docker_config_generator.o
+
+# target to build an object file
+scripts/docker_config_generator.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/scripts/docker_config_generator.c.o
+.PHONY : scripts/docker_config_generator.c.o
+
+scripts/docker_config_generator.i: scripts/docker_config_generator.c.i
+.PHONY : scripts/docker_config_generator.i
+
+# target to preprocess a source file
+scripts/docker_config_generator.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/scripts/docker_config_generator.c.i
+.PHONY : scripts/docker_config_generator.c.i
+
+scripts/docker_config_generator.s: scripts/docker_config_generator.c.s
+.PHONY : scripts/docker_config_generator.s
+
+# target to generate assembly for a file
+scripts/docker_config_generator.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/scripts/docker_config_generator.c.s
+.PHONY : scripts/docker_config_generator.c.s
+
 scripts/init.o: scripts/init.c.o
 .PHONY : scripts/init.o
 
@@ -266,6 +303,7 @@ scripts/init.o: scripts/init.c.o
 scripts/init.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/scripts/init.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/scripts/init.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/scripts/init.c.o
 .PHONY : scripts/init.c.o
 
 scripts/init.i: scripts/init.c.i
@@ -275,6 +313,7 @@ scripts/init.i: scripts/init.c.i
 scripts/init.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/scripts/init.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/scripts/init.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/scripts/init.c.i
 .PHONY : scripts/init.c.i
 
 scripts/init.s: scripts/init.c.s
@@ -284,6 +323,7 @@ scripts/init.s: scripts/init.c.s
 scripts/init.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/scripts/init.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/scripts/init.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/scripts/init.c.s
 .PHONY : scripts/init.c.s
 
 scripts/init_tool.o: scripts/init_tool.c.o
@@ -663,6 +703,7 @@ src/packages/sql/database_gossip.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database_gossip.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database_gossip.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database_gossip.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/database_gossip.c.o
 .PHONY : src/packages/sql/database_gossip.c.o
 
 src/packages/sql/database_gossip.i: src/packages/sql/database_gossip.c.i
@@ -673,6 +714,7 @@ src/packages/sql/database_gossip.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database_gossip.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database_gossip.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database_gossip.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/database_gossip.c.i
 .PHONY : src/packages/sql/database_gossip.c.i
 
 src/packages/sql/database_gossip.s: src/packages/sql/database_gossip.c.s
@@ -683,6 +725,7 @@ src/packages/sql/database_gossip.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/database_gossip.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/database_gossip.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/database_gossip.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/database_gossip.c.s
 .PHONY : src/packages/sql/database_gossip.c.s
 
 src/packages/sql/gossip_peers.o: src/packages/sql/gossip_peers.c.o
@@ -693,6 +736,7 @@ src/packages/sql/gossip_peers.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_peers.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/gossip_peers.c.o
 .PHONY : src/packages/sql/gossip_peers.c.o
 
 src/packages/sql/gossip_peers.i: src/packages/sql/gossip_peers.c.i
@@ -703,6 +747,7 @@ src/packages/sql/gossip_peers.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_peers.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/gossip_peers.c.i
 .PHONY : src/packages/sql/gossip_peers.c.i
 
 src/packages/sql/gossip_peers.s: src/packages/sql/gossip_peers.c.s
@@ -713,6 +758,7 @@ src/packages/sql/gossip_peers.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/gossip_peers.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/gossip_peers.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_peers.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/gossip_peers.c.s
 .PHONY : src/packages/sql/gossip_peers.c.s
 
 src/packages/sql/permissions.o: src/packages/sql/permissions.c.o
@@ -723,6 +769,7 @@ src/packages/sql/permissions.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/permissions.c.o
 .PHONY : src/packages/sql/permissions.c.o
 
 src/packages/sql/permissions.i: src/packages/sql/permissions.c.i
@@ -733,6 +780,7 @@ src/packages/sql/permissions.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/permissions.c.i
 .PHONY : src/packages/sql/permissions.c.i
 
 src/packages/sql/permissions.s: src/packages/sql/permissions.c.s
@@ -743,6 +791,7 @@ src/packages/sql/permissions.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/permissions.c.s
 .PHONY : src/packages/sql/permissions.c.s
 
 src/packages/sql/schema.o: src/packages/sql/schema.c.o
@@ -753,6 +802,7 @@ src/packages/sql/schema.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/schema.c.o
 .PHONY : src/packages/sql/schema.c.o
 
 src/packages/sql/schema.i: src/packages/sql/schema.c.i
@@ -763,6 +813,7 @@ src/packages/sql/schema.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/schema.c.i
 .PHONY : src/packages/sql/schema.c.i
 
 src/packages/sql/schema.s: src/packages/sql/schema.c.s
@@ -773,6 +824,7 @@ src/packages/sql/schema.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/schema.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/schema.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/schema.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/schema.c.s
 .PHONY : src/packages/sql/schema.c.s
 
 src/packages/transactions/envelope.o: src/packages/transactions/envelope.c.o
@@ -864,6 +916,7 @@ src/packages/utils/error.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/error.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/error.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/error.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/utils/error.c.o
 .PHONY : src/packages/utils/error.c.o
 
 src/packages/utils/error.i: src/packages/utils/error.c.i
@@ -874,6 +927,7 @@ src/packages/utils/error.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/error.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/error.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/error.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/utils/error.c.i
 .PHONY : src/packages/utils/error.c.i
 
 src/packages/utils/error.s: src/packages/utils/error.c.s
@@ -884,6 +938,7 @@ src/packages/utils/error.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/error.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/error.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/error.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/utils/error.c.s
 .PHONY : src/packages/utils/error.c.s
 
 src/packages/utils/logger.o: src/packages/utils/logger.c.o
@@ -894,6 +949,7 @@ src/packages/utils/logger.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/logger.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/logger.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/logger.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/utils/logger.c.o
 .PHONY : src/packages/utils/logger.c.o
 
 src/packages/utils/logger.i: src/packages/utils/logger.c.i
@@ -904,6 +960,7 @@ src/packages/utils/logger.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/logger.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/logger.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/logger.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/utils/logger.c.i
 .PHONY : src/packages/utils/logger.c.i
 
 src/packages/utils/logger.s: src/packages/utils/logger.c.s
@@ -914,6 +971,7 @@ src/packages/utils/logger.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/utils/logger.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/logger.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/utils/logger.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/utils/logger.c.s
 .PHONY : src/packages/utils/logger.c.s
 
 src/packages/utils/print.o: src/packages/utils/print.c.o
@@ -1032,6 +1090,7 @@ src/structs/permission/permission.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/structs/permission/permission.c.o
 .PHONY : src/structs/permission/permission.c.o
 
 src/structs/permission/permission.i: src/structs/permission/permission.c.i
@@ -1042,6 +1101,7 @@ src/structs/permission/permission.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/structs/permission/permission.c.i
 .PHONY : src/structs/permission/permission.c.i
 
 src/structs/permission/permission.s: src/structs/permission/permission.c.s
@@ -1052,6 +1112,7 @@ src/structs/permission/permission.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/structs/permission/permission.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/structs/permission/permission.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/structs/permission/permission.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/structs/permission/permission.c.s
 .PHONY : src/structs/permission/permission.c.s
 
 src/tests/api_protobuf_test.o: src/tests/api_protobuf_test.c.o
@@ -1424,6 +1485,7 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... test"
 	@echo "... generate_proto"
+	@echo "... docker_config_generator"
 	@echo "... init_tool"
 	@echo "... tinyweb"
 	@echo "... tinyweb_tests"
@@ -1436,6 +1498,9 @@ help:
 	@echo "... generated/envelope.pb-c.o"
 	@echo "... generated/envelope.pb-c.i"
 	@echo "... generated/envelope.pb-c.s"
+	@echo "... scripts/docker_config_generator.o"
+	@echo "... scripts/docker_config_generator.i"
+	@echo "... scripts/docker_config_generator.s"
 	@echo "... scripts/init.o"
 	@echo "... scripts/init.i"
 	@echo "... scripts/init.s"

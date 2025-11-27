@@ -428,18 +428,48 @@ def main():
             
             # Run init_tool from project root
             # init_tool will save network_config.json to state_dir/network_config.json
+            # Use Popen to show real-time progress output
+            # Use stdbuf to force line buffering on the C program's stdout
+            # This ensures output appears immediately even when piped
             try:
-                result = subprocess.run(
-                    init_cmd,
+                # Prepend stdbuf command to force line buffering
+                stdbuf_cmd = ['stdbuf', '-oL', '-eL'] + init_cmd
+                process = subprocess.Popen(
+                    stdbuf_cmd,
                     cwd=Path.cwd(),  # Run from project root
-                    capture_output=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,  # Merge stderr into stdout
                     text=True,
-                    check=False
+                    bufsize=1,  # Line buffered
+                    universal_newlines=True
                 )
+            except FileNotFoundError:
+                # stdbuf not available, fall back to regular command
+                # (stdbuf is usually available on Linux, but not always)
+                process = subprocess.Popen(
+                    init_cmd,
+                    cwd=Path.cwd(),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,  # Line buffered
+                    universal_newlines=True
+                )
+            
+            try:
+                # Stream output in real-time
+                import sys
+                for line in process.stdout:
+                    line_clean = line.rstrip()
+                    if line_clean:
+                        # Show all output (progress messages and logger output)
+                        print(f"    {line_clean}")
+                        sys.stdout.flush()  # Force immediate output
                 
-                if result.returncode != 0:
-                    print(f"    Warning: init_tool failed for {node_id}:", file=sys.stderr)
-                    print(result.stderr, file=sys.stderr)
+                process.wait()
+                
+                if process.returncode != 0:
+                    print(f"    Warning: init_tool failed for {node_id} (exit code {process.returncode})", file=sys.stderr)
                     print(f"    Continuing anyway...")
                 else:
                     print(f"    ✓ Initialized state for {node_id}")

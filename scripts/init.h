@@ -59,6 +59,12 @@ int generate_user_keypair(const char* user_id,
                          const char* base_path, 
                          unsigned char* out_pubkey);
 
+// Generate or load keypair for a node
+// Returns 0 on success, stores public key in out_pubkey (32 bytes)
+int generate_node_keypair(const char* node_id,
+                          const char* base_path,
+                          unsigned char* out_pubkey);
+
 // Seed database with initial data (for testing)
 // Requires schema tables to already exist
 int seed_basic_roles(sqlite3* db);

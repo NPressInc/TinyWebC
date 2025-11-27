@@ -189,7 +189,7 @@ int discover_tailscale_peers(GossipService* service, const NodeConfig* config) {
                 logger_info("tailscale_discovery", "Added peer: %s:%d", hostname, GOSSIP_PORT);
                 
                 // Store in database
-                if (gossip_peers_add_or_update(hostname, GOSSIP_PORT, 0, NULL) == 0) {
+                if (gossip_peers_add_or_update(hostname, GOSSIP_PORT, 0, NULL, NULL) == 0) {
                     peers_found++;
                 } else {
                     logger_error("tailscale_discovery", "Failed to store peer %s in database", hostname);

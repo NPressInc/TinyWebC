@@ -195,6 +195,33 @@ target_link_libraries(init_tool PRIVATE
     pthread
     m
 )
+# Add docker_config_generator executable
+add_executable(docker_config_generator 
+    scripts/docker_config_generator.c 
+    scripts/init.c
+    src/packages/sql/schema.c
+    src/packages/sql/gossip_peers.c
+    src/packages/utils/logger.c
+    src/packages/utils/error.c
+    src/structs/permission/permission.c
+)
+target_sources(docker_config_generator PRIVATE ${GOSSIP_DB_SOURCES})
+target_link_libraries(docker_config_generator PRIVATE 
+    cjson 
+    ${SODIUM_LIBRARIES} 
+    SQLite::SQLite3
+    yaml  # libyaml
+    pthread
+    m
+)
+target_include_directories(docker_config_generator PRIVATE
+    ${SODIUM_INCLUDE_DIRS}
+    /usr/include/cjson
+    src
+    scripts
+    ${GEN_DIR}
+)
+
 target_include_directories(init_tool PRIVATE 
     ${SODIUM_INCLUDE_DIRS} 
     /usr/include/cjson 

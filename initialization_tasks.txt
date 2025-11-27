@@ -605,18 +605,23 @@ cmake --build build
 
 **File**: `scripts/docker_test_runner.sh` (CREATE)
 
-- [ ] Create shell script for test orchestration
-- [ ] Parse master config (or accept as argument)
-- [ ] Call config generator in test mode: `python3 scripts/docker_config_generator.py --master-config <config> --mode test`
-- [ ] Build Docker images: `docker-compose -f docker-compose.test.yml build`
-- [ ] Start containers: `docker-compose -f docker-compose.test.yml up -d`
-- [ ] Wait for health checks (poll until all healthy):
+- [x] Create shell script for test orchestration
+- [x] Parse master config (or accept as argument)
+- [x] Call config generator in test mode: `python3 scripts/docker_config_generator.py --master-config <config> --mode test`
+- [x] Build Docker images: `docker-compose -f docker-compose.test.yml build`
+- [x] Start containers: `docker-compose -f docker-compose.test.yml up -d`
+- [x] Wait for health checks (poll until all healthy):
   - Check `docker-compose ps` for health status
   - Poll every 2 seconds, timeout after 120 seconds
-- [ ] Run test suite (optional argument):
+- [x] Run test suite (optional argument):
   - If test script provided, run it
   - Otherwise, just verify nodes are running and healthy
-- [ ] Cleanup: `docker-compose -f docker-compose.test.yml down -v`
+- [x] Cleanup: `docker-compose -f docker-compose.test.yml down -v`
+- [x] **Tailscale Ephemeral Key Warning**: Check if `TS_AUTHKEY` is set and warn user to use ephemeral keys for testing (devices auto-delete on disconnect, prevents hitting 100 device limit)
+
+**Important Notes**:
+- **CI/CD Integration**: CI/CD configuration is **optional** and **not required** for Phase 4. The test runner can be used manually or integrated into CI/CD pipelines later if desired.
+- **Tailscale Ephemeral Keys**: For testing with Tailscale discovery mode, use **ephemeral auth keys** to prevent device accumulation. Ephemeral keys automatically remove devices when containers disconnect, preventing you from hitting Tailscale's 100 device limit. Create ephemeral keys in Tailscale Admin Console → Settings → Keys → "Ephemeral" checkbox.
 
 **Usage**:
 ```bash
@@ -624,6 +629,8 @@ cmake --build build
 ```
 
 **Testing checkpoint**:
+- [x] Test runner script created and executable
+- [x] Ephemeral key warning implemented
 - [ ] Run test runner end-to-end
 - [ ] Verify all containers start and become healthy
 - [ ] Verify cleanup removes volumes

@@ -1,10 +1,10 @@
 {
-  "id": "node_04",
-  "name": "Family Node 4",
-  "hostname": "tw_node04",
-  "gossip_port": 9000,
-  "api_port": 8000,
-  "discovery_mode": "tailscale",
-  "peers": [],
-  "hostname_prefix": "tw_node"
+	"id":	"node_04",
+	"name":	"Family Node 4",
+	"hostname":	"tw-node04",
+	"gossip_port":	9000,
+	"api_port":	8000,
+	"discovery_mode":	"tailscale",
+	"peers":	[],
+	"hostname_prefix":	"tw_node"
 }

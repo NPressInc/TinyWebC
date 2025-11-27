@@ -92,7 +92,7 @@ int discover_static_peers(GossipService* service, const NodeConfig* config) {
             logger_info("static_discovery", "Added peer: %s:%d", hostname, port);
             
             // Store in database (gossip_port from config, api_port = 0 for static peers)
-            if (gossip_peers_add_or_update(hostname, port, 0, NULL) == 0) {
+            if (gossip_peers_add_or_update(hostname, port, 0, NULL, NULL) == 0) {
                 peers_found++;
             } else {
                 logger_error("static_discovery", "Failed to store peer %s in database", hostname);

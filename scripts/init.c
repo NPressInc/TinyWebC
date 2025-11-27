@@ -171,6 +171,70 @@ int generate_user_keypair(const char* user_id, const char* base_path,
     return 0;
 }
 
+int generate_node_keypair(const char* node_id, const char* base_path, 
+                          unsigned char* out_pubkey) {
+    if (!node_id || !base_path || !out_pubkey) {
+        return -1;
+    }
+    
+    if (ensure_sodium_ready() != 0) {
+        return -1;
+    }
+
+    // Ensure directories exist
+    char base_dir[PATH_MAX];
+    char keys_dir[PATH_MAX];
+    
+    snprintf(base_dir, sizeof(base_dir), "%s", base_path);
+    snprintf(keys_dir, sizeof(keys_dir), "%s/keys", base_path);
+    
+    if (ensure_directory(base_dir) != 0 ||
+        ensure_directory(keys_dir) != 0) {
+        return -1;
+    }
+
+    // Node key path: {base_path}/keys/node_private.key
+    char key_path[PATH_MAX];
+    snprintf(key_path, sizeof(key_path), "%s/keys/node_private.key", base_path);
+
+    unsigned char secret[crypto_sign_SECRETKEYBYTES];
+    unsigned char pub[crypto_sign_PUBLICKEYBYTES];
+
+    // Try to load existing key
+    FILE* f = fopen(key_path, "rb");
+    if (f) {
+        size_t read = fread(secret, 1, sizeof(secret), f);
+        fclose(f);
+        if (read == sizeof(secret) && crypto_sign_ed25519_sk_to_pk(pub, secret) == 0) {
+            memcpy(out_pubkey, pub, PUBKEY_SIZE);
+            return 0;
+        }
+        logger_error("init", "Warning: node key file %s corrupted, regenerating", key_path);
+    }
+
+    // Generate new keypair
+    if (crypto_sign_keypair(pub, secret) != 0) {
+        logger_error("init", "Failed to generate keypair for node %s", node_id);
+        return -1;
+    }
+
+    // Save secret key
+    f = fopen(key_path, "wb");
+    if (!f) {
+        logger_error("init", "Failed to write node key file %s", key_path);
+        return -1;
+    }
+    if (fwrite(secret, 1, sizeof(secret), f) != sizeof(secret)) {
+        fclose(f);
+        logger_error("init", "Failed to store node key file %s", key_path);
+        return -1;
+    }
+    fclose(f);
+
+    memcpy(out_pubkey, pub, PUBKEY_SIZE);
+    return 0;
+}
+
 // ============================================================================
 // Database Seeding
 // ============================================================================
@@ -430,12 +494,21 @@ static int seed_users(sqlite3* db, const InitUserConfig* users, uint32_t user_co
             continue;
         }
 
+        // Show progress before key generation
+        printf("    Generating keypair for user %s (%u/%u)...", 
+               user->id, i + 1, user_count);
+        fflush(stdout);  // Force immediate output
+
         // Generate keypair
         unsigned char pubkey[PUBKEY_SIZE];
         if (generate_user_keypair(user->id, base_path, pubkey) != 0) {
+            printf(" FAILED\n");
             logger_error("init", "Failed to generate key for user %s", user->id);
             return -1;
         }
+        
+        printf(" done\n");  // Key generation complete
+        fflush(stdout);
 
         // Convert to hex
         char pubkey_hex[PUBKEY_SIZE * 2 + 1];
@@ -523,7 +596,7 @@ static int seed_peers(sqlite3* db, const char** peers, uint32_t peer_count) {
         }
 
         if (host[0] != '\0') {
-            if (gossip_peers_add_or_update(host, port, 0, NULL) != 0) {
+            if (gossip_peers_add_or_update(host, port, 0, NULL, NULL) != 0) {
                 logger_error("init", "Warning: failed to add peer %s", endpoint);
             }
         }
@@ -561,6 +634,8 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     }
 
     // Initialize database
+    printf("  Initializing database...\n");
+    fflush(stdout);
     if (db_init_gossip(db_path) != 0) {
         logger_error("init", "Failed to initialize gossip database at %s", db_path);
         return -1;
@@ -577,6 +652,8 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
         db_close();
         return -1;
     }
+    printf("  ✓ Database initialized\n");
+    fflush(stdout);
 
     sqlite3* db = db_get_handle();
     if (!db) {
@@ -589,6 +666,8 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     // (Those functions were in the old schema.c which has been replaced)
 
     // Seed database
+    printf("  Seeding roles and permissions...\n");
+    fflush(stdout);
     if (seed_basic_roles(db) != 0) {
         fprintf(stderr, "Failed to seed roles\n");
         db_close();
@@ -606,13 +685,19 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
         db_close();
         return -1;
     }
+    printf("  ✓ Roles and permissions seeded\n");
+    fflush(stdout);
 
     if (users && user_count > 0) {
+        printf("  Seeding %u user(s)...\n", user_count);
+        fflush(stdout);
         if (seed_users(db, users, user_count, base_path) != 0) {
             fprintf(stderr, "Failed to seed users\n");
             db_close();
             return -1;
         }
+        printf("  ✓ Users seeded successfully\n");
+        fflush(stdout);
     }
 
     if (node->peers && node->peer_count > 0) {
@@ -623,12 +708,18 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
         }
     }
 
-    // Store node configuration in database
-    // Use defaults for discovery parameters (they'll be updated when main.c loads the config)
-    const char* discovery_mode = "static";  // Default, will be updated from config at runtime
-    const char* hostname_prefix = NULL;      // Will be updated from config at runtime
-    const char* dns_domain = NULL;           // Will be updated from config at runtime
-    
+    // Generate node keypair and store public key in gossip_peers
+    printf("  Generating node keypair...\n");
+    fflush(stdout);
+    unsigned char node_pubkey[PUBKEY_SIZE];
+    if (generate_node_keypair(node->id, base_path, node_pubkey) != 0) {
+        fprintf(stderr, "Failed to generate node keypair\n");
+        db_close();
+        return -1;
+    }
+    printf("  ✓ Node keypair generated\n");
+    fflush(stdout);
+
     // Use node hostname if available, otherwise construct from node ID
     char node_hostname[256];
     if (node->hostname && node->hostname[0] != '\0') {
@@ -641,6 +732,19 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     // Use default ports if not specified
     uint16_t gossip_port = node->gossip_port > 0 ? node->gossip_port : 9000;
     uint16_t api_port = node->api_port > 0 ? node->api_port : 8000;
+
+    // Store node's own public key in gossip_peers (authorized node whitelist)
+    if (gossip_peers_add_or_update(node_hostname, gossip_port, api_port, node_pubkey, NULL) != 0) {
+        logger_info("init", "Failed to store node public key in gossip_peers (non-fatal)");
+    } else {
+        logger_info("init", "Stored node public key in gossip_peers for %s", node_hostname);
+    }
+
+    // Store node configuration in database
+    // Use defaults for discovery parameters (they'll be updated when main.c loads the config)
+    const char* discovery_mode = "static";  // Default, will be updated from config at runtime
+    const char* hostname_prefix = NULL;      // Will be updated from config at runtime
+    const char* dns_domain = NULL;           // Will be updated from config at runtime
     
     if (nodes_insert_or_update(
             node->id ? node->id : "unknown",
@@ -675,21 +779,116 @@ int initialize_network(const InitNetworkConfig* config, const char* base_path, c
            config->network_name ? config->network_name : "TinyWeb", 
            base_path);
 
-    // Initialize each node
+    // First pass: Initialize each node and collect public keys
+    unsigned char** node_pubkeys = malloc(sizeof(unsigned char*) * config->node_count);
+    char** node_hostnames = malloc(sizeof(char*) * config->node_count);
+    uint16_t* node_gossip_ports = malloc(sizeof(uint16_t) * config->node_count);
+    uint16_t* node_api_ports = malloc(sizeof(uint16_t) * config->node_count);
+    
+    if (!node_pubkeys || !node_hostnames || !node_gossip_ports || !node_api_ports) {
+        fprintf(stderr, "Failed to allocate memory for node public keys\n");
+        free(node_pubkeys);
+        free(node_hostnames);
+        free(node_gossip_ports);
+        free(node_api_ports);
+        return -1;
+    }
+
     for (uint32_t i = 0; i < config->node_count; ++i) {
-        if (initialize_node(&config->nodes[i], config->users, config->user_count, base_path) != 0) {
-            logger_error("init", "Failed to initialize node %u", i);
+        node_pubkeys[i] = malloc(PUBKEY_SIZE);
+        node_hostnames[i] = malloc(256);
+        if (!node_pubkeys[i] || !node_hostnames[i]) {
+            // Cleanup and return
+            for (uint32_t j = 0; j < i; ++j) {
+                free(node_pubkeys[j]);
+                free(node_hostnames[j]);
+            }
+            free(node_pubkeys);
+            free(node_hostnames);
+            free(node_gossip_ports);
+            free(node_api_ports);
             return -1;
         }
         
-        // Save network config to node's directory
+        // Initialize node
         char node_path[PATH_MAX];
         snprintf(node_path, sizeof(node_path), "%s/%s", base_path, config->nodes[i].id);
+        if (initialize_node(&config->nodes[i], config->users, config->user_count, node_path) != 0) {
+            logger_error("init", "Failed to initialize node %u", i);
+            // Cleanup
+            for (uint32_t j = 0; j <= i; ++j) {
+                free(node_pubkeys[j]);
+                free(node_hostnames[j]);
+            }
+            free(node_pubkeys);
+            free(node_hostnames);
+            free(node_gossip_ports);
+            free(node_api_ports);
+            return -1;
+        }
+        
+        // Read the node's public key from its key file
+        char key_path[PATH_MAX];
+        snprintf(key_path, sizeof(key_path), "%s/keys/node_private.key", node_path);
+        FILE* f = fopen(key_path, "rb");
+        if (f) {
+            unsigned char secret[crypto_sign_SECRETKEYBYTES];
+            if (fread(secret, 1, sizeof(secret), f) == sizeof(secret)) {
+                crypto_sign_ed25519_sk_to_pk(node_pubkeys[i], secret);
+            }
+            fclose(f);
+        }
+        
+        // Store node info
+        if (config->nodes[i].hostname && config->nodes[i].hostname[0] != '\0') {
+            snprintf(node_hostnames[i], 256, "%s", config->nodes[i].hostname);
+        } else {
+            snprintf(node_hostnames[i], 256, "%s", config->nodes[i].id ? config->nodes[i].id : "unknown");
+        }
+        node_gossip_ports[i] = config->nodes[i].gossip_port > 0 ? config->nodes[i].gossip_port : 9000;
+        node_api_ports[i] = config->nodes[i].api_port > 0 ? config->nodes[i].api_port : 8000;
+        
+        // Save network config to node's directory
         if (init_save_node_config(original_config_path, config, &config->nodes[i], node_path) != 0) {
             logger_error("init", "Failed to save config for node %s", config->nodes[i].id);
             // Non-fatal, continue
         }
     }
+
+    // Second pass: Store all nodes' public keys in each node's database
+    printf("  Storing all node public keys in each node's database...\n");
+    fflush(stdout);
+    for (uint32_t i = 0; i < config->node_count; ++i) {
+        char node_path[PATH_MAX];
+        char db_path[PATH_MAX];
+        snprintf(node_path, sizeof(node_path), "%s/%s", base_path, config->nodes[i].id);
+        snprintf(db_path, sizeof(db_path), "%s/storage/tinyweb.db", node_path);
+        
+        // Open this node's database
+        if (db_init_gossip(db_path) == 0) {
+            // Add all nodes' public keys to this node's gossip_peers table
+            for (uint32_t j = 0; j < config->node_count; ++j) {
+                if (gossip_peers_add_or_update(node_hostnames[j], node_gossip_ports[j], 
+                                                node_api_ports[j], node_pubkeys[j], NULL) != 0) {
+                    logger_info("init", "Failed to store public key for node %s in node %s's database", 
+                               node_hostnames[j], node_hostnames[i]);
+                }
+            }
+            db_close();
+        }
+    }
+    printf("  ✓ All node public keys stored\n");
+    fflush(stdout);
+
+    // Cleanup
+    for (uint32_t i = 0; i < config->node_count; ++i) {
+        free(node_pubkeys[i]);
+        free(node_hostnames[i]);
+    }
+    free(node_pubkeys);
+    free(node_hostnames);
+    free(node_gossip_ports);
+    free(node_api_ports);
 
     printf("Network initialization complete. %u node(s), %u user(s) configured.\n",
            config->node_count, config->user_count);
