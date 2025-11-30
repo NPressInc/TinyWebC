@@ -243,10 +243,14 @@ def generate_docker_compose(master_config: Dict, nodes: List[Dict], discovery_co
             hostname = generate_hostname(node_id, discovery_config, node)
             
             tailscale_service_name = f'tailscale_{node_id}'
+            # Use per-container auth key (TS_AUTHKEY_01, TS_AUTHKEY_02, etc.)
+            # Docker Compose doesn't support ${VAR:-default} syntax, so use direct variable
+            key_index = format_node_index(index)
+            authkey_var = f'TS_AUTHKEY_{key_index}'
             compose['services'][tailscale_service_name] = {
                 'image': 'tailscale/tailscale:latest',
                 'environment': {
-                    'TS_AUTHKEY': '${TS_AUTHKEY}',
+                    'TS_AUTHKEY': f'${{{authkey_var}}}',  # Use TS_AUTHKEY_XX directly
                     'TS_HOSTNAME': hostname,
                     'TS_STATE_DIR': '/var/lib/tailscale'
                 },

@@ -2,7 +2,7 @@ services:
   tailscale_node_01:
     image: ! 'tailscale/tailscale:latest'
     environment:
-      TS_AUTHKEY: ! '${TS_AUTHKEY}'
+      TS_AUTHKEY: ! '${TS_AUTHKEY_01}'
       TS_HOSTNAME: ! 'tw-node01'
       TS_STATE_DIR: ! '/var/lib/tailscale'
     volumes:
@@ -23,7 +23,7 @@ services:
   tailscale_node_02:
     image: ! 'tailscale/tailscale:latest'
     environment:
-      TS_AUTHKEY: ! '${TS_AUTHKEY}'
+      TS_AUTHKEY: ! '${TS_AUTHKEY_02}'
       TS_HOSTNAME: ! 'tw-node02'
       TS_STATE_DIR: ! '/var/lib/tailscale'
     volumes:
@@ -44,7 +44,7 @@ services:
   tailscale_node_03:
     image: ! 'tailscale/tailscale:latest'
     environment:
-      TS_AUTHKEY: ! '${TS_AUTHKEY}'
+      TS_AUTHKEY: ! '${TS_AUTHKEY_03}'
       TS_HOSTNAME: ! 'tw-node03'
       TS_STATE_DIR: ! '/var/lib/tailscale'
     volumes:
@@ -65,7 +65,7 @@ services:
   tailscale_node_04:
     image: ! 'tailscale/tailscale:latest'
     environment:
-      TS_AUTHKEY: ! '${TS_AUTHKEY}'
+      TS_AUTHKEY: ! '${TS_AUTHKEY_04}'
       TS_HOSTNAME: ! 'tw-node04'
       TS_STATE_DIR: ! '/var/lib/tailscale'
     volumes:

@@ -635,6 +635,12 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
             if (!cJSON_IsString(node_id_json)) continue;
             const char* node_id = node_id_json->valuestring;
             
+            // Extract node index for per-container auth keys
+            int index;
+            if (extract_node_index(node_id, &index) != 0) {
+                continue;  // Skip if we can't extract index
+            }
+            
             char hostname[MAX_HOSTNAME_LEN];
             if (generate_hostname(node_id, discovery, node, hostname, sizeof(hostname)) != 0) {
                 continue;
@@ -653,7 +659,16 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
             write_yaml_scalar(&emitter, "environment", 0);
             write_yaml_mapping_start(&emitter);
             write_yaml_scalar(&emitter, "TS_AUTHKEY", 0);
-            write_yaml_scalar(&emitter, "${TS_AUTHKEY}", 1);
+            // Use per-container auth key (TS_AUTHKEY_01, TS_AUTHKEY_02, etc.)
+            // Docker Compose doesn't support ${VAR:-default} syntax, so use direct variable
+            char index_str[4];
+            if (format_node_index(index, index_str, sizeof(index_str)) == 0) {
+                char authkey_var[64];
+                snprintf(authkey_var, sizeof(authkey_var), "${TS_AUTHKEY_%s}", index_str);
+                write_yaml_scalar(&emitter, authkey_var, 1);
+            } else {
+                write_yaml_scalar(&emitter, "${TS_AUTHKEY}", 1);
+            }
             write_yaml_scalar(&emitter, "TS_HOSTNAME", 0);
             write_yaml_scalar(&emitter, hostname, 1);
             write_yaml_scalar(&emitter, "TS_STATE_DIR", 0);

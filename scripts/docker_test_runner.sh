@@ -63,147 +63,114 @@ fi
 # Global variable to store discovery mode
 DISCOVERY_MODE=""
 
-# Function to cleanup Tailscale devices
-cleanup_tailscale_devices() {
-    echo "  Cleaning up Tailscale devices..."
+# Function to generate ephemeral auth keys via Tailscale API
+generate_ephemeral_auth_keys() {
+    local num_keys=$1
+    echo "  Generating ${num_keys} ephemeral auth key(s) via Tailscale API..."
     
-    # Extract hostname prefix from config
-    HOSTNAME_PREFIX=$(grep -o '"hostname_prefix"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" 2>/dev/null | \
-        sed -n 's/.*"hostname_prefix"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+    # Check for API access token
+    API_KEY="${TS_API_KEY:-${TS_TAILNET_API_KEY:-}}"
+    TAILNET="${TS_TAILNET:-}"
     
-    # Replace underscores with hyphens (same as we do in hostname generation)
-    HOSTNAME_PREFIX=$(echo "$HOSTNAME_PREFIX" | tr '_' '-')
-    
-    if [[ -n "$HOSTNAME_PREFIX" ]]; then
-        # Tailscale API requires an API access token (not auth key) and tailnet name
-        # Check for TS_API_KEY (API access token) or TS_TAILNET_API_KEY
-        API_KEY="${TS_API_KEY:-${TS_TAILNET_API_KEY:-}}"
-        TAILNET="${TS_TAILNET:-}"
-        
-        if [[ -z "$API_KEY" ]]; then
-            echo "    ⚠️  TS_API_KEY or TS_TAILNET_API_KEY not set."
-            echo "    To enable automatic cleanup, set:"
-            echo "      export TS_API_KEY='tskey-api-...'  # API access token from Tailscale Admin"
-            echo "      export TS_TAILNET='-'  # Simplest: use '-' for your default tailnet"
-            echo "      OR export TS_TAILNET='your-org.com'  # Your organization's domain"
-            echo "    Devices with hostname pattern '${HOSTNAME_PREFIX}*' may need manual removal."
-            echo "    Generate API tokens at: https://login.tailscale.com/admin/settings/keys"
-            return 0
-        fi
-        
-        if [[ -z "$TAILNET" ]]; then
-            echo "    ⚠️  TS_TAILNET not set."
-            echo "    Set your tailnet name: export TS_TAILNET='your-org.com' (or use '-' for default)"
-            echo "    The tailnet name is your organization's domain (e.g., 'example.com')"
-            echo "    or your email address for personal accounts (e.g., 'user@gmail.com')"
-            echo "    You can also use '-' as shorthand for your default tailnet."
-            echo "    Find it at: https://login.tailscale.com/admin/settings/general"
-            echo "    Devices with hostname pattern '${HOSTNAME_PREFIX}*' may need manual removal."
-            return 0
-        fi
-        
-        # Use '-' as shorthand for default tailnet if user set it
-        if [[ "$TAILNET" == "-" ]]; then
-            TAILNET="-"
-        fi
-        
-        echo "    Using Tailscale Admin API to remove devices..."
-        echo "    API endpoint: /api/v2/tailnet/${TAILNET}/devices"
-        # Correct endpoint: /api/v2/tailnet/{tailnet}/devices
-        # Use verbose curl to see what's happening, but capture output
-        DEVICES_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}\nHTTP_STATUS:%{http_code}" -u "${API_KEY}:" "https://api.tailscale.com/api/v2/tailnet/${TAILNET}/devices" 2>&1)
-        HTTP_CODE=$(echo "$DEVICES_RESPONSE" | grep "^HTTP_CODE:" | cut -d: -f2 | tr -d ' ')
-        DEVICES=$(echo "$DEVICES_RESPONSE" | grep -v "^HTTP_CODE:" | grep -v "^HTTP_STATUS:")
-        
-        if [[ -z "$HTTP_CODE" ]]; then
-            echo "    ✗ Could not determine HTTP status code"
-            echo "    Full response: ${DEVICES_RESPONSE:0:500}"
-        elif [[ "$HTTP_CODE" != "200" ]]; then
-            echo "    ✗ API call failed with HTTP code: ${HTTP_CODE}"
-            echo "    Response body: ${DEVICES:0:500}"
-            if [[ "$HTTP_CODE" == "401" ]]; then
-                echo "    Note: Authentication failed. Check that TS_API_KEY is a valid API access token (tskey-api-...)"
-            elif [[ "$HTTP_CODE" == "404" ]]; then
-                echo "    Note: Tailnet '${TAILNET}' not found. Try:"
-                echo "      - Use your organization domain: export TS_TAILNET='your-org.com'"
-                echo "      - Use your email: export TS_TAILNET='user@gmail.com'"
-                echo "      - Find it at: https://login.tailscale.com/admin/settings/general"
-            fi
-            echo "    Generate API tokens at: https://login.tailscale.com/admin/settings/keys"
-        elif [[ -z "$DEVICES" ]]; then
-            echo "    ✗ API call returned empty response (HTTP ${HTTP_CODE})"
-            echo "    This might indicate the tailnet has no devices or the API key lacks permissions."
-        elif ! echo "$DEVICES" | grep -q "devices"; then
-            echo "    ✗ API response did not contain 'devices' field"
-            echo "    HTTP code: ${HTTP_CODE}"
-            echo "    Response preview (first 500 chars):"
-            echo "${DEVICES:0:500}" | sed 's/^/      /'
-        else
-            # Extract device IDs for devices matching our hostname pattern
-            # Pass API_KEY and HOSTNAME_PREFIX via environment to Python
-            echo "$DEVICES" | TS_API_KEY_VALUE="${API_KEY}" HOSTNAME_PREFIX_VALUE="${HOSTNAME_PREFIX}" python3 <<'PYTHON_SCRIPT' 2>&1
-import sys, json, base64, os
-try:
-    input_data = sys.stdin.read()
-    if not input_data or not input_data.strip():
-        print('    ✗ Error: Received empty response from API', file=sys.stderr)
-        sys.exit(1)
-    data = json.loads(input_data)
-    devices = data.get('devices', [])
-    removed = 0
-    api_key = os.environ.get('TS_API_KEY_VALUE', '')
-    hostname_prefix = os.environ.get('HOSTNAME_PREFIX_VALUE', '')
-    if not api_key:
-        print('    ✗ Error: TS_API_KEY_VALUE not found in environment', file=sys.stderr)
-        sys.exit(1)
-    if not hostname_prefix:
-        print('    ✗ Error: HOSTNAME_PREFIX_VALUE not found in environment', file=sys.stderr)
-        sys.exit(1)
-    # Create Basic Auth header
-    auth_string = base64.b64encode(f'{api_key}:'.encode()).decode()
-    
-    for device in devices:
-        # Tailscale API uses 'name' field, not 'hostname'
-        device_name = device.get('name', '')
-        if device_name.startswith(hostname_prefix):
-            device_id = device.get('id', '')
-            if device_id:
-                import urllib.request, urllib.error
-                req = urllib.request.Request(
-                    f'https://api.tailscale.com/api/v2/device/{device_id}',
-                    method='DELETE',
-                    headers={'Authorization': f'Basic {auth_string}'}
-                )
-                try:
-                    with urllib.request.urlopen(req) as f:
-                        print(f'    ✓ Removed device: {device_name}')
-                        removed += 1
-                except urllib.error.HTTPError as e:
-                    error_body = e.read().decode() if e.fp else 'unknown error'
-                    print(f'    ✗ Failed to remove {device_name}: HTTP {e.code}', file=sys.stderr)
-                    print(f'    Error details: {error_body}', file=sys.stderr)
-                except Exception as e:
-                    print(f'    ✗ Failed to remove {device_name}: {e}', file=sys.stderr)
-    if removed == 0:
-        print('    No matching devices found to remove (or already removed)')
-except json.JSONDecodeError as e:
-    print(f'    ✗ Error parsing API response: {e}', file=sys.stderr)
-    print(f'    Raw response (first 500 chars): {sys.stdin.read()[:500] if hasattr(sys.stdin, "read") else "N/A"}', file=sys.stderr)
-    print('    Note: Devices may need manual removal from Tailscale Admin', file=sys.stderr)
-except Exception as e:
-    import traceback
-    print(f'    ✗ Unexpected error: {e}', file=sys.stderr)
-    print(f'    Traceback:', file=sys.stderr)
-    traceback.print_exc(file=sys.stderr)
-    print('    Note: Devices may need manual removal from Tailscale Admin', file=sys.stderr)
-PYTHON_SCRIPT
-        fi
-    else
-        echo "    Could not determine hostname prefix from config"
+    if [[ -z "$API_KEY" ]]; then
+        echo -e "    ${RED}✗ TS_API_KEY or TS_TAILNET_API_KEY not set.${NC}"
+        echo "    To enable automatic ephemeral key generation, set:"
+        echo "      export TS_API_KEY='tskey-api-...'  # API access token from Tailscale Admin"
+        echo "      export TS_TAILNET='your-org.com'  # Your organization's domain"
+        echo "    Generate API tokens at: https://login.tailscale.com/admin/settings/keys"
+        return 1
     fi
+    
+    if [[ -z "$TAILNET" ]]; then
+        echo -e "    ${RED}✗ TS_TAILNET not set.${NC}"
+        echo "    Set your tailnet name: export TS_TAILNET='your-org.com'"
+        echo "    Find it at: https://login.tailscale.com/admin/settings/general"
+        return 1
+    fi
+    
+    # Use '-' as shorthand for default tailnet
+    if [[ "$TAILNET" == "-" ]]; then
+        TAILNET="-"
+    fi
+    
+    # Generate keys and store in environment variables
+    local keys_generated=0
+    for i in $(seq 1 $num_keys); do
+        local key_index=$(printf "%02d" $i)
+        local env_var="TS_AUTHKEY_${key_index}"
+        
+        echo -n "    Generating key ${i}/${num_keys}... "
+        
+        # Create ephemeral, non-reusable, preauthorized auth key
+        # Expires in 24 hours (86400 seconds) - should be plenty for tests
+        local response=$(curl -s -w "\n__HTTP_CODE__:%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"capabilities\":{\"devices\":{\"create\":{\"reusable\":false,\"ephemeral\":true,\"preauthorized\":true}}},\"expirySeconds\":86400}" \
+            "https://api.tailscale.com/api/v2/tailnet/${TAILNET}/keys" 2>&1)
+        
+        local http_code=$(echo "$response" | grep -o "__HTTP_CODE__:[0-9]*" | cut -d: -f2)
+        local body=$(echo "$response" | sed '/__HTTP_CODE__:/d')
+        
+        if [[ -z "$http_code" ]] || [[ "$http_code" != "200" ]]; then
+            echo -e "${RED}✗ Failed (HTTP ${http_code})${NC}"
+            echo "    Response: ${body:0:200}"
+            if [[ "$http_code" == "401" ]]; then
+                echo "    Note: Check that TS_API_KEY is a valid API access token (tskey-api-...)"
+            fi
+            return 1
+        fi
+        
+        # Extract key from JSON response and verify it's ephemeral
+        local auth_key=$(echo "$body" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('key', ''))" 2>/dev/null)
+        local is_ephemeral=$(echo "$body" | python3 -c "import sys, json; d=json.load(sys.stdin); caps=d.get('capabilities', {}); dev_caps=caps.get('devices', {}); create_caps=dev_caps.get('create', {}); print('true' if create_caps.get('ephemeral') else 'false')" 2>/dev/null)
+        
+        if [[ -z "$auth_key" ]]; then
+            echo -e "${RED}✗ Failed to extract key from response${NC}"
+            echo "    Response: ${body:0:200}"
+            return 1
+        fi
+        
+        if [[ "$is_ephemeral" != "true" ]]; then
+            echo -e "${YELLOW}⚠ Warning: Generated key may not be ephemeral${NC}"
+        fi
+        
+        # Export the key as an environment variable
+        export "${env_var}=${auth_key}"
+        echo -e "${GREEN}✓${NC}"
+        keys_generated=$((keys_generated + 1))
+    done
+    
+    echo -e "    ${GREEN}✓ Generated ${keys_generated}/${num_keys} ephemeral auth keys${NC}"
+    
+    # Debug: Verify keys are exported (don't print actual key values for security)
+    echo "    Verifying exported keys..."
+    for i in $(seq 1 $num_keys); do
+        local key_index=$(printf "%02d" $i)
+        local env_var="TS_AUTHKEY_${key_index}"
+        local key_value="${!env_var}"
+        if [[ -n "$key_value" ]]; then
+            local key_len=${#key_value}
+            echo "      ✓ ${env_var} is set (length: ${key_len} chars)"
+        else
+            echo -e "      ${RED}✗ ${env_var} is not set${NC}"
+            return 1
+        fi
+    done
+    
+    return 0
 }
 
-# Check if discovery mode is Tailscale and warn about ephemeral keys
+# Function to cleanup Tailscale devices (simplified - ephemeral keys auto-cleanup)
+cleanup_tailscale_devices() {
+    echo "  Cleaning up Tailscale devices..."
+    echo "    ℹ️  Using ephemeral auth keys - devices should auto-cleanup when containers stop"
+    echo "    ℹ️  If devices persist, they will be removed automatically when they go offline"
+    echo "    ℹ️  No manual cleanup needed with ephemeral keys"
+}
+
+# Check if discovery mode is Tailscale and generate ephemeral keys
 check_tailscale_ephemeral_key() {
     # Try to extract discovery mode using a simple grep/sed approach (no Python dependency)
     DISCOVERY_MODE=$(grep -o '"mode"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" 2>/dev/null | \
@@ -216,31 +183,37 @@ check_tailscale_ephemeral_key() {
     fi
     
     if [[ "$DISCOVERY_MODE" == "tailscale" ]]; then
-        if [[ -z "$TS_AUTHKEY" ]]; then
-            echo -e "${RED}Error: TS_AUTHKEY not set. Required for Tailscale discovery mode.${NC}" >&2
-            echo -e "${YELLOW}   Set it with: export TS_AUTHKEY='your-key-here'${NC}" >&2
-            echo -e "${YELLOW}   For multi-container testing, use a REUSABLE key (not ephemeral).${NC}" >&2
-            echo -e "${YELLOW}   Create keys in: Tailscale Admin → Settings → Keys${NC}" >&2
+        # Count how many nodes we're testing (only count node IDs, not user IDs)
+        NODE_COUNT=$(python3 -c "import json; c=json.load(open('$CONFIG_FILE')); print(len(c.get('nodes', [])))" 2>/dev/null || \
+            grep -o '"nodes".*\[.*\]' "$CONFIG_FILE" 2>/dev/null | grep -o '"id"' | wc -l || echo "0")
+        
+        if [[ "$NODE_COUNT" -eq 0 ]]; then
+            echo -e "${RED}Error: No nodes found in config file${NC}" >&2
             exit 1
+        fi
+        
+        echo -e "${YELLOW}⚠️  Using Tailscale discovery mode with ${NODE_COUNT} container(s)${NC}"
+        
+        # Try to generate ephemeral keys via API (preferred method)
+        if generate_ephemeral_auth_keys "$NODE_COUNT"; then
+            echo -e "${GREEN}✓ Using programmatically generated ephemeral auth keys${NC}"
+            echo -e "${GREEN}  Devices will auto-cleanup when containers stop${NC}"
+            echo ""
         else
-            # Export TS_AUTHKEY to ensure it's available to docker compose
-            export TS_AUTHKEY
-            
-            # Check how many nodes we're testing
-            NODE_COUNT=$(grep -c '"id"' "$CONFIG_FILE" 2>/dev/null || echo "0")
-            if [[ "$NODE_COUNT" -gt 1 ]]; then
-                echo -e "${YELLOW}⚠️  IMPORTANT: Multi-container Tailscale testing${NC}"
-                echo -e "${YELLOW}   Using ${NODE_COUNT} containers. Ephemeral keys are SINGLE-USE only.${NC}"
-                echo -e "${YELLOW}   For multi-container tests, use a REUSABLE auth key (uncheck 'Ephemeral').${NC}"
-                echo -e "${YELLOW}   Ephemeral keys will only work for the first container.${NC}"
-                echo -e "${YELLOW}   Create reusable keys in: Tailscale Admin → Settings → Keys → Uncheck 'Ephemeral'${NC}"
-                echo ""
-                echo -e "${YELLOW}   💡 TIP: TS_AUTHKEY will be used for automatic device cleanup after tests${NC}"
+            # Fallback to manual TS_AUTHKEY if API key generation fails
+            if [[ -z "$TS_AUTHKEY" ]]; then
+                echo -e "${RED}Error: Cannot generate ephemeral keys and TS_AUTHKEY not set.${NC}" >&2
+                echo -e "${YELLOW}   Either set TS_API_KEY and TS_TAILNET for automatic key generation,${NC}" >&2
+                echo -e "${YELLOW}   OR set TS_AUTHKEY manually (use REUSABLE key for multi-container tests).${NC}" >&2
+                echo -e "${YELLOW}   Create keys at: https://login.tailscale.com/admin/settings/keys${NC}" >&2
+                exit 1
             else
-                echo -e "${YELLOW}⚠️  IMPORTANT: Using Tailscale discovery mode${NC}"
-                echo -e "${YELLOW}   For single-container testing, EPHEMERAL keys are recommended.${NC}"
-                echo -e "${YELLOW}   Ephemeral keys auto-delete devices when containers disconnect.${NC}"
-                echo -e "${YELLOW}   Create ephemeral keys in: Tailscale Admin → Settings → Keys → Check 'Ephemeral'${NC}"
+                echo -e "${YELLOW}⚠️  Falling back to manual TS_AUTHKEY (not recommended for multi-container tests)${NC}"
+                if [[ "$NODE_COUNT" -gt 1 ]]; then
+                    echo -e "${YELLOW}   WARNING: Single auth key with ${NODE_COUNT} containers may cause issues.${NC}"
+                    echo -e "${YELLOW}   Use a REUSABLE key (uncheck 'Ephemeral') for multi-container tests.${NC}"
+                fi
+                export TS_AUTHKEY
             fi
             echo ""
         fi
@@ -303,9 +276,19 @@ check_tailscale_ephemeral_key
 
 # Step 1: Generate configs
 echo "Step 1: Generating Docker configs..."
+# Note: If using ephemeral keys, docker_config_generator must be rebuilt to use per-container keys
 if ! ./build/docker_config_generator --master-config "$CONFIG_FILE" --mode test; then
     echo -e "${RED}Error: Config generation failed${NC}" >&2
     exit 1
+fi
+
+# Verify compose file uses per-container keys if ephemeral keys were generated
+if [[ "$DISCOVERY_MODE" == "tailscale" ]] && [[ -n "$TS_API_KEY" ]]; then
+    if grep -q 'TS_AUTHKEY:.*\${TS_AUTHKEY}' "$COMPOSE_FILE" 2>/dev/null && ! grep -q 'TS_AUTHKEY:.*\${TS_AUTHKEY_[0-9]' "$COMPOSE_FILE" 2>/dev/null; then
+        echo -e "    ${YELLOW}⚠️  WARNING: Compose file appears to use old format${NC}"
+        echo -e "    ${YELLOW}   Rebuild docker_config_generator: cmake --build build --target docker_config_generator${NC}"
+        echo -e "    ${YELLOW}   Then re-run this script${NC}"
+    fi
 fi
 echo ""
 
@@ -329,6 +312,32 @@ echo ""
 
 # Step 3: Build Docker images
 echo "Step 3: Building Docker images..."
+
+# If using ephemeral keys, verify they're set before building
+if [[ "$DISCOVERY_MODE" == "tailscale" ]] && [[ -n "$TS_API_KEY" ]]; then
+    echo "  Verifying ephemeral keys are available for docker-compose..."
+    NODE_COUNT=$(python3 -c "import json; c=json.load(open('$CONFIG_FILE')); print(len(c.get('nodes', [])))" 2>/dev/null || \
+        grep -o '"nodes".*\[.*\]' "$CONFIG_FILE" 2>/dev/null | grep -o '"id"' | wc -l || echo "0")
+    missing_keys=0
+    for i in $(seq 1 $NODE_COUNT); do
+        key_index=$(printf "%02d" $i)
+        env_var="TS_AUTHKEY_${key_index}"
+        if [[ -z "${!env_var}" ]]; then
+            echo -e "    ${RED}✗ ${env_var} is not set${NC}"
+            missing_keys=$((missing_keys + 1))
+        fi
+    done
+    if [[ $missing_keys -gt 0 ]]; then
+        echo -e "    ${RED}Error: ${missing_keys} ephemeral key(s) missing. Regenerating...${NC}"
+        if ! generate_ephemeral_auth_keys "$NODE_COUNT"; then
+            echo -e "    ${RED}Failed to regenerate keys. Exiting.${NC}" >&2
+            exit 1
+        fi
+    else
+        echo -e "    ${GREEN}✓ All ephemeral keys are set${NC}"
+    fi
+fi
+
 if ! docker compose -f "$COMPOSE_FILE" build; then
     echo -e "${RED}Error: Docker build failed${NC}" >&2
     exit 1
