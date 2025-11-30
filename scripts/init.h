@@ -7,7 +7,9 @@
 #define MAX_NODES 100
 #define MAX_USERS 100
 #define MAX_PEERS 100
+#ifndef PUBKEY_SIZE
 #define PUBKEY_SIZE 32  // Ed25519 public key size
+#endif
 
 // Node configuration from JSON
 typedef struct {

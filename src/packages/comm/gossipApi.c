@@ -12,6 +12,7 @@
 #include "packages/sql/schema.h"
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/permissions.h"
+#include "packages/sql/gossip_peers.h"
 #include "packages/transactions/envelope.h"
 #include "packages/utils/logger.h"
 #include "structs/permission/permission.h"
@@ -37,6 +38,7 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data);
 static void handle_get_recent(struct mg_connection* c, struct mg_http_message* hm);
 static void handle_get_messages(struct mg_connection* c, struct mg_http_message* hm);
 static void handle_get_conversations(struct mg_connection* c, struct mg_http_message* hm);
+static void handle_get_peers(struct mg_connection* c, struct mg_http_message* hm);
 static int hex_decode(const char* hex, unsigned char** out, size_t* out_len);
 static char* hex_encode(const unsigned char* data, size_t len);
 static void compute_envelope_hash(const unsigned char* serialized, size_t len, unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE]);
@@ -288,6 +290,19 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
         } else if (mg_strcmp(hm->uri, mg_str("/gossip/conversations")) == 0) {
             if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
                 handle_get_conversations(c, hm);
+            } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
+                mg_http_reply(c, 200,
+                              "Access-Control-Allow-Origin: *\r\n"
+                              "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
+                              "Access-Control-Allow-Headers: Content-Type\r\n",
+                              "");
+            } else {
+                mg_http_reply(c, 405, "Content-Type: application/json\r\n",
+                              "{\"error\":\"Method Not Allowed\"}");
+            }
+        } else if (mg_strcmp(hm->uri, mg_str("/gossip/peers")) == 0) {
+            if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
+                handle_get_peers(c, hm);
             } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
                 mg_http_reply(c, 200,
                               "Access-Control-Allow-Origin: *\r\n"
@@ -994,4 +1009,67 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
                   "%s", json_response);
     
     free(json_response);
+}
+
+static void handle_get_peers(struct mg_connection* c, struct mg_http_message* hm) {
+    (void)hm; // Unused parameter
+    
+    // Fetch all peers from database
+    GossipPeerInfo* peers = NULL;
+    size_t peer_count = 0;
+    
+    if (gossip_peers_fetch_all(&peers, &peer_count) != 0) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to fetch peers\"}");
+        return;
+    }
+    
+    // Build JSON response
+    cJSON* json = cJSON_CreateObject();
+    cJSON* peers_array = cJSON_CreateArray();
+    
+    for (size_t i = 0; i < peer_count; i++) {
+        cJSON* peer_obj = cJSON_CreateObject();
+        cJSON_AddStringToObject(peer_obj, "hostname", peers[i].hostname);
+        cJSON_AddNumberToObject(peer_obj, "gossip_port", peers[i].gossip_port);
+        cJSON_AddNumberToObject(peer_obj, "api_port", peers[i].api_port);
+        cJSON_AddNumberToObject(peer_obj, "first_seen", (double)peers[i].first_seen);
+        cJSON_AddNumberToObject(peer_obj, "last_seen", (double)peers[i].last_seen);
+        if (strlen(peers[i].tags) > 0) {
+            cJSON_AddStringToObject(peer_obj, "tags", peers[i].tags);
+        }
+        // Add pubkey as hex if present
+        if (peers[i].node_pubkey[0] != 0 || memcmp(peers[i].node_pubkey, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 32) != 0) {
+            char* pubkey_hex = hex_encode(peers[i].node_pubkey, 32);
+            if (pubkey_hex) {
+                cJSON_AddStringToObject(peer_obj, "node_pubkey", pubkey_hex);
+                free(pubkey_hex);
+            }
+        }
+        cJSON_AddItemToArray(peers_array, peer_obj);
+    }
+    
+    cJSON_AddItemToObject(json, "peers", peers_array);
+    cJSON_AddNumberToObject(json, "count", (double)peer_count);
+    
+    char* json_string = cJSON_Print(json);
+    cJSON_Delete(json);
+    gossip_peers_free(peers, peer_count);
+    
+    if (!json_string) {
+        mg_http_reply(c, 500,
+                      "Content-Type: application/json\r\n"
+                      "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\":\"Failed to serialize response\"}");
+        return;
+    }
+    
+    mg_http_reply(c, 200,
+                  "Content-Type: application/json\r\n"
+                  "Access-Control-Allow-Origin: *\r\n",
+                  "%s", json_string);
+    
+    free(json_string);
 }

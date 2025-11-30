@@ -4,10 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <cjson/cJSON.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "packages/sql/database_gossip.h"
+#include "packages/sql/schema.h"
+#include "packages/sql/gossip_peers.h"
 
 #define TEST_BASE_PATH "test_state"
 #define CONFIG_PATH "scripts/configs/network_config.json"
@@ -15,6 +19,22 @@
 static char test_db_path[512] = {0};
 static char test_keys_dir[512] = {0};
 static char test_user_key_path[512] = {0};
+
+// Helper function to ensure directory exists
+static int ensure_directory(const char* path) {
+    if (!path) {
+        return -1;
+    }
+    struct stat st = {0};
+    if (stat(path, &st) == 0) {
+        return 0;  // Directory already exists
+    }
+    if (mkdir(path, 0755) == -1 && errno != EEXIST) {
+        fprintf(stderr, "Failed to create directory %s: %s\n", path, strerror(errno));
+        return -1;
+    }
+    return 0;
+}
 
 // Parse the full network config file
 static int parse_test_config(InitNetworkConfig* out_config,
@@ -260,6 +280,43 @@ int test_init_environment(void) {
         fprintf(stderr, "Failed to initialize test network\n");
         free_test_config(&config, nodes, users);
         return -1;
+    }
+
+    // After network initialization, also create user keys and database at network level
+    // (these are created in node directories, but tests expect them at network level)
+    
+    // Create storage directory
+    char storage_dir[512];
+    snprintf(storage_dir, sizeof(storage_dir), "%s/storage", TEST_BASE_PATH);
+    if (ensure_directory(storage_dir) != 0) {
+        fprintf(stderr, "Warning: Failed to create storage directory\n");
+    }
+    
+    // Create user keys at network level
+    for (uint32_t i = 0; i < config.user_count; ++i) {
+        const InitUserConfig* user = &users[i];
+        if (user->id) {
+            unsigned char pubkey[32];
+            if (generate_user_keypair(user->id, TEST_BASE_PATH, pubkey) != 0) {
+                fprintf(stderr, "Warning: Failed to create network-level key for user %s\n", user->id);
+                // Non-fatal, continue
+            }
+        }
+    }
+    
+    // Create database at network level (tests expect it here)
+    char network_db_path[512];
+    snprintf(network_db_path, sizeof(network_db_path), "%s/storage/tinyweb.db", TEST_BASE_PATH);
+    if (db_init_gossip(network_db_path) == 0) {
+        if (gossip_store_init() != 0) {
+            fprintf(stderr, "Warning: Failed to initialize gossip store schema\n");
+        }
+        if (gossip_peers_init() != 0) {
+            fprintf(stderr, "Warning: Failed to initialize gossip peers schema\n");
+        }
+        db_close();  // Close the network-level DB, tests will reopen it
+    } else {
+        fprintf(stderr, "Warning: Failed to create network-level database\n");
     }
 
     free_test_config(&config, nodes, users);

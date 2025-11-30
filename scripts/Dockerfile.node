@@ -7,6 +7,11 @@ FROM debian:bookworm-slim
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libsodium23 \
+        libcjson1 \
+        libmicrohttpd12 \
+        libprotobuf-c1 \
+        liblz4-1 \
+        libssl3 \
         sqlite3 \
         curl \
         ca-certificates \

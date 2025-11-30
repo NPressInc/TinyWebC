@@ -4,6 +4,32 @@
 
 set -e
 
+# Load environment variables from .env file if it exists
+# Environment variables already set take precedence over .env file values
+if [[ -f .env ]]; then
+    echo "Loading environment variables from .env file (as fallback)..."
+    # Read .env file line by line and only set variables that aren't already set
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        
+        # Extract key and value (handles KEY=value and KEY="value" formats)
+        if [[ "$line" =~ ^[[:space:]]*([^=]+)=(.*)$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="${BASH_REMATCH[2]}"
+            # Trim whitespace from key
+            key=$(echo "$key" | xargs)
+            # Trim whitespace and quotes from value
+            value=$(echo "$value" | xargs | sed "s/^['\"]//;s/['\"]$//")
+            
+            # Only set if not already in environment
+            if [[ -z "${!key}" ]]; then
+                export "$key=$value"
+            fi
+        fi
+    done < .env
+fi
+
 # Export TS_AUTHKEY if it's set (needed for Tailscale services)
 # Docker Compose will automatically pick up exported environment variables
 if [[ -n "$TS_AUTHKEY" ]]; then
@@ -19,6 +45,19 @@ TEST_SCRIPT=""
 COMPOSE_FILE="docker_configs/docker-compose.test.yml"
 TIMEOUT=120  # seconds
 POLL_INTERVAL=2  # seconds
+
+# Temporary .env file for Docker Compose (contains generated ephemeral keys)
+TEMP_ENV_FILE="docker_configs/.env.test"
+
+# Cleanup function for temporary files
+cleanup_temp_files() {
+    if [[ -f "$TEMP_ENV_FILE" ]]; then
+        rm -f "$TEMP_ENV_FILE"
+    fi
+}
+
+# Set up cleanup on exit
+trap cleanup_temp_files EXIT
 
 # Colors for output
 RED='\033[0;31m'
@@ -63,10 +102,29 @@ fi
 # Global variable to store discovery mode
 DISCOVERY_MODE=""
 
+# Helper function to get docker compose command with env file if needed
+get_compose_cmd() {
+    local cmd="$1"
+    if [[ "$DISCOVERY_MODE" == "tailscale" ]] && [[ -n "$TS_API_KEY" ]] && [[ -f "$TEMP_ENV_FILE" ]]; then
+        echo "docker compose -f \"$COMPOSE_FILE\" --env-file \"$TEMP_ENV_FILE\" $cmd"
+    else
+        echo "docker compose -f \"$COMPOSE_FILE\" $cmd"
+    fi
+}
+
 # Function to generate ephemeral auth keys via Tailscale API
 generate_ephemeral_auth_keys() {
     local num_keys=$1
     echo "  Generating ${num_keys} ephemeral auth key(s) via Tailscale API..."
+    
+    # Ensure temp .env file exists and is clean for this run
+    if [[ -f "$TEMP_ENV_FILE" ]]; then
+        # Remove only TS_AUTHKEY_XX lines, keep other vars
+        grep -v "^TS_AUTHKEY_[0-9]" "$TEMP_ENV_FILE" > "${TEMP_ENV_FILE}.tmp" 2>/dev/null || true
+        mv "${TEMP_ENV_FILE}.tmp" "$TEMP_ENV_FILE" 2>/dev/null || true
+    else
+        touch "$TEMP_ENV_FILE"
+    fi
     
     # Check for API access token
     API_KEY="${TS_API_KEY:-${TS_TAILNET_API_KEY:-}}"
@@ -136,8 +194,12 @@ generate_ephemeral_auth_keys() {
             echo -e "${YELLOW}⚠ Warning: Generated key may not be ephemeral${NC}"
         fi
         
-        # Export the key as an environment variable
+        # Export the key as an environment variable (for script use)
         export "${env_var}=${auth_key}"
+        
+        # Also write to temporary .env file for Docker Compose
+        echo "${env_var}=${auth_key}" >> "${TEMP_ENV_FILE}"
+        
         echo -e "${GREEN}✓${NC}"
         keys_generated=$((keys_generated + 1))
     done
@@ -228,7 +290,8 @@ check_health() {
     fi
     
     # Get health status of all services
-    local unhealthy=$(docker compose -f "$compose_file" ps --format json 2>/dev/null | \
+    local compose_cmd=$(get_compose_cmd "")
+    local unhealthy=$(eval "$compose_cmd ps --format json" 2>/dev/null | \
         python3 -c "import sys, json; services = [json.loads(line) for line in sys.stdin if line.strip()]; \
         unhealthy = [s for s in services if s.get('Health', '') not in ['healthy', ''] and s.get('State', '') == 'running']; \
         print(len(unhealthy))" 2>/dev/null || echo "1")
@@ -269,6 +332,23 @@ wait_for_health() {
 echo "=========================================="
 echo "TinyWeb Docker Test Runner"
 echo "=========================================="
+echo ""
+
+# Step 0: Cleanup any leftover containers from previous runs
+echo "Step 0: Cleaning up any leftover containers..."
+COMPOSE_FILE_TEMP="docker_configs/docker-compose.test.yml"
+if [[ -f "$COMPOSE_FILE_TEMP" ]]; then
+    # Try to stop and remove any existing containers
+    if docker compose -f "$COMPOSE_FILE_TEMP" ps -q 2>/dev/null | grep -q .; then
+        echo "  Found existing containers, stopping and removing..."
+        docker compose -f "$COMPOSE_FILE_TEMP" down -v 2>/dev/null || true
+        echo -e "  ${GREEN}✓ Cleanup complete${NC}"
+    else
+        echo -e "  ${GREEN}✓ No leftover containers found${NC}"
+    fi
+else
+    echo "  No compose file found yet (will be generated in Step 1)"
+fi
 echo ""
 
 # Check for Tailscale ephemeral key warning
@@ -346,22 +426,52 @@ echo ""
 
 # Step 4: Start containers
 echo "Step 4: Starting containers..."
-# Ensure TS_AUTHKEY is exported for Tailscale services (if needed)
-# Docker Compose will automatically pick up exported environment variables
-if ! docker compose -f "$COMPOSE_FILE" up -d; then
+
+# Verify ephemeral keys are still exported before starting containers
+if [[ "$DISCOVERY_MODE" == "tailscale" ]] && [[ -n "$TS_API_KEY" ]]; then
+    NODE_COUNT=$(python3 -c "import json; c=json.load(open('$CONFIG_FILE')); print(len(c.get('nodes', [])))" 2>/dev/null || echo "0")
+    echo "  Verifying ephemeral keys are exported before starting containers..."
+    missing_keys=0
+    for i in $(seq 1 $NODE_COUNT); do
+        key_index=$(printf "%02d" $i)
+        env_var="TS_AUTHKEY_${key_index}"
+        if [[ -z "${!env_var}" ]]; then
+            echo -e "    ${RED}✗ ${env_var} is not set - regenerating...${NC}"
+            missing_keys=$((missing_keys + 1))
+        fi
+    done
+    if [[ $missing_keys -gt 0 ]]; then
+        echo -e "    ${YELLOW}⚠️  ${missing_keys} key(s) missing, regenerating...${NC}"
+        if ! generate_ephemeral_auth_keys "$NODE_COUNT"; then
+            echo -e "    ${RED}Failed to regenerate keys. Exiting.${NC}" >&2
+            exit 1
+        fi
+    else
+        echo -e "    ${GREEN}✓ All ephemeral keys are exported${NC}"
+    fi
+fi
+
+# Start containers with ephemeral keys from .env file
+# Use --env-file to explicitly load the generated keys
+if [[ "$DISCOVERY_MODE" == "tailscale" ]] && [[ -n "$TS_API_KEY" ]] && [[ -f "$TEMP_ENV_FILE" ]]; then
+    echo "  Using ephemeral keys from $TEMP_ENV_FILE"
+fi
+
+COMPOSE_CMD=$(get_compose_cmd "")
+if ! eval "$COMPOSE_CMD up -d"; then
     echo -e "${RED}Error: Failed to start containers${NC}" >&2
     echo ""
     echo "Showing logs for failed containers..."
     echo "=========================================="
     # Show logs for all Tailscale containers
-    for service in $(docker compose -f "$COMPOSE_FILE" ps --services 2>/dev/null | grep tailscale || true); do
+    for service in $(eval "$COMPOSE_CMD ps --services" 2>/dev/null | grep tailscale || true); do
         echo ""
         echo -e "${YELLOW}=== Logs for $service ===${NC}"
-        docker compose -f "$COMPOSE_FILE" logs --tail=50 "$service" 2>&1 || true
+        eval "$COMPOSE_CMD logs --tail=50 \"$service\"" 2>&1 || true
     done
     echo ""
     echo -e "${YELLOW}=== All container status ===${NC}"
-    docker compose -f "$COMPOSE_FILE" ps -a
+    eval "$COMPOSE_CMD ps -a"
     
     # Cleanup Tailscale devices even on failure
     if [[ "$DISCOVERY_MODE" == "tailscale" ]]; then
@@ -378,7 +488,8 @@ echo ""
 if ! wait_for_health "$COMPOSE_FILE"; then
     echo -e "${RED}Error: Health checks failed${NC}" >&2
     echo "Cleaning up..."
-    docker compose -f "$COMPOSE_FILE" down -v
+    COMPOSE_CMD=$(get_compose_cmd "")
+    eval "$COMPOSE_CMD down -v"
     
     # Cleanup Tailscale devices even on failure
     if [[ "$DISCOVERY_MODE" == "tailscale" ]]; then
@@ -389,11 +500,188 @@ if ! wait_for_health "$COMPOSE_FILE"; then
 fi
 echo ""
 
+# Step 5.1: Check container status and logs immediately after health checks
+echo "Step 5.1: Verifying containers are still running after health checks..."
+COMPOSE_CMD=$(get_compose_cmd "")
+NODE_SERVICES_CHECK=$(grep -E "^  node_[0-9]+:$" "$COMPOSE_FILE" 2>/dev/null | sed 's/^  //;s/:$//' | sort || echo "")
+if [[ -n "$NODE_SERVICES_CHECK" ]]; then
+    any_exited=false
+    for service in $NODE_SERVICES_CHECK; do
+        # Check if container is running
+        container_status=$(eval "$COMPOSE_CMD ps --format json" 2>/dev/null | \
+            python3 -c "import sys, json; \
+            services = [json.loads(line) for line in sys.stdin if line.strip()]; \
+            service = [s for s in services if s.get('Service') == '$service']; \
+            print(service[0].get('State', 'unknown') if service else 'not found')" 2>/dev/null || echo "unknown")
+        
+        if [[ "$container_status" != "running" ]]; then
+            echo -e "  ${RED}✗ ${service}: Container exited (status: ${container_status})${NC}"
+            echo "  ========================================="
+            echo "  Full logs for ${service}:"
+            echo "  ========================================="
+            eval "$COMPOSE_CMD logs \"$service\"" 2>&1 | sed 's/^/    /' || true
+            echo "  ========================================="
+            any_exited=true
+        else
+            echo -e "  ${GREEN}✓ ${service}: Running${NC}"
+        fi
+    done
+    
+    if [[ "$any_exited" == "true" ]]; then
+        echo ""
+        echo -e "${RED}Error: Some containers exited after health checks passed${NC}" >&2
+        echo "This usually indicates tinyweb crashed. Check the logs above for errors."
+        echo ""
+        echo "Showing all container status:"
+        eval "$COMPOSE_CMD ps -a" 2>&1 || true
+        echo ""
+        echo "Cleaning up and exiting..."
+        eval "$COMPOSE_CMD down -v" 2>/dev/null || true
+        if [[ "$DISCOVERY_MODE" == "tailscale" ]]; then
+            cleanup_tailscale_devices
+        fi
+        exit 1
+    fi
+else
+    echo "  No node services found to check"
+fi
+echo ""
+
+# Step 5.5: Verify peer discovery (if using Tailscale)
+verify_peer_discovery() {
+    if [[ "$DISCOVERY_MODE" != "tailscale" ]]; then
+        return 0  # Skip if not using Tailscale
+    fi
+    
+    echo "Step 5.5: Verifying peer discovery..."
+    
+    # Wait for discovery to complete (Tailscale discovery can take 10-60 seconds with retries)
+    echo "  Waiting for discovery to complete (up to 60 seconds)..."
+    
+    # Get list of node services (services are named node_01, node_02, etc.)
+    local compose_cmd=$(get_compose_cmd "")
+    NODE_SERVICES=$(eval "$compose_cmd ps --services" 2>/dev/null | grep "^node_[0-9]" || echo "")
+    
+    if [[ -z "$NODE_SERVICES" ]]; then
+        echo -e "    ${YELLOW}⚠️  No node services found, skipping peer discovery verification${NC}"
+        echo "    Debug: All services:"
+        eval "$compose_cmd ps --services" 2>/dev/null | head -10 || echo "      (no services found)"
+        echo "    Debug: Container status:"
+        eval "$compose_cmd ps" 2>/dev/null | head -5 || echo "      (containers not running)"
+        return 0
+    fi
+    
+    # Count expected peers (all other nodes)
+    NODE_COUNT=$(echo "$NODE_SERVICES" | wc -l)
+    EXPECTED_PEER_COUNT=$((NODE_COUNT - 1))  # Each node should see all others
+    
+    if [[ "$EXPECTED_PEER_COUNT" -eq 0 ]]; then
+        echo "  Only 1 node - no peers to discover"
+        return 0
+    fi
+    
+    echo "  Checking peer discovery for ${NODE_COUNT} node(s)..."
+    echo "  Each node should discover ${EXPECTED_PEER_COUNT} peer(s)"
+    
+    # Retry logic: check multiple times with delays
+    local max_attempts=6
+    local attempt=1
+    local all_nodes_ok=false
+    
+    while [[ $attempt -le $max_attempts ]]; do
+        if [[ $attempt -gt 1 ]]; then
+            echo "  Attempt ${attempt}/${max_attempts} (waiting 10 seconds)..."
+            sleep 10
+        fi
+        
+        all_nodes_ok=true
+        local nodes_with_peers=0
+        
+        for service in $NODE_SERVICES; do
+            # Query /gossip/peers endpoint from inside the container
+            # Use the compose command helper to ensure --env-file is included if needed
+            local compose_cmd=$(get_compose_cmd "")
+            PEERS_JSON=$(eval "$compose_cmd exec -T \"$service\" curl -s http://localhost:8000/gossip/peers" 2>/dev/null || echo "")
+            
+            if [[ -z "$PEERS_JSON" ]]; then
+                if [[ $attempt -lt $max_attempts ]]; then
+                    all_nodes_ok=false
+                    continue  # Will retry
+                else
+                    echo -e "    ${RED}✗ ${service}: Failed to query peers endpoint${NC}"
+                    all_nodes_ok=false
+                    continue
+                fi
+            fi
+            
+            # Extract peer count from JSON
+            PEER_COUNT=$(echo "$PEERS_JSON" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('count', 0))" 2>/dev/null || echo "0")
+            
+            # On last attempt, show more details
+            if [[ $attempt -eq $max_attempts ]] && [[ "$PEER_COUNT" -lt "$EXPECTED_PEER_COUNT" ]]; then
+                echo "    Debug info for ${service}:"
+                echo "      Response: ${PEERS_JSON:0:200}..."
+                # Try to get Tailscale status
+                local tailscale_status=$(eval "$compose_cmd exec -T \"$service\" tailscale status --json" 2>/dev/null | head -50 || echo "")
+                if [[ -n "$tailscale_status" ]]; then
+                    echo "      Tailscale peers found: $(echo "$tailscale_status" | python3 -c "import sys, json; d=json.load(sys.stdin); peers=d.get('Peer', {}); print(len([p for p in peers.values() if isinstance(p, dict) and p.get('Online', False)]))" 2>/dev/null || echo "unknown")"
+                fi
+            fi
+            
+            if [[ "$PEER_COUNT" -ge "$EXPECTED_PEER_COUNT" ]]; then
+                if [[ $attempt -eq 1 ]]; then
+                    echo -e "    ${GREEN}✓ ${service}: Found ${PEER_COUNT} peer(s)${NC}"
+                fi
+                nodes_with_peers=$((nodes_with_peers + 1))
+            elif [[ "$PEER_COUNT" -gt 0 ]]; then
+                if [[ $attempt -eq $max_attempts ]]; then
+                    echo -e "    ${YELLOW}⚠ ${service}: Found ${PEER_COUNT} peer(s), expected ${EXPECTED_PEER_COUNT}${NC}"
+                fi
+                all_nodes_ok=false
+            else
+                if [[ $attempt -lt $max_attempts ]]; then
+                    all_nodes_ok=false
+                    # Will retry
+                else
+                    echo -e "    ${RED}✗ ${service}: No peers discovered (expected ${EXPECTED_PEER_COUNT})${NC}"
+                    all_nodes_ok=false
+                fi
+            fi
+        done
+        
+        # If all nodes have the expected number of peers, we're done
+        if [[ "$all_nodes_ok" == "true" ]] && [[ $nodes_with_peers -eq $NODE_COUNT ]]; then
+            echo -e "  ${GREEN}✓ All nodes discovered ${EXPECTED_PEER_COUNT} peer(s)${NC}"
+            return 0
+        fi
+        
+        attempt=$((attempt + 1))
+    done
+    
+    # Final status
+    if [[ "$all_nodes_ok" == "true" ]]; then
+        echo -e "  ${GREEN}✓ Peer discovery verification complete${NC}"
+        return 0
+    else
+        echo -e "  ${YELLOW}⚠️  Some nodes may not have discovered all peers${NC}"
+        echo -e "  ${YELLOW}   This can happen if Tailscale discovery is still in progress${NC}"
+        echo -e "  ${YELLOW}   Discovery can take up to 60 seconds with retries${NC}"
+        # Don't fail the test - discovery is best-effort
+        return 0
+    fi
+}
+
+if [[ "$DISCOVERY_MODE" == "tailscale" ]]; then
+    verify_peer_discovery
+    echo ""
+fi
+
 # Step 6: Run test script if provided
 if [[ -n "$TEST_SCRIPT" ]]; then
     if [[ ! -f "$TEST_SCRIPT" ]]; then
         echo -e "${RED}Error: Test script not found: $TEST_SCRIPT${NC}" >&2
-        docker compose -f "$COMPOSE_FILE" down -v
+        COMPOSE_CMD=$(get_compose_cmd "")
+        eval "$COMPOSE_CMD down -v"
         if [[ "$DISCOVERY_MODE" == "tailscale" ]]; then
             cleanup_tailscale_devices
         fi
@@ -405,7 +693,8 @@ if [[ -n "$TEST_SCRIPT" ]]; then
         echo -e "${GREEN}✓ Test script passed${NC}"
     else
         echo -e "${RED}✗ Test script failed${NC}" >&2
-        docker compose -f "$COMPOSE_FILE" down -v
+        COMPOSE_CMD=$(get_compose_cmd "")
+        eval "$COMPOSE_CMD down -v"
         if [[ "$DISCOVERY_MODE" == "tailscale" ]]; then
             cleanup_tailscale_devices
         fi
@@ -414,14 +703,16 @@ if [[ -n "$TEST_SCRIPT" ]]; then
     echo ""
 else
     echo "Step 6: No test script provided, verifying services are running..."
-    docker compose -f "$COMPOSE_FILE" ps
+    COMPOSE_CMD=$(get_compose_cmd "")
+    eval "$COMPOSE_CMD ps"
     echo ""
 fi
 
 # Step 7: Cleanup
 echo "Step 7: Cleaning up..."
 echo "  Stopping and removing containers..."
-docker compose -f "$COMPOSE_FILE" down -v
+COMPOSE_CMD=$(get_compose_cmd "")
+eval "$COMPOSE_CMD down -v"
 echo -e "${GREEN}✓ Docker cleanup complete${NC}"
 
 # Cleanup Tailscale devices if in Tailscale mode

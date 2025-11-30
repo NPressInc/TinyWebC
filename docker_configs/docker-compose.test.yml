@@ -83,7 +83,7 @@ services:
       retries: ! '3'
       start_period: ! '30s'
     restart: ! 'no'
-  node_node_01:
+  node_01:
     build:
       context: ! '..'
       dockerfile: ! 'scripts/Dockerfile.node'
@@ -106,7 +106,7 @@ services:
     depends_on:
       tailscale_node_01:
         condition: ! 'service_healthy'
-  node_node_02:
+  node_02:
     build:
       context: ! '..'
       dockerfile: ! 'scripts/Dockerfile.node'
@@ -129,7 +129,7 @@ services:
     depends_on:
       tailscale_node_02:
         condition: ! 'service_healthy'
-  node_node_03:
+  node_03:
     build:
       context: ! '..'
       dockerfile: ! 'scripts/Dockerfile.node'
@@ -152,7 +152,7 @@ services:
     depends_on:
       tailscale_node_03:
         condition: ! 'service_healthy'
-  node_node_04:
+  node_04:
     build:
       context: ! '..'
       dockerfile: ! 'scripts/Dockerfile.node'

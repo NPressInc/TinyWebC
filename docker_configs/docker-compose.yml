@@ -83,7 +83,7 @@ services:
       retries: ! '3'
       start_period: ! '30s'
     restart: ! 'unless-stopped'
-  node_node_01:
+  node_01:
     build:
       context: ! '..'
       dockerfile: ! 'scripts/Dockerfile.node'
@@ -108,7 +108,7 @@ services:
         condition: ! 'service_healthy'
     ports:
     - ! '8001:8000'
-  node_node_02:
+  node_02:
     build:
       context: ! '..'
       dockerfile: ! 'scripts/Dockerfile.node'
@@ -133,7 +133,7 @@ services:
         condition: ! 'service_healthy'
     ports:
     - ! '8002:8000'
-  node_node_03:
+  node_03:
     build:
       context: ! '..'
       dockerfile: ! 'scripts/Dockerfile.node'
@@ -158,7 +158,7 @@ services:
         condition: ! 'service_healthy'
     ports:
     - ! '8003:8000'
-  node_node_04:
+  node_04:
     build:
       context: ! '..'
       dockerfile: ! 'scripts/Dockerfile.node'

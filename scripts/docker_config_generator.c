@@ -726,9 +726,10 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
         if (extract_node_index(node_id, &index) != 0) continue;
         
         char node_service_name[128];
-        snprintf(node_service_name, sizeof(node_service_name), "node_%s", node_id);
+        // node_id is already "node_01", so use it directly (don't add "node_" prefix again)
+        snprintf(node_service_name, sizeof(node_service_name), "%s", node_id);
         
-        // node_{node_id}:
+        // Service name: node_01, node_02, etc.
         write_yaml_scalar(&emitter, node_service_name, 0);
         write_yaml_mapping_start(&emitter);
         

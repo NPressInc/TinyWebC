@@ -289,9 +289,9 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
     }
 
     // Authorization check: Only accept messages from nodes whose public key is in gossip_peers whitelist
-    if (envelope->header && envelope->header->sender_pubkey && envelope->header->sender_pubkey->len == 32) {
+    if (envelope->header && envelope->header->sender_pubkey.data && envelope->header->sender_pubkey.len == 32) {
         GossipPeerInfo peer;
-        if (gossip_peers_get_by_pubkey(envelope->header->sender_pubkey->data, &peer) != 0) {
+        if (gossip_peers_get_by_pubkey(envelope->header->sender_pubkey.data, &peer) != 0) {
             logger_error("gossip", "Rejected message from unauthorized node (public key not in whitelist)");
             return -1;
         }
