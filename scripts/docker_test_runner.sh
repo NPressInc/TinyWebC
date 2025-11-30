@@ -374,20 +374,17 @@ echo ""
 
 # Step 2: Build tinyweb binary (required for Docker image)
 echo "Step 2: Building tinyweb binary..."
-if [[ ! -f "build/tinyweb" ]]; then
-    echo "  Binary not found, building..."
-    if ! cmake -S . -B build; then
-        echo -e "${RED}Error: CMake configuration failed${NC}" >&2
-        exit 1
-    fi
-    if ! cmake --build build --target tinyweb; then
-        echo -e "${RED}Error: Build failed${NC}" >&2
-        exit 1
-    fi
-    echo -e "${GREEN}✓ Binary built${NC}"
-else
-    echo -e "${GREEN}✓ Binary already exists${NC}"
+# Always rebuild to ensure latest code is included
+echo "  Rebuilding binary to ensure latest code..."
+if ! cmake -S . -B build; then
+    echo -e "${RED}Error: CMake configuration failed${NC}" >&2
+    exit 1
 fi
+if ! cmake --build build --target tinyweb; then
+    echo -e "${RED}Error: Build failed${NC}" >&2
+    exit 1
+fi
+echo -e "${GREEN}✓ Binary built${NC}"
 echo ""
 
 # Step 3: Build Docker images

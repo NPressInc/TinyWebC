@@ -158,23 +158,58 @@ int discover_tailscale_peers(GossipService* service, const NodeConfig* config) {
                 continue;
             }
             
-            // Get DNSName (hostname)
+            // Get DNSName (hostname) - Tailscale returns full FQDN if MagicDNS is enabled
             cJSON* dns_name = cJSON_GetObjectItem(peer_item, "DNSName");
             if (!cJSON_IsString(dns_name) || !dns_name->valuestring) {
                 continue;
             }
             
+            // Use the DNSName as-is - Tailscale provides full FQDN (e.g., "tw-node01.tailnet-name.ts.net")
+            // or short hostname depending on MagicDNS configuration
+            // getaddrinfo() will resolve either format correctly
             const char* hostname = dns_name->valuestring;
             
-            // Check if hostname matches prefix pattern
-            if (!matches_hostname_prefix(hostname, config->hostname_prefix)) {
+            // Extract short hostname for prefix matching (in case DNSName is full FQDN)
+            char short_hostname[256] = {0};
+            const char* first_dot = strchr(hostname, '.');
+            if (first_dot) {
+                // DNSName is full FQDN, extract short hostname for matching
+                size_t short_len = first_dot - hostname;
+                if (short_len < sizeof(short_hostname)) {
+                    strncpy(short_hostname, hostname, short_len);
+                    short_hostname[short_len] = '\0';
+                } else {
+                    strncpy(short_hostname, hostname, sizeof(short_hostname) - 1);
+                }
+            } else {
+                // DNSName is already short hostname
+                strncpy(short_hostname, hostname, sizeof(short_hostname) - 1);
+            }
+            
+            // Check if hostname matches prefix pattern (use short hostname for matching)
+            if (!matches_hostname_prefix(short_hostname, config->hostname_prefix)) {
                 continue;
             }
             
-            // Skip self (compare to own hostname from config)
-            if (config->hostname[0] != '\0' && strcmp(hostname, config->hostname) == 0) {
-                logger_info("tailscale_discovery", "Skipping self: %s", hostname);
-                continue;
+            // Skip self (compare short hostname to config hostname)
+            if (config->hostname[0] != '\0') {
+                char config_short[256] = {0};
+                const char* config_dot = strchr(config->hostname, '.');
+                if (config_dot) {
+                    size_t config_short_len = config_dot - config->hostname;
+                    if (config_short_len < sizeof(config_short)) {
+                        strncpy(config_short, config->hostname, config_short_len);
+                        config_short[config_short_len] = '\0';
+                    } else {
+                        strncpy(config_short, config->hostname, sizeof(config_short) - 1);
+                    }
+                } else {
+                    strncpy(config_short, config->hostname, sizeof(config_short) - 1);
+                }
+                if (strcmp(short_hostname, config_short) == 0) {
+                    logger_info("tailscale_discovery", "Skipping self: %s", hostname);
+                    continue;
+                }
             }
             
             // Check if peer is online
@@ -184,11 +219,12 @@ int discover_tailscale_peers(GossipService* service, const NodeConfig* config) {
                 continue;
             }
             
-            // Add peer to gossip service
+            // Add peer to gossip service using full hostname (FQDN if available, short if not)
+            // getaddrinfo() will resolve either format correctly
             if (gossip_service_add_peer(service, hostname, GOSSIP_PORT) == 0) {
                 logger_info("tailscale_discovery", "Added peer: %s:%d", hostname, GOSSIP_PORT);
                 
-                // Store in database
+                // Store in database using full hostname
                 if (gossip_peers_add_or_update(hostname, GOSSIP_PORT, 0, NULL, NULL) == 0) {
                     peers_found++;
                 } else {
