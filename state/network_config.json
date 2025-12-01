@@ -17,7 +17,7 @@
     "mode": "test",
     "discovery": {
       "mode": "static",
-      "hostname_prefix": "tw_node"
+      "hostname_prefix": "tw-node"
     }
   }
 }

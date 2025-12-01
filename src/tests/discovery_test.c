@@ -122,13 +122,13 @@ static int test_static_discovery(void) {
     NodeConfig config;
     memset(&config, 0, sizeof(config));
     strncpy(config.discovery_mode, "static", sizeof(config.discovery_mode) - 1);
-    strncpy(config.hostname, "tw_node01", sizeof(config.hostname) - 1);
+    strncpy(config.hostname, "tw-node01", sizeof(config.hostname) - 1);
     
     // Add peers array
     config.peer_count = 3;
     config.peers = malloc(sizeof(char*) * config.peer_count);
-    config.peers[0] = strdup("tw_node02:9000");
-    config.peers[1] = strdup("tw_node03");  // No port, should default to 9000
+    config.peers[0] = strdup("tw-node02:9000");
+    config.peers[1] = strdup("tw-node03");  // No port, should default to 9000
     config.peers[2] = strdup("192.168.1.100:8000");  // Custom port
     
     // Run static discovery
@@ -137,9 +137,9 @@ static int test_static_discovery(void) {
     
     // Verify peers were added to service
     assert(mock_service.peer_count == 3);
-    assert(strcmp(mock_service.peers[0].address, "tw_node02") == 0);
+    assert(strcmp(mock_service.peers[0].address, "tw-node02") == 0);
     assert(mock_service.peers[0].port == 9000);
-    assert(strcmp(mock_service.peers[1].address, "tw_node03") == 0);
+    assert(strcmp(mock_service.peers[1].address, "tw-node03") == 0);
     assert(mock_service.peers[1].port == 9000);
     assert(strcmp(mock_service.peers[2].address, "192.168.1.100") == 0);
     assert(mock_service.peers[2].port == 8000);
@@ -192,20 +192,20 @@ static int test_static_discovery_skip_self(void) {
     NodeConfig config;
     memset(&config, 0, sizeof(config));
     strncpy(config.discovery_mode, "static", sizeof(config.discovery_mode) - 1);
-    strncpy(config.hostname, "tw_node01", sizeof(config.hostname) - 1);
+    strncpy(config.hostname, "tw-node01", sizeof(config.hostname) - 1);
     
     // Add peers including self
     config.peer_count = 2;
     config.peers = malloc(sizeof(char*) * config.peer_count);
-    config.peers[0] = strdup("tw_node01:9000");  // Self - should be skipped
-    config.peers[1] = strdup("tw_node02:9000");
+    config.peers[0] = strdup("tw-node01:9000");  // Self - should be skipped
+    config.peers[1] = strdup("tw-node02:9000");
     
     int result = discover_static_peers(&mock_service, &config);
     assert(result == 0);
     
     // Verify only one peer was added (self was skipped)
     assert(mock_service.peer_count == 1);
-    assert(strcmp(mock_service.peers[0].address, "tw_node02") == 0);
+    assert(strcmp(mock_service.peers[0].address, "tw-node02") == 0);
     
     config_free(&config);
     pthread_mutex_destroy(&mock_service.peer_lock);
@@ -254,14 +254,14 @@ static int test_dns_pattern_discovery_config(void) {
     NodeConfig config;
     memset(&config, 0, sizeof(config));
     strncpy(config.discovery_mode, "dns_pattern", sizeof(config.discovery_mode) - 1);
-    strncpy(config.hostname_prefix, "tw_node", sizeof(config.hostname_prefix) - 1);
+    strncpy(config.hostname_prefix, "tw-node", sizeof(config.hostname_prefix) - 1);
     strncpy(config.dns_domain, "example.com", sizeof(config.dns_domain) - 1);
-    strncpy(config.hostname, "tw_node01.example.com", sizeof(config.hostname) - 1);
+    strncpy(config.hostname, "tw-node01.example.com", sizeof(config.hostname) - 1);
     
     // Verify config structure is correct
-    assert(strcmp(config.hostname_prefix, "tw_node") == 0);
+    assert(strcmp(config.hostname_prefix, "tw-node") == 0);
     assert(strcmp(config.dns_domain, "example.com") == 0);
-    assert(strcmp(config.hostname, "tw_node01.example.com") == 0);
+    assert(strcmp(config.hostname, "tw-node01.example.com") == 0);
     
     // The actual DNS resolution is tested in integration tests
     // Unit tests verify config structure and validation
@@ -281,18 +281,18 @@ static int test_dns_pattern_discovery_hostname_format(void) {
     
     NodeConfig config;
     memset(&config, 0, sizeof(config));
-    strncpy(config.hostname_prefix, "tw_node", sizeof(config.hostname_prefix) - 1);
+    strncpy(config.hostname_prefix, "tw-node", sizeof(config.hostname_prefix) - 1);
     strncpy(config.dns_domain, "example.com", sizeof(config.dns_domain) - 1);
     
     // Verify expected hostname format
     char expected_hostname[512];
     snprintf(expected_hostname, sizeof(expected_hostname), "%s%02d.%s", 
             config.hostname_prefix, 1, config.dns_domain);
-    assert(strcmp(expected_hostname, "tw_node01.example.com") == 0);
+    assert(strcmp(expected_hostname, "tw-node01.example.com") == 0);
     
     snprintf(expected_hostname, sizeof(expected_hostname), "%s%02d.%s", 
             config.hostname_prefix, 22, config.dns_domain);
-    assert(strcmp(expected_hostname, "tw_node22.example.com") == 0);
+    assert(strcmp(expected_hostname, "tw-node22.example.com") == 0);
     
     printf("    ✓ DNS pattern discovery hostname format correct\n");
     return 0;
@@ -332,7 +332,7 @@ static int test_tailscale_discovery_unavailable(void) {
     NodeConfig config;
     memset(&config, 0, sizeof(config));
     strncpy(config.discovery_mode, "tailscale", sizeof(config.discovery_mode) - 1);
-    strncpy(config.hostname_prefix, "tw_node", sizeof(config.hostname_prefix) - 1);
+    strncpy(config.hostname_prefix, "tw-node", sizeof(config.hostname_prefix) - 1);
     
     // If tailscale command doesn't exist or isn't running, should gracefully fallback
     // This will retry 30 times with 2-second delays (60 seconds total)

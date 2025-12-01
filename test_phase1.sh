@@ -162,7 +162,7 @@ cat > test_state/node_01/network_config.json << 'EOF'
     "mode": "test",
     "discovery": {
       "mode": "static",
-      "hostname_prefix": "tw_node"
+      "hostname_prefix": "tw-node"
     }
   }
 }
@@ -208,7 +208,7 @@ for mode in "${MODES[@]}"; do
   "docker": {
     "discovery": {
       "mode": "$mode",
-      "hostname_prefix": "tw_node"
+      "hostname_prefix": "tw-node"
     }
   }
 }
@@ -247,7 +247,7 @@ cat > test_state/node_01/network_config.json << 'EOF'
   "docker": {
     "discovery": {
       "mode": "static",
-      "hostname_prefix": "tw_node"
+      "hostname_prefix": "tw-node"
     }
   }
 }

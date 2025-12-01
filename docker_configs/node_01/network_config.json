@@ -1,10 +1,9 @@
 {
 	"id":	"node_01",
 	"name":	"Family Node 1",
-	"hostname":	"tw-node01",
+	"hostname":	"node_01",
 	"gossip_port":	9000,
 	"api_port":	8000,
-	"discovery_mode":	"tailscale",
-	"peers":	[],
-	"hostname_prefix":	"tw_node"
+	"discovery_mode":	"static",
+	"peers":	["node_02:9000", "node_03:9000", "node_04:9000"]
 }

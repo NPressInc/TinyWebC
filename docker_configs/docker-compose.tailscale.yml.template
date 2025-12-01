@@ -1,0 +1,55 @@
+# Optional Tailscale Tunnel for TinyWeb
+# 
+# This is a TEMPLATE file. Copy it to docker-compose.tailscale.yml and customize.
+#
+# Usage:
+#   1. Copy this file: cp docker-compose.tailscale.yml.template docker-compose.tailscale.yml
+#   2. Set your Tailscale auth key: export TS_AUTHKEY=tskey-auth-xxxxx
+#   3. Customize TS_HOSTNAME to your desired Tailscale hostname
+#   4. Run with: docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
+#
+# This adds a Tailscale sidecar that provides:
+#   - NAT traversal (no port forwarding needed)
+#   - Secure tunnel to your tailnet
+#   - MagicDNS hostname (e.g., myfamily-node.tailnet-name.ts.net)
+#
+# Your TinyWeb node will be accessible at:
+#   - Gossip: <tailscale-hostname>:9000
+#   - API: <tailscale-hostname>:8000
+#
+# Note: TinyWeb uses static discovery. Add your Tailscale hostname to other
+# nodes' peer lists for them to connect to you.
+
+services:
+  # Tailscale sidecar - provides the tunnel
+  tailscale:
+    image: tailscale/tailscale:latest
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY}
+      TS_HOSTNAME: myfamily-node  # Customize this!
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+    cap_add:
+      - NET_ADMIN
+    healthcheck:
+      test: ["CMD", "tailscale", "status", "--json"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # Override node_01 to use Tailscale's network
+  node_01:
+    network_mode: service:tailscale
+    depends_on:
+      tailscale:
+        condition: service_healthy
+
+volumes:
+  tailscale_state: {}
+
+
+

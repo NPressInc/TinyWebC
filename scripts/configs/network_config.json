@@ -54,8 +54,7 @@
   "docker": {
     "mode": "production",
     "discovery": {
-      "mode": "tailscale",
-      "hostname_prefix": "tw_node"
+      "mode": "static"
     }
   }
 } 

@@ -135,17 +135,18 @@ static int generate_hostname(const char* node_id, const DiscoveryConfig* discove
         out_hostname[strlen(temp_hostname)] = '\0';
         return 0;
     } else if (strcmp(discovery->mode, "static") == 0) {
-        // Use hostname from node config
-        if (!node_config) {
-            fprintf(stderr, "Error: Static mode requires node config\n");
-            return -1;
-        }
+        // For static mode: use hostname from node config if provided,
+        // otherwise use the node_id as hostname (Docker service name)
+        if (node_config) {
         cJSON* hostname = cJSON_GetObjectItem(node_config, "hostname");
-        if (!cJSON_IsString(hostname)) {
-            fprintf(stderr, "Error: Static mode requires 'hostname' field in node config\n");
-            return -1;
-        }
+            if (cJSON_IsString(hostname) && hostname->valuestring[0] != '\0') {
         strncpy(out_hostname, hostname->valuestring, hostname_len - 1);
+                out_hostname[hostname_len - 1] = '\0';
+                return 0;
+            }
+        }
+        // Default: use node_id as hostname (works with Docker DNS)
+        strncpy(out_hostname, node_id, hostname_len - 1);
         out_hostname[hostname_len - 1] = '\0';
         return 0;
     }
@@ -154,7 +155,8 @@ static int generate_hostname(const char* node_id, const DiscoveryConfig* discove
     return -1;
 }
 
-static int generate_node_config_json(cJSON* node, const DiscoveryConfig* discovery, 
+static int generate_node_config_json(cJSON* node, cJSON* all_nodes, uint32_t node_count,
+                                    const DiscoveryConfig* discovery, 
                                     const char* docker_mode, const char* out_path) {
     if (!node || !discovery || !out_path) return -1;
     
@@ -184,9 +186,43 @@ static int generate_node_config_json(cJSON* node, const DiscoveryConfig* discove
     
     // Add peers based on discovery mode
     if (strcmp(discovery->mode, "static") == 0) {
-        cJSON* peers = cJSON_GetObjectItem(node, "peers");
-        if (cJSON_IsArray(peers)) {
-            cJSON_AddItemToObject(config, "peers", cJSON_Duplicate(peers, 1));
+        // Check if peers are explicitly provided in node config
+        cJSON* explicit_peers = cJSON_GetObjectItem(node, "peers");
+        if (cJSON_IsArray(explicit_peers) && cJSON_GetArraySize(explicit_peers) > 0) {
+            // Use explicitly configured peers
+            cJSON_AddItemToObject(config, "peers", cJSON_Duplicate(explicit_peers, 1));
+        } else if (all_nodes && node_count > 1 &&
+                   docker_mode && strcmp(docker_mode, "test") == 0) {
+            // Auto-generate peers from other nodes in the network
+            // NOTE: This is **test-only** behavior. It assumes all nodes are on the
+            // same Docker network and reachable by their service name (node_XX:9000).
+            // In real deployments, peer hostnames must come from the master config
+            // via the explicit "peers" array.
+            cJSON* peers = cJSON_CreateArray();
+            for (uint32_t i = 0; i < node_count; i++) {
+                cJSON* other_node = cJSON_GetArrayItem(all_nodes, (int)i);
+                if (!other_node) continue;
+                
+                cJSON* other_id_json = cJSON_GetObjectItem(other_node, "id");
+                if (!cJSON_IsString(other_id_json)) continue;
+                const char* other_id = other_id_json->valuestring;
+                
+                // Skip self
+                if (strcmp(node_id, other_id) == 0) continue;
+                
+                // Generate peer hostname (for tests, this becomes node_XX)
+                char peer_hostname[MAX_HOSTNAME_LEN];
+                if (generate_hostname(other_id, discovery, other_node, 
+                                     peer_hostname, sizeof(peer_hostname)) != 0) {
+                    continue;
+                }
+                
+                // Add peer in hostname:port format
+                char peer_entry[MAX_HOSTNAME_LEN + 16];
+                snprintf(peer_entry, sizeof(peer_entry), "%s:9000", peer_hostname);
+                cJSON_AddItemToArray(peers, cJSON_CreateString(peer_entry));
+            }
+            cJSON_AddItemToObject(config, "peers", peers);
         } else {
             cJSON_AddArrayToObject(config, "peers");
         }
@@ -382,21 +418,55 @@ static int initialize_node_direct(cJSON* node, const MasterConfig* master_config
     node_config.gossip_port = 9000;
     node_config.api_port = 8000;
     
-    // Parse peers if present
+    // Parse peers if present, or auto-generate for static mode (test-only)
     cJSON* peers = cJSON_GetObjectItem(node, "peers");
-    if (cJSON_IsArray(peers)) {
+    if (cJSON_IsArray(peers) && cJSON_GetArraySize(peers) > 0) {
+        // Use explicitly configured peers
         int peer_count = cJSON_GetArraySize(peers);
-        if (peer_count > 0) {
-            node_config.peers = calloc(peer_count, sizeof(char*));
-            if (node_config.peers) {
-                for (int i = 0; i < peer_count; i++) {
-                    cJSON* peer = cJSON_GetArrayItem(peers, i);
-                    if (cJSON_IsString(peer)) {
-                        node_config.peers[i] = strdup(peer->valuestring);
-                    }
+        node_config.peers = calloc(peer_count, sizeof(char*));
+        if (node_config.peers) {
+            for (int i = 0; i < peer_count; i++) {
+                cJSON* peer = cJSON_GetArrayItem(peers, i);
+                if (cJSON_IsString(peer)) {
+                    node_config.peers[i] = strdup(peer->valuestring);
                 }
-                node_config.peer_count = peer_count;
             }
+            node_config.peer_count = peer_count;
+        }
+    } else if (strcmp(master_config->docker_config.discovery.mode, "static") == 0 && 
+               master_config->node_count > 1 &&
+               strcmp(master_config->docker_config.mode, "test") == 0) {
+        // Auto-generate peers for static mode from other nodes
+        // NOTE: This is **test-only** behavior, mirroring generate_node_config_json.
+        // It assumes nodes are reachable by Docker service name (node_XX:9000).
+        uint32_t peer_count = master_config->node_count - 1;
+        node_config.peers = calloc(peer_count, sizeof(char*));
+        if (node_config.peers) {
+            uint32_t peer_idx = 0;
+            for (uint32_t j = 0; j < master_config->node_count && peer_idx < peer_count; j++) {
+                cJSON* other_node = cJSON_GetArrayItem(master_config->nodes, (int)j);
+                if (!other_node) continue;
+                
+                cJSON* other_id_json = cJSON_GetObjectItem(other_node, "id");
+                if (!cJSON_IsString(other_id_json)) continue;
+                
+                // Skip self
+                if (strcmp(node_id, other_id_json->valuestring) == 0) continue;
+                
+                // Generate peer hostname
+                char peer_hostname[MAX_HOSTNAME_LEN];
+                if (generate_hostname(other_id_json->valuestring, 
+                                     &master_config->docker_config.discovery, 
+                                     other_node, peer_hostname, sizeof(peer_hostname)) != 0) {
+                    continue;
+                }
+                
+                // Create peer entry in hostname:port format
+                char peer_entry[MAX_HOSTNAME_LEN + 16];
+                snprintf(peer_entry, sizeof(peer_entry), "%s:9000", peer_hostname);
+                node_config.peers[peer_idx++] = strdup(peer_entry);
+            }
+            node_config.peer_count = peer_idx;
         }
     }
     
@@ -755,18 +825,26 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
             write_yaml_scalar(&emitter, "TINYWEB_DISCOVERY_MODE", 0);
             write_yaml_scalar(&emitter, discovery_mode, 1);
         }
+        // Propagate discovery parameters via environment so runtime config
+        // (after DB load) has access to hostname_prefix and dns_domain.
+        if (master_config->docker_config.discovery.hostname_prefix[0] != '\0') {
+            write_yaml_scalar(&emitter, "TINYWEB_HOSTNAME_PREFIX", 0);
+            write_yaml_scalar(&emitter, master_config->docker_config.discovery.hostname_prefix, 1);
+        }
+        if (strcmp(discovery_mode, "dns_pattern") == 0 &&
+            master_config->docker_config.discovery.dns_domain[0] != '\0') {
+            write_yaml_scalar(&emitter, "TINYWEB_DNS_DOMAIN", 0);
+            write_yaml_scalar(&emitter, master_config->docker_config.discovery.dns_domain, 1);
+        }
         write_yaml_mapping_end(&emitter);
         
         write_yaml_scalar(&emitter, "volumes", 0);
         write_yaml_sequence_start(&emitter);
-        // Mount keys as bind mount (for copying/sharing keys)
-        char keys_volume_path[MAX_PATH_LEN];
-        snprintf(keys_volume_path, sizeof(keys_volume_path), "./%s/state/keys:/app/state/keys", node_id);
-        write_yaml_scalar(&emitter, keys_volume_path, 0);
-        // Mount database storage as named volume (off host machine)
-        char storage_volume_name[128];
-        snprintf(storage_volume_name, sizeof(storage_volume_name), "%s_storage:/app/state/storage", node_id);
-        write_yaml_scalar(&emitter, storage_volume_name, 0);
+        // Mount entire state directory as bind mount so pre-initialized 
+        // database and keys are available to the container
+        char state_volume_path[MAX_PATH_LEN];
+        snprintf(state_volume_path, sizeof(state_volume_path), "./%s/state:/app/state", node_id);
+        write_yaml_scalar(&emitter, state_volume_path, 0);
         write_yaml_sequence_end(&emitter);
         
         write_yaml_scalar(&emitter, "healthcheck", 0);
@@ -798,6 +876,7 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
         
         // Configure based on discovery mode
         if (strcmp(discovery_mode, "tailscale") == 0) {
+            // Tailscale mode: nodes share network with Tailscale sidecar
             char tailscale_service_name[128];
             snprintf(tailscale_service_name, sizeof(tailscale_service_name), "tailscale_%s", node_id);
             
@@ -824,19 +903,34 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
                 write_yaml_sequence_end(&emitter);
             }
         } else if (strcmp(discovery_mode, "dns_pattern") == 0) {
-            write_yaml_scalar(&emitter, "network_mode", 0);
-            write_yaml_scalar(&emitter, "bridge", 1);
+            // DNS pattern mode: standard Docker networking
+            // No network_mode needed (default bridge)
+            // Ports exposed only in production for external access
+            if (is_production) {
+                write_yaml_scalar(&emitter, "ports", 0);
+                write_yaml_sequence_start(&emitter);
+                char udp_port[32], tcp_port[32];
+                snprintf(udp_port, sizeof(udp_port), "%d:9000/udp", 9000 + index - 1);
+                snprintf(tcp_port, sizeof(tcp_port), "%d:8000", 8000 + index);
+                write_yaml_scalar(&emitter, udp_port, 1);
+                write_yaml_scalar(&emitter, tcp_port, 1);
+                write_yaml_sequence_end(&emitter);
+            }
         } else if (strcmp(discovery_mode, "static") == 0) {
-            write_yaml_scalar(&emitter, "network_mode", 0);
-            write_yaml_scalar(&emitter, "bridge", 1);
-            
+            // Static mode: Docker's default networking
+            // Nodes reach each other by service name (node_01, node_02, etc.)
+            // No network_mode needed (default bridge network with DNS)
+            // Ports exposed only in production for external access
+            if (is_production) {
             write_yaml_scalar(&emitter, "ports", 0);
             write_yaml_sequence_start(&emitter);
-            write_yaml_scalar(&emitter, "9000:9000/udp", 1);
-            char port_str[32];
-            snprintf(port_str, sizeof(port_str), "%d:8000", 8000 + index);
-            write_yaml_scalar(&emitter, port_str, 1);
+                char udp_port[32], tcp_port[32];
+                snprintf(udp_port, sizeof(udp_port), "%d:9000/udp", 9000 + index - 1);
+                snprintf(tcp_port, sizeof(tcp_port), "%d:8000", 8000 + index);
+                write_yaml_scalar(&emitter, udp_port, 1);
+                write_yaml_scalar(&emitter, tcp_port, 1);
             write_yaml_sequence_end(&emitter);
+            }
         }
         
         write_yaml_mapping_end(&emitter);
@@ -844,27 +938,11 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
     
     write_yaml_mapping_end(&emitter);  // End services
     
-    // volumes:
+    // Only add volumes section for Tailscale mode (named volumes for Tailscale state)
+    if (strcmp(discovery_mode, "tailscale") == 0) {
     write_yaml_scalar(&emitter, "volumes", 0);
     write_yaml_mapping_start(&emitter);
     
-    // Define named volumes for database storage (off host machine)
-    for (uint32_t i = 0; i < master_config->node_count; i++) {
-        cJSON* node = cJSON_GetArrayItem(master_config->nodes, (int)i);
-        if (!node) continue;
-        
-        cJSON* node_id_json = cJSON_GetObjectItem(node, "id");
-        if (!cJSON_IsString(node_id_json)) continue;
-        const char* node_id = node_id_json->valuestring;
-        
-        char storage_volume_name[128];
-        snprintf(storage_volume_name, sizeof(storage_volume_name), "%s_storage", node_id);
-        write_yaml_scalar(&emitter, storage_volume_name, 0);
-        write_yaml_mapping_start(&emitter);
-        write_yaml_mapping_end(&emitter);
-    }
-    
-    if (strcmp(discovery_mode, "tailscale") == 0) {
         // Define named volumes for Tailscale state
         for (uint32_t i = 0; i < master_config->node_count; i++) {
             cJSON* node = cJSON_GetArrayItem(master_config->nodes, (int)i);
@@ -882,10 +960,11 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
             write_yaml_scalar(&emitter, volume_name, 0);
             write_yaml_mapping_start(&emitter);
             write_yaml_mapping_end(&emitter);
-        }
     }
     
     write_yaml_mapping_end(&emitter);  // End volumes
+    }
+    // For static/dns_pattern modes, we use bind mounts (no named volumes needed)
     
     write_yaml_mapping_end(&emitter);  // End root mapping
     
@@ -1022,7 +1101,8 @@ int main(int argc, char* argv[]) {
         char config_path[MAX_PATH_LEN];
         snprintf(config_path, sizeof(config_path), "%s/network_config.json", node_dir);
         
-        if (generate_node_config_json(node, &master_config.docker_config.discovery, 
+        if (generate_node_config_json(node, master_config.nodes, master_config.node_count,
+                                     &master_config.docker_config.discovery, 
                                      docker_mode, config_path) != 0) {
             fprintf(stderr, "  Error: Failed to generate config for %s\n", node_id);
             continue;

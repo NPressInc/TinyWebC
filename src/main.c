@@ -727,6 +727,39 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
+    // Initialize keystore and load node keypair
+    if (keystore_init() != 0) {
+        logger_error("main", "Failed to initialize keystore");
+        envelope_dispatcher_cleanup();
+        db_close();
+        config_free(&config);
+        return 1;
+    }
+    
+    // Load node private key from state/keys/node_private.key
+    {
+        FILE* f = fopen(paths.private_key_file, "rb");
+        if (f) {
+            unsigned char secret_key[64];  // Ed25519 secret key is 64 bytes
+            size_t read = fread(secret_key, 1, sizeof(secret_key), f);
+            fclose(f);
+            
+            if (read == sizeof(secret_key)) {
+                if (keystore_load_raw_ed25519_keypair(secret_key) != 0) {
+                    logger_error("main", "Failed to load node keypair from %s", paths.private_key_file);
+                    // Non-fatal, continue without announcement capability
+                } else {
+                    logger_info("main", "Loaded node keypair from %s", paths.private_key_file);
+                }
+            } else {
+                logger_error("main", "Invalid key file size in %s (got %zu, expected 64)", paths.private_key_file, read);
+            }
+            sodium_memzero(secret_key, sizeof(secret_key));
+        } else {
+            logger_info("main", "No node keypair found at %s (node announcements disabled)", paths.private_key_file);
+        }
+    }
+    
     // Load node configuration from database (populated during initialization)
     // If not found in database, use defaults that were already set
     char db_node_name[128] = {0};
@@ -784,6 +817,38 @@ int main(int argc, char* argv[]) {
             logger_info("main", "Failed to store node configuration in database (non-fatal)");
             // Non-fatal, continue
         }
+    }
+
+    // Re-apply environment overrides AFTER loading from database so that
+    // runtime configuration (e.g., discovery_mode, hostname_prefix, dns_domain)
+    // can be controlled via environment in containerized deployments.
+    {
+        NodeConfig env_config;
+        memset(&env_config, 0, sizeof(env_config));
+        config_load_from_env(&env_config);
+
+        // Log explicit overrides for discovery-related fields so operators
+        // can see when environment variables are steering behavior.
+        if (env_config.discovery_mode[0] != '\0') {
+            logger_info("main",
+                        "Environment override: discovery_mode '%s' -> '%s'",
+                        config.discovery_mode[0] != '\0' ? config.discovery_mode : "(empty)",
+                        env_config.discovery_mode);
+        }
+        if (env_config.hostname_prefix[0] != '\0') {
+            logger_info("main",
+                        "Environment override: hostname_prefix '%s' -> '%s'",
+                        config.hostname_prefix[0] != '\0' ? config.hostname_prefix : "(empty)",
+                        env_config.hostname_prefix);
+        }
+        if (env_config.dns_domain[0] != '\0') {
+            logger_info("main",
+                        "Environment override: dns_domain '%s' -> '%s'",
+                        config.dns_domain[0] != '\0' ? config.dns_domain : "(empty)",
+                        env_config.dns_domain);
+        }
+
+        config_merge(&config, &env_config);
     }
     
     if (start_gossip_service(config.gossip_port, &validation_config, &config) != 0) {
