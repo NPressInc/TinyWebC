@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import './ConversationView.css';
+import { detectRunningNodes, getMessages, sendEnvelope, DEFAULT_NODE_URLS } from '../utils/api';
+import { decodeEnvelopeList } from '../utils/protobufDecode';
+import { createDirectMessage } from '../utils/envelope';
+import { serializeEnvelopeToProtobufHex } from '../utils/protobufHelper';
+import keyStore from '../utils/keystore';
+import sodium from 'libsodium-wrappers';
 
 function ConversationView() {
   const { userId } = useParams();
@@ -8,42 +14,78 @@ function ConversationView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newMessage, setNewMessage] = useState('');
-
-  // Mock data for now - replace with API call later
-  const mockMessages = [
-    {
-      id: 1,
-      type: 1, // TW_TXN_MESSAGE
-      timestamp: Date.now() - 3600000, // 1 hour ago
-      sender: userId,
-      isOutgoing: false,
-      transaction_hex: '48656c6c6f2c20686f772061726520796f753f' // "Hello, how are you?" in hex
-    },
-    {
-      id: 2,
-      type: 1,
-      timestamp: Date.now() - 3300000, // 55 minutes ago
-      sender: 'your_pubkey_placeholder', // This would be the current user's key
-      isOutgoing: true,
-      transaction_hex: '49276d20646f696e672067726561742c207468616e6b73' // "I'm doing great, thanks" in hex
-    },
-    {
-      id: 3,
-      type: 1,
-      timestamp: Date.now() - 1800000, // 30 minutes ago
-      sender: userId,
-      isOutgoing: false,
-      transaction_hex: '476c616420746f2068656172207468617421' // "Glad to hear that!" in hex
-    }
-  ];
+  const [sending, setSending] = useState(false);
+  const [selectedNode, setSelectedNode] = useState('');
 
   useEffect(() => {
-    // Simulate API call to fetch messages
-    setTimeout(() => {
-      setMessages(mockMessages);
-      setLoading(false);
-    }, 1000);
+    loadMessages();
   }, [userId]);
+
+  const loadMessages = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Detect running nodes
+      const nodes = await detectRunningNodes();
+      if (nodes.length === 0) {
+        setError('No running nodes detected. Please start docker containers first.');
+        setLoading(false);
+        return;
+      }
+
+      const nodeUrl = nodes[0].url;
+      setSelectedNode(nodeUrl);
+
+      // Check if keypair is loaded
+      if (!keyStore.isKeypairLoaded()) {
+        setError('No keypair loaded. Please load or generate keys first.');
+        setLoading(false);
+        return;
+      }
+
+      // Get user's public key
+      const userPubkey = keyStore.getPublicKeyHex();
+
+      // Fetch messages from API
+      const response = await getMessages(nodeUrl, userPubkey, userId);
+
+      if (response.envelope_list_hex) {
+        // Decode protobuf envelope list
+        const decoded = await decodeEnvelopeList(response.envelope_list_hex);
+        
+        // Transform to UI format
+        // Note: Messages are encrypted, so we can't show the actual content without decryption
+        // For now, we'll show that messages exist but indicate they need decryption
+        const formatted = decoded.map((env, idx) => {
+          const isOutgoing = env.senderHex.toLowerCase() === userPubkey.toLowerCase();
+          return {
+            id: env.id,
+            type: env.contentType,
+            timestamp: env.timestamp,
+            sender: env.senderHex,
+            isOutgoing,
+            // Message content is encrypted in the envelope, would need decryption to show
+            // For now, show a placeholder
+            content: '[Encrypted message - decryption not yet implemented in UI]',
+          };
+        });
+
+        // Sort by timestamp (oldest first)
+        formatted.sort((a, b) => a.timestamp - b.timestamp);
+        
+        setMessages(formatted);
+      } else {
+        setMessages([]);
+      }
+    } catch (err) {
+      console.error('Error loading messages:', err);
+      setError(err.message || 'Failed to load messages');
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], {
@@ -65,31 +107,46 @@ function ConversationView() {
     }
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || sending || !selectedNode) return;
 
-    // Mock sending message - in reality this would encrypt and send to API
-    const messageData = {
-      content: newMessage,
-      recipient: userId,
-      timestamp: Date.now()
-    };
+    setSending(true);
+    setError(null);
 
-    console.log('Sending message:', messageData);
-    setNewMessage('');
+    try {
+      await sodium.ready;
+      await keyStore.init();
 
-    // Mock adding to UI immediately (would normally wait for API response)
-    const newMsg = {
-      id: Date.now(),
-      type: 1,
-      timestamp: Date.now(),
-      sender: 'your_pubkey_placeholder',
-      isOutgoing: true,
-      transaction_hex: newMessage.split('').map(c => c.charCodeAt(0).toString(16)).join('') // Simple text to hex
-    };
+      if (!keyStore.isKeypairLoaded()) {
+        setError('No keypair loaded. Please load or generate keys first.');
+        setSending(false);
+        return;
+      }
 
-    setMessages(prev => [...prev, newMsg]);
+      // Convert recipient pubkey from hex to Uint8Array
+      const recipientPubkeyBytes = sodium.from_hex(userId);
+
+      // Create direct message envelope
+      const envelope = await createDirectMessage(recipientPubkeyBytes, newMessage);
+
+      // Serialize to protobuf and hex-encode
+      const envelopeHex = await serializeEnvelopeToProtobufHex(envelope);
+
+      // Send to node
+      const result = await sendEnvelope(selectedNode, envelopeHex);
+
+      // Clear input
+      setNewMessage('');
+
+      // Reload messages to show the new one
+      await loadMessages();
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setError(err.message || 'Failed to send message');
+    } finally {
+      setSending(false);
+    }
   };
 
   const shortenPubkey = (pubkey) => {
@@ -127,9 +184,17 @@ function ConversationView() {
         <Link to="/" className="back-button">← Back</Link>
         <h2>Conversation with {shortenPubkey(userId)}</h2>
         <div className="conversation-actions">
+          <button onClick={loadMessages} className="refresh-button" disabled={loading}>
+            {loading ? '⏳' : '🔄'}
+          </button>
           <button className="action-button">⋮</button>
         </div>
       </div>
+      {selectedNode && (
+        <div className="node-info">
+          Connected to: {selectedNode}
+        </div>
+      )}
 
       <div className="messages-container">
         {messages.length === 0 ? (
@@ -144,7 +209,7 @@ function ConversationView() {
               className={`message ${message.isOutgoing ? 'outgoing' : 'incoming'}`}
             >
               <div className="message-content">
-                {hexToString(message.transaction_hex)}
+                {message.content || '[Message]'}
               </div>
               <div className="message-time">
                 {formatTime(message.timestamp)}
@@ -166,9 +231,9 @@ function ConversationView() {
         <button
           type="submit"
           className="send-button"
-          disabled={!newMessage.trim()}
+          disabled={!newMessage.trim() || sending || !selectedNode}
         >
-          Send
+          {sending ? 'Sending...' : 'Send'}
         </button>
       </form>
     </div>

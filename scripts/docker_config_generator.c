@@ -920,8 +920,9 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
             // Static mode: Docker's default networking
             // Nodes reach each other by service name (node_01, node_02, etc.)
             // No network_mode needed (default bridge network with DNS)
-            // Ports exposed only in production for external access
-            if (is_production) {
+            // Ports exposed in both production and test mode for external access
+            // Test mode: 8001-8004 for API, 9000-9003 for UDP gossip
+            // Production: same port mapping
             write_yaml_scalar(&emitter, "ports", 0);
             write_yaml_sequence_start(&emitter);
                 char udp_port[32], tcp_port[32];
@@ -930,7 +931,6 @@ static int generate_docker_compose_yaml(const MasterConfig* master_config,
                 write_yaml_scalar(&emitter, udp_port, 1);
                 write_yaml_scalar(&emitter, tcp_port, 1);
             write_yaml_sequence_end(&emitter);
-            }
         }
         
         write_yaml_mapping_end(&emitter);

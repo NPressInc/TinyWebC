@@ -7,6 +7,8 @@ import ConversationsList from './components/ConversationsList';
 import ConversationView from './components/ConversationView';
 import KeyManagement from './components/KeyManagement';
 import CryptoDemo from './components/CryptoDemo';
+import MessagingTest from './components/MessagingTest';
+import AutoTestRunner from './components/AutoTestRunner';
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
             <Route path="/conversation/:userId" element={<ConversationView />} />
             <Route path="/keys" element={<KeyManagement />} />
             <Route path="/demo" element={<CryptoDemo />} />
+            <Route path="/test" element={<MessagingTest />} />
+            <Route path="/test/auto" element={<AutoTestRunner />} />
           </Routes>
         </main>
       </div>

@@ -19,6 +19,9 @@ services:
       retries: ! '3'
       start_period: ! '40s'
     restart: ! 'no'
+    ports:
+    - ! '9000:9000/udp'
+    - ! '8001:8000'
   node_02:
     build:
       context: ! '..'
@@ -39,6 +42,9 @@ services:
       retries: ! '3'
       start_period: ! '40s'
     restart: ! 'no'
+    ports:
+    - ! '9001:9000/udp'
+    - ! '8002:8000'
   node_03:
     build:
       context: ! '..'
@@ -59,6 +65,9 @@ services:
       retries: ! '3'
       start_period: ! '40s'
     restart: ! 'no'
+    ports:
+    - ! '9002:9000/udp'
+    - ! '8003:8000'
   node_04:
     build:
       context: ! '..'
@@ -79,3 +88,6 @@ services:
       retries: ! '3'
       start_period: ! '40s'
     restart: ! 'no'
+    ports:
+    - ! '9003:9000/udp'
+    - ! '8004:8000'
