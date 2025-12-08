@@ -2,11 +2,11 @@
 
 ## Executive Summary
 
-**Current Status**: Core infrastructure is solid, but most business logic features are missing.
+**Current Status**: Core infrastructure is complete and solid. Most business logic features are missing.
 
-**Completion Estimate**: ~15-20% of MVP features implemented
+**Completion Estimate**: ~20-25% of MVP features implemented
 
-**Remaining Work**: ~25-30 major features need implementation before MVP readiness
+**Remaining Work**: ~20-25 major features need implementation before MVP readiness
 
 ---
 
@@ -24,6 +24,13 @@
 | Permissions System | ✅ | ✅ | Full permissions framework implemented and tested |
 | Encryption/Signing | ✅ | ✅ | Ed25519 signing, X25519 encryption tested |
 | Envelope Dispatcher | ✅ | ✅ | Routing framework works, handler registration tested |
+| Decryption Integration | ✅ | ✅ | Fully integrated into envelope dispatch (line 190) |
+| Discovery Module | ✅ | ✅ | Tailscale, DNS, Static discovery implemented |
+| Error Handling | ✅ | ✅ | Standardized error codes and context |
+| Logging Infrastructure | ✅ | ✅ | Centralized logger with levels |
+| Configuration Management | ✅ | ✅ | JSON config with env overrides |
+| Network Error Handling | ✅ | ✅ | Retry logic, peer health monitoring |
+| Thread Safety | ✅ | ✅ | Mutex protection, thread-safe operations |
 
 ### 🟡 **Partially Implemented** (Core Features)
 
@@ -191,9 +198,9 @@
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ Fully Implemented | 8 | 20% |
+| ✅ Fully Implemented | 15 | 37.5% |
 | 🟡 Partially Implemented | 4 | 10% |
-| ❌ Not Implemented | 28 | 70% |
+| ❌ Not Implemented | 21 | 52.5% |
 | **Total** | **40** | **100%** |
 
 ### By Priority
@@ -227,14 +234,14 @@
 
 ### Current State Assessment:
 
-- **Infrastructure**: ✅ Excellent (80% complete)
-- **Core Features**: 🟡 Partial (20% complete)
+- **Infrastructure**: ✅ Excellent (95% complete)
+- **Core Features**: 🟡 Partial (25% complete)
 - **Business Logic**: ❌ Missing (10% complete)
 - **Testing**: 🟡 Partial (40% coverage)
 
-### Overall Readiness: **~25% Complete**
+### Overall Readiness: **~30% Complete**
 
-**To reach MVP**: Need ~25-30 more features implemented and tested.
+**To reach MVP**: Need ~20-25 more features implemented and tested.
 
 ---
 
