@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { keyStore } from '../utils';
+import sodium from 'libsodium-wrappers';
 import './KeyManagement.css';
 
 function KeyManagement() {
@@ -125,11 +126,19 @@ function KeyManagement() {
     }
   };
 
-  const handleFileSelect = (event) => {
+  const handleFileSelect = async (event) => {
     const file = event.target.files[0];
     if (file) {
       setSelectedFile(file);
       setError('');
+      
+      // For .bin files, check if it's raw (64 bytes) or encrypted (120 bytes)
+      // to determine if passphrase is needed
+      const fileName = file.name.toLowerCase();
+      if (fileName.endsWith('.bin')) {
+        // We'll check the size in the handler, but for now just clear any previous error
+        // The button will be enabled and handler will validate
+      }
     }
   };
 
@@ -139,36 +148,49 @@ function KeyManagement() {
       return;
     }
 
-    if (!passphrase.trim()) {
-      setError('Please enter the passphrase for this key file');
-      return;
-    }
-
     try {
       setError('');
       setLoading(true);
 
-      // Read file content
-      const fileContent = await readFileAsText(selectedFile);
+      const fileName = selectedFile.name.toLowerCase();
+      const isBinary = fileName.endsWith('.bin');
 
-      // Try to parse as JSON (encrypted key format)
-      try {
-        const keyData = JSON.parse(fileContent);
+      if (isBinary) {
+        // Handle binary .bin files
+        const fileBuffer = await readFileAsArrayBuffer(selectedFile);
+        const bytes = new Uint8Array(fileBuffer);
 
-        // Check if it has the expected structure
-        if (keyData.salt && keyData.nonce && keyData.ciphertext) {
-          // This is an encrypted key file - load it directly
-          // Temporarily store the data and load with passphrase
+        // Check file size to determine format
+        // Encrypted format: 120 bytes (16 salt + 24 nonce + 80 ciphertext)
+        // Raw format: 64 bytes (raw Ed25519 secret key)
+        if (bytes.length === 120) {
+          // Encrypted binary format - requires passphrase
+          if (!passphrase.trim()) {
+            setError('Please enter the passphrase for this encrypted key file');
+            setLoading(false);
+            return;
+          }
+
+          // Parse binary format: salt (16) + nonce (24) + ciphertext (80)
+          const salt = bytes.slice(0, 16);
+          const nonce = bytes.slice(16, 40);
+          const ciphertext = bytes.slice(40, 120);
+
+          // Ensure libsodium is ready
+          await sodium.ready;
+
+          // Convert to hex for storage (matching JSON format)
           const tempKeyData = {
-            salt: keyData.salt,
-            nonce: keyData.nonce,
-            ciphertext: keyData.ciphertext,
-            publicKey: keyData.publicKey
+            salt: sodium.to_hex(salt),
+            nonce: sodium.to_hex(nonce),
+            ciphertext: sodium.to_hex(ciphertext),
+            // Public key will be derived after decryption
+            publicKey: null
           };
 
           localStorage.setItem('tinyweb_import_key', JSON.stringify(tempKeyData));
 
-          // Now load it (this will use the passphrase to decrypt)
+          // Decrypt and load (public key will be derived from secret key)
           await keyStore.loadKeypair(passphrase);
 
           // Clean up temp data
@@ -178,23 +200,79 @@ function KeyManagement() {
           setIsLoaded(true);
           setSelectedFile(null);
 
-          console.log('Key imported from file successfully!');
-        } else {
-          throw new Error('Invalid key file format');
-        }
-      } catch (jsonError) {
-        // Not JSON, try as raw hex private key
-        const trimmedContent = fileContent.trim();
-        if (/^[0-9a-fA-F]+$/.test(trimmedContent) && trimmedContent.length === 128) {
-          // Looks like a hex private key
-          await keyStore.loadRawKeypair(trimmedContent);
+          console.log('Encrypted binary key imported successfully!');
+        } else if (bytes.length === 64) {
+          // Raw binary format - no passphrase needed
+          // Ensure libsodium is ready
+          await sodium.ready;
+
+          // Convert binary key to hex and load
+          const keyHex = sodium.to_hex(bytes);
+          await keyStore.loadRawKeypair(keyHex);
           setUserKey(keyStore.getPublicKeyHex());
           setIsLoaded(true);
           setSelectedFile(null);
 
-          console.log('Raw key imported from file successfully!');
+          console.log('Raw binary key imported successfully!');
         } else {
-          throw new Error('File does not contain a valid private key');
+          throw new Error(`Invalid binary key file size: ${bytes.length} bytes (expected 64 for raw or 120 for encrypted)`);
+        }
+      } else {
+        // Handle text files (JSON or hex)
+        if (!passphrase.trim()) {
+          setError('Please enter the passphrase for this key file');
+          setLoading(false);
+          return;
+        }
+
+        // Read file content as text
+        const fileContent = await readFileAsText(selectedFile);
+
+        // Try to parse as JSON (encrypted key format)
+        try {
+          const keyData = JSON.parse(fileContent);
+
+          // Check if it has the expected structure
+          if (keyData.salt && keyData.nonce && keyData.ciphertext) {
+            // This is an encrypted key file - load it directly
+            // Temporarily store the data and load with passphrase
+            const tempKeyData = {
+              salt: keyData.salt,
+              nonce: keyData.nonce,
+              ciphertext: keyData.ciphertext,
+              publicKey: keyData.publicKey
+            };
+
+            localStorage.setItem('tinyweb_import_key', JSON.stringify(tempKeyData));
+
+            // Now load it (this will use the passphrase to decrypt)
+            await keyStore.loadKeypair(passphrase);
+
+            // Clean up temp data
+            localStorage.removeItem('tinyweb_import_key');
+
+            setUserKey(keyStore.getPublicKeyHex());
+            setIsLoaded(true);
+            setSelectedFile(null);
+
+            console.log('Key imported from file successfully!');
+          } else {
+            throw new Error('Invalid key file format');
+          }
+        } catch (jsonError) {
+          // Not JSON, try as raw hex private key
+          const trimmedContent = fileContent.trim();
+          if (/^[0-9a-fA-F]+$/.test(trimmedContent) && trimmedContent.length === 128) {
+            // Looks like a hex private key
+            await keyStore.loadRawKeypair(trimmedContent);
+            setUserKey(keyStore.getPublicKeyHex());
+            setIsLoaded(true);
+            setSelectedFile(null);
+
+            console.log('Raw key imported from file successfully!');
+          } else {
+            throw new Error('File does not contain a valid private key');
+          }
         }
       }
 
@@ -211,6 +289,15 @@ function KeyManagement() {
       reader.onload = (e) => resolve(e.target.result);
       reader.onerror = (e) => reject(new Error('Failed to read file'));
       reader.readAsText(file);
+    });
+  };
+
+  const readFileAsArrayBuffer = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(new Error('Failed to read file'));
+      reader.readAsArrayBuffer(file);
     });
   };
 
@@ -345,11 +432,11 @@ function KeyManagement() {
 
           <div className="action-section">
             <h3>Import from File</h3>
-            <p>Import an encrypted key file (.json) or raw key file (.txt).</p>
+            <p>Import an encrypted key file (.json) or raw key file (.txt or .bin).</p>
             <div className="import-form">
               <input
                 type="file"
-                accept=".json,.txt"
+                accept=".json,.txt,.bin"
                 onChange={handleFileSelect}
                 className="file-input"
               />
@@ -360,11 +447,16 @@ function KeyManagement() {
               )}
               <button
                 onClick={handleImportFromFile}
-                disabled={!selectedFile || !passphrase.trim() || loading}
+                disabled={!selectedFile || loading}
                 className="action-button secondary"
               >
                 Import from File
               </button>
+              {selectedFile && selectedFile.name.toLowerCase().endsWith('.bin') && (
+                <p className="file-hint" style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
+                  Note: Raw .bin files (64 bytes) don't require a passphrase. Encrypted .bin files (120 bytes) do.
+                </p>
+              )}
             </div>
           </div>
         </div>

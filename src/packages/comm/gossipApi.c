@@ -118,6 +118,17 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message* hm = (struct mg_http_message*)ev_data;
 
+        // #region agent log
+        // Use error level to ensure it always shows, and format URI/method safely
+        char uri_buf[256] = {0};
+        char method_buf[16] = {0};
+        size_t uri_len = hm->uri.len < sizeof(uri_buf) - 1 ? hm->uri.len : sizeof(uri_buf) - 1;
+        size_t method_len = hm->method.len < sizeof(method_buf) - 1 ? hm->method.len : sizeof(method_buf) - 1;
+        memcpy(uri_buf, hm->uri.buf, uri_len);
+        memcpy(method_buf, hm->method.buf, method_len);
+        logger_error("http_api", "[DEBUG] HTTP request: URI=%s METHOD=%s QUERY_LEN=%zu", uri_buf, method_buf, hm->query.len);
+        // #endregion
+
         if (mg_strcmp(hm->uri, mg_str("/gossip/envelope")) == 0) {
             if (mg_strcmp(hm->method, mg_str("POST")) == 0) {
                 // Accept protobuf envelope
@@ -288,6 +299,9 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                               "{\"error\":\"Method Not Allowed\"}");
             }
         } else if (mg_strcmp(hm->uri, mg_str("/gossip/conversations")) == 0) {
+            // #region agent log
+            logger_error("http_api", "[DEBUG] Routing to handle_get_conversations");
+            // #endregion
             if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
                 handle_get_conversations(c, hm);
             } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
@@ -320,12 +334,20 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                               "Content-Type: application/json\r\n"
                               "Access-Control-Allow-Origin: *\r\n",
                               "{\"status\":\"healthy\",\"service\":\"tinyweb\"}");
+            } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
+                mg_http_reply(c, 200,
+                              "Access-Control-Allow-Origin: *\r\n"
+                              "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
+                              "Access-Control-Allow-Headers: Content-Type\r\n",
+                              "");
             } else {
-                mg_http_reply(c, 405, "Content-Type: application/json\r\n",
+                mg_http_reply(c, 405, "Content-Type: application/json\r\n"
+                              "Access-Control-Allow-Origin: *\r\n",
                               "{\"error\":\"Method Not Allowed\"}");
             }
         } else {
-            mg_http_reply(c, 404, "Content-Type: application/json\r\n",
+            mg_http_reply(c, 404, "Content-Type: application/json\r\n"
+                          "Access-Control-Allow-Origin: *\r\n",
                           "{\"error\":\"Not Found\"}");
         }
     }
@@ -758,6 +780,10 @@ static void handle_get_messages(struct mg_connection* c, struct mg_http_message*
 }
 
 static void handle_get_conversations(struct mg_connection* c, struct mg_http_message* hm) {
+    // #region agent log
+    logger_error("http_api", "[DEBUG] handle_get_conversations entry: query_len=%zu", hm->query.len);
+    // #endregion
+    
     // Parse query parameter: user=<pubkey>
     unsigned char user_pubkey[PUBKEY_SIZE] = {0};
     bool has_user = false;
@@ -786,6 +812,10 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
         }
     }
     
+    // #region agent log
+    logger_error("http_api", "[DEBUG] After parsing query: has_user=%d", has_user);
+    // #endregion
+    
     if (!has_user) {
         mg_http_reply(c, 400,
                       "Content-Type: application/json\r\n"
@@ -798,7 +828,17 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
     GossipStoredEnvelope* stored_envs = NULL;
     size_t count = 0;
     
-    if (gossip_store_fetch_recent_envelopes(1000, &stored_envs, &count) != 0) {
+    // #region agent log
+    logger_error("http_api", "[DEBUG] Before fetch_recent_envelopes");
+    // #endregion
+    
+    int fetch_result = gossip_store_fetch_recent_envelopes(1000, &stored_envs, &count);
+    
+    // #region agent log
+    logger_error("http_api", "[DEBUG] After fetch_recent_envelopes: result=%d count=%zu", fetch_result, count);
+    // #endregion
+    
+    if (fetch_result != 0) {
         mg_http_reply(c, 500,
                       "Content-Type: application/json\r\n"
                       "Access-Control-Allow-Origin: *\r\n",
@@ -881,6 +921,10 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
         tinyweb__envelope__free_unpacked(env, NULL);
     }
     
+    // #region agent log
+    logger_error("http_api", "[DEBUG] After processing envelopes: partner_count=%zu", partner_count);
+    // #endregion
+    
     gossip_store_free_envelopes(stored_envs, count);
     
     // Create ConversationList protobuf
@@ -895,11 +939,13 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
     
     tinyweb__conversation_list__init(list);
     list->n_conversations = partner_count;
+    // Allocate conversations array - protobuf will free this via free_unpacked
     list->conversations = calloc(partner_count, sizeof(Tinyweb__ConversationSummary*));
     list->total_count = (uint32_t)partner_count;
     
-    if (!list->conversations) {
-        free(list);
+    // Note: calloc(0, ...) may return NULL on some systems, but that's okay for empty lists
+    if (partner_count > 0 && !list->conversations) {
+        tinyweb__conversation_list__free_unpacked(list, NULL);
         mg_http_reply(c, 500,
                       "Content-Type: application/json\r\n"
                       "Access-Control-Allow-Origin: *\r\n",
@@ -910,12 +956,12 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
     for (size_t i = 0; i < partner_count; ++i) {
         Tinyweb__ConversationSummary* summary = calloc(1, sizeof(Tinyweb__ConversationSummary));
         if (!summary) {
-            // Cleanup on error
+            // Cleanup on error: Free individual summaries, but let protobuf free the array and list
             for (size_t j = 0; j < i; ++j) {
                 tinyweb__conversation_summary__free_unpacked(list->conversations[j], NULL);
             }
-            free(list->conversations);
-            free(list);
+            // Don't free list->conversations here - tinyweb__conversation_list__free_unpacked will do it
+            tinyweb__conversation_list__free_unpacked(list, NULL);
             mg_http_reply(c, 500,
                           "Content-Type: application/json\r\n"
                           "Access-Control-Allow-Origin: *\r\n",
@@ -928,12 +974,12 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
         summary->partner_pubkey.data = malloc(PUBKEY_SIZE);
         if (!summary->partner_pubkey.data) {
             free(summary);
-            // Cleanup
+            // Cleanup: Free individual summaries, but let protobuf free the array and list
             for (size_t j = 0; j < i; ++j) {
                 tinyweb__conversation_summary__free_unpacked(list->conversations[j], NULL);
             }
-            free(list->conversations);
-            free(list);
+            // Don't free list->conversations here - tinyweb__conversation_list__free_unpacked will do it
+            tinyweb__conversation_list__free_unpacked(list, NULL);
             mg_http_reply(c, 500,
                           "Content-Type: application/json\r\n"
                           "Access-Control-Allow-Origin: *\r\n",
@@ -953,11 +999,11 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
     size_t packed_size = tinyweb__conversation_list__get_packed_size(list);
     unsigned char* packed = malloc(packed_size);
     if (!packed) {
-        // Cleanup
+        // Cleanup: Free individual summaries, but let protobuf free the array and list
         for (size_t i = 0; i < list->n_conversations; ++i) {
             tinyweb__conversation_summary__free_unpacked(list->conversations[i], NULL);
         }
-        free(list->conversations);
+        // Don't free list->conversations here - tinyweb__conversation_list__free_unpacked will do it
         tinyweb__conversation_list__free_unpacked(list, NULL);
         mg_http_reply(c, 500,
                       "Content-Type: application/json\r\n"
@@ -966,47 +1012,74 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
         return;
     }
     
+    // #region agent log
+    logger_error("http_api", "[DEBUG] Before protobuf pack: packed_size=%zu", packed_size);
+    // #endregion
+    
     tinyweb__conversation_list__pack(list, packed);
     
-    // Cleanup
+    // Cleanup: Free individual summaries we allocated, but let protobuf free the array and list
+    // Note: We allocated summaries with calloc, so we free them manually
+    // But list->conversations array and list itself are freed by free_unpacked
     for (size_t i = 0; i < list->n_conversations; ++i) {
         tinyweb__conversation_summary__free_unpacked(list->conversations[i], NULL);
     }
-    free(list->conversations);
+    // Don't free list->conversations here - tinyweb__conversation_list__free_unpacked will do it
     tinyweb__conversation_list__free_unpacked(list, NULL);
     
     // Encode as hex for JSON response
-    char* hex_encoded = hex_encode(packed, packed_size);
+    // Handle empty list case (packed_size=0)
+    char* hex_encoded = NULL;
+    if (packed_size > 0) {
+        hex_encoded = hex_encode(packed, packed_size);
+    }
+    
+    // #region agent log
+    logger_error("http_api", "[DEBUG] After hex_encode: hex_encoded=%d packed_size=%zu", hex_encoded != NULL, packed_size);
+    // #endregion
     free(packed);
     
-    if (!hex_encoded) {
-        mg_http_reply(c, 500,
-                      "Content-Type: application/json\r\n"
-                      "Access-Control-Allow-Origin: *\r\n",
-                      "{\"error\":\"Failed to encode response\"}");
-        return;
-    }
-    
-    // Create JSON response with hex-encoded protobuf
-    char* json_response = malloc(256 + strlen(hex_encoded));
-    if (!json_response) {
+    // Create JSON response - handle empty list case
+    char* json_response = NULL;
+    if (hex_encoded) {
+        json_response = malloc(256 + strlen(hex_encoded));
+        if (!json_response) {
+            free(hex_encoded);
+            mg_http_reply(c, 500,
+                          "Content-Type: application/json\r\n"
+                          "Access-Control-Allow-Origin: *\r\n",
+                          "{\"error\":\"Failed to allocate memory\"}");
+            return;
+        }
+        snprintf(json_response, 256 + strlen(hex_encoded),
+                 "{\"conversation_list_hex\":\"%s\"}", hex_encoded);
         free(hex_encoded);
-        mg_http_reply(c, 500,
-                      "Content-Type: application/json\r\n"
-                      "Access-Control-Allow-Origin: *\r\n",
-                      "{\"error\":\"Failed to allocate memory\"}");
-        return;
+    } else {
+        // Empty list - return empty hex string
+        const char* empty_response = "{\"conversation_list_hex\":\"\"}";
+        json_response = malloc(strlen(empty_response) + 1);
+        if (!json_response) {
+            mg_http_reply(c, 500,
+                          "Content-Type: application/json\r\n"
+                          "Access-Control-Allow-Origin: *\r\n",
+                          "{\"error\":\"Failed to allocate memory\"}");
+            return;
+        }
+        strcpy(json_response, empty_response);
     }
     
-    snprintf(json_response, 256 + strlen(hex_encoded),
-             "{\"conversation_list_hex\":\"%s\"}", hex_encoded);
-    
-    free(hex_encoded);
+    // #region agent log
+    logger_error("http_api", "[DEBUG] Before mg_http_reply: json_response_len=%zu", strlen(json_response));
+    // #endregion
     
     mg_http_reply(c, 200,
                   "Content-Type: application/json\r\n"
                   "Access-Control-Allow-Origin: *\r\n",
                   "%s", json_response);
+    
+    // #region agent log
+    logger_error("http_api", "[DEBUG] After mg_http_reply");
+    // #endregion
     
     free(json_response);
 }

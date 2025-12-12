@@ -113,7 +113,23 @@ class KeyStore {
     // Decrypt
     try {
       this.signSecretKey = sodium.crypto_secretbox_open_easy(ciphertext, nonce, key);
-      this.signPublicKey = sodium.from_hex(keyData.publicKey);
+      // Derive public key from secret key (or use stored one if available)
+      if (keyData.publicKey) {
+        this.signPublicKey = sodium.from_hex(keyData.publicKey);
+      } else {
+        // Derive public key from secret key
+        // Note: crypto_sign_ed25519_sk_to_pk doesn't exist in libsodium-wrappers
+        // In Ed25519, the 64-byte secret key contains the public key in the last 32 bytes
+        if (typeof sodium.crypto_sign_ed25519_sk_to_pk === 'function') {
+          this.signPublicKey = sodium.crypto_sign_ed25519_sk_to_pk(this.signSecretKey);
+        } else if (this.signSecretKey.length === 64) {
+          // Extract public key from last 32 bytes of secret key (Ed25519 format)
+          this.signPublicKey = this.signSecretKey.slice(32, 64);
+        } else {
+          // Fallback: extract public key from secret key
+          this.signPublicKey = this.signSecretKey.slice(32, 64);
+        }
+      }
       console.log('Keypair loaded from localStorage');
       return true;
     } catch (error) {
@@ -128,7 +144,19 @@ class KeyStore {
     if (!this.initialized) await this.init();
 
     this.signSecretKey = sodium.from_hex(privateKeyHex);
-    this.signPublicKey = sodium.crypto_sign_ed25519_sk_to_pk(this.signSecretKey);
+    
+    // Derive public key from secret key
+    // Note: crypto_sign_ed25519_sk_to_pk doesn't exist in libsodium-wrappers
+    // In Ed25519, the 64-byte secret key contains the public key in the last 32 bytes
+    if (typeof sodium.crypto_sign_ed25519_sk_to_pk === 'function') {
+      this.signPublicKey = sodium.crypto_sign_ed25519_sk_to_pk(this.signSecretKey);
+    } else if (this.signSecretKey.length === 64) {
+      // Extract public key from last 32 bytes of secret key (Ed25519 format)
+      this.signPublicKey = this.signSecretKey.slice(32, 64);
+    } else {
+      // Fallback: extract public key from secret key
+      this.signPublicKey = this.signSecretKey.slice(32, 64);
+    }
 
     console.log('Raw keypair loaded');
     return true;

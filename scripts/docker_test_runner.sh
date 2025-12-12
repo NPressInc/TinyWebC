@@ -197,20 +197,43 @@ echo "TinyWeb Docker Test Runner"
 echo "=========================================="
 echo ""
 
-# Step 0: Cleanup any leftover containers from previous runs
-echo "Step 0: Cleaning up any leftover containers..."
+# Step 0: Cleanup any leftover containers and state data from previous runs
+echo "Step 0: Cleaning up any leftover containers and state data..."
 COMPOSE_FILE_TEMP="docker_configs/docker-compose.test.yml"
+
+# First, stop and remove containers (without removing volumes to preserve state during run)
 if [[ -f "$COMPOSE_FILE_TEMP" ]]; then
     if docker compose -f "$COMPOSE_FILE_TEMP" ps -q 2>/dev/null | grep -q .; then
         echo "  Found existing containers, stopping and removing..."
         docker compose -f "$COMPOSE_FILE_TEMP" down -v 2>/dev/null || true
-        echo -e "  ${GREEN}✓ Cleanup complete${NC}"
+        echo -e "  ${GREEN}✓ Containers stopped and removed${NC}"
     else
         echo -e "  ${GREEN}✓ No leftover containers found${NC}"
     fi
 else
     echo "  No compose file found yet (will be generated in Step 1)"
 fi
+
+# Clean up state directories (keys, databases, etc.) for all nodes
+echo "  Cleaning up state directories (keys, databases, etc.)..."
+STATE_CLEANED=0
+for node_dir in docker_configs/node_*/state; do
+    if [[ -d "$node_dir" ]]; then
+        echo "    Removing $node_dir..."
+        rm -rf "$node_dir"/* 2>/dev/null || true
+        # Remove the state directory itself if it's now empty (but keep parent structure)
+        rmdir "$node_dir" 2>/dev/null || true
+        STATE_CLEANED=$((STATE_CLEANED + 1))
+    fi
+done
+
+if [[ $STATE_CLEANED -gt 0 ]]; then
+    echo -e "  ${GREEN}✓ Cleaned up state directories for ${STATE_CLEANED} node(s)${NC}"
+else
+    echo -e "  ${GREEN}✓ No state directories found to clean${NC}"
+fi
+
+echo -e "  ${GREEN}✓ Cleanup complete${NC}"
 echo ""
 
 # Step 1: Generate configs
