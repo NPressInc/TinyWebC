@@ -198,6 +198,8 @@ generated/api.pb-c.o: generated/api.pb-c.c.o
 generated/api.pb-c.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/api.pb-c.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/api.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/api.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/api.pb-c.c.o
 .PHONY : generated/api.pb-c.c.o
 
 generated/api.pb-c.i: generated/api.pb-c.c.i
@@ -207,6 +209,8 @@ generated/api.pb-c.i: generated/api.pb-c.c.i
 generated/api.pb-c.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/api.pb-c.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/api.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/api.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/api.pb-c.c.i
 .PHONY : generated/api.pb-c.c.i
 
 generated/api.pb-c.s: generated/api.pb-c.c.s
@@ -216,6 +220,8 @@ generated/api.pb-c.s: generated/api.pb-c.c.s
 generated/api.pb-c.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/api.pb-c.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/api.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/api.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/api.pb-c.c.s
 .PHONY : generated/api.pb-c.c.s
 
 generated/content.pb-c.o: generated/content.pb-c.c.o
@@ -225,6 +231,8 @@ generated/content.pb-c.o: generated/content.pb-c.c.o
 generated/content.pb-c.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/content.pb-c.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/content.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/content.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/content.pb-c.c.o
 .PHONY : generated/content.pb-c.c.o
 
 generated/content.pb-c.i: generated/content.pb-c.c.i
@@ -234,6 +242,8 @@ generated/content.pb-c.i: generated/content.pb-c.c.i
 generated/content.pb-c.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/content.pb-c.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/content.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/content.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/content.pb-c.c.i
 .PHONY : generated/content.pb-c.c.i
 
 generated/content.pb-c.s: generated/content.pb-c.c.s
@@ -243,6 +253,8 @@ generated/content.pb-c.s: generated/content.pb-c.c.s
 generated/content.pb-c.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/content.pb-c.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/content.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/content.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/content.pb-c.c.s
 .PHONY : generated/content.pb-c.c.s
 
 generated/envelope.pb-c.o: generated/envelope.pb-c.c.o
@@ -252,6 +264,8 @@ generated/envelope.pb-c.o: generated/envelope.pb-c.c.o
 generated/envelope.pb-c.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/envelope.pb-c.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/envelope.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/envelope.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/envelope.pb-c.c.o
 .PHONY : generated/envelope.pb-c.c.o
 
 generated/envelope.pb-c.i: generated/envelope.pb-c.c.i
@@ -261,6 +275,8 @@ generated/envelope.pb-c.i: generated/envelope.pb-c.c.i
 generated/envelope.pb-c.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/envelope.pb-c.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/envelope.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/envelope.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/envelope.pb-c.c.i
 .PHONY : generated/envelope.pb-c.c.i
 
 generated/envelope.pb-c.s: generated/envelope.pb-c.c.s
@@ -270,6 +286,8 @@ generated/envelope.pb-c.s: generated/envelope.pb-c.c.s
 generated/envelope.pb-c.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/envelope.pb-c.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/envelope.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/envelope.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/envelope.pb-c.c.s
 .PHONY : generated/envelope.pb-c.c.s
 
 generated/message.pb-c.o: generated/message.pb-c.c.o
@@ -279,6 +297,8 @@ generated/message.pb-c.o: generated/message.pb-c.c.o
 generated/message.pb-c.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/message.pb-c.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/message.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/message.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/message.pb-c.c.o
 .PHONY : generated/message.pb-c.c.o
 
 generated/message.pb-c.i: generated/message.pb-c.c.i
@@ -288,6 +308,8 @@ generated/message.pb-c.i: generated/message.pb-c.c.i
 generated/message.pb-c.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/message.pb-c.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/message.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/message.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/message.pb-c.c.i
 .PHONY : generated/message.pb-c.c.i
 
 generated/message.pb-c.s: generated/message.pb-c.c.s
@@ -297,6 +319,8 @@ generated/message.pb-c.s: generated/message.pb-c.c.s
 generated/message.pb-c.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/message.pb-c.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/message.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/message.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/message.pb-c.c.s
 .PHONY : generated/message.pb-c.c.s
 
 scripts/docker_config_generator.o: scripts/docker_config_generator.c.o
@@ -729,6 +753,8 @@ src/packages/encryption/encryption.o: src/packages/encryption/encryption.c.o
 src/packages/encryption/encryption.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/encryption/encryption.c.o
 .PHONY : src/packages/encryption/encryption.c.o
 
 src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
@@ -738,6 +764,8 @@ src/packages/encryption/encryption.i: src/packages/encryption/encryption.c.i
 src/packages/encryption/encryption.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/encryption/encryption.c.i
 .PHONY : src/packages/encryption/encryption.c.i
 
 src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
@@ -747,6 +775,8 @@ src/packages/encryption/encryption.s: src/packages/encryption/encryption.c.s
 src/packages/encryption/encryption.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/encryption/encryption.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/encryption/encryption.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/encryption/encryption.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/encryption/encryption.c.s
 .PHONY : src/packages/encryption/encryption.c.s
 
 src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
@@ -756,6 +786,8 @@ src/packages/keystore/keystore.o: src/packages/keystore/keystore.c.o
 src/packages/keystore/keystore.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/keystore/keystore.c.o
 .PHONY : src/packages/keystore/keystore.c.o
 
 src/packages/keystore/keystore.i: src/packages/keystore/keystore.c.i
@@ -765,6 +797,8 @@ src/packages/keystore/keystore.i: src/packages/keystore/keystore.c.i
 src/packages/keystore/keystore.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/keystore/keystore.c.i
 .PHONY : src/packages/keystore/keystore.c.i
 
 src/packages/keystore/keystore.s: src/packages/keystore/keystore.c.s
@@ -774,6 +808,8 @@ src/packages/keystore/keystore.s: src/packages/keystore/keystore.c.s
 src/packages/keystore/keystore.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/keystore/keystore.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/keystore/keystore.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/keystore/keystore.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/keystore/keystore.c.s
 .PHONY : src/packages/keystore/keystore.c.s
 
 src/packages/signing/signing.o: src/packages/signing/signing.c.o
@@ -783,6 +819,8 @@ src/packages/signing/signing.o: src/packages/signing/signing.c.o
 src/packages/signing/signing.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/signing/signing.c.o
 .PHONY : src/packages/signing/signing.c.o
 
 src/packages/signing/signing.i: src/packages/signing/signing.c.i
@@ -792,6 +830,8 @@ src/packages/signing/signing.i: src/packages/signing/signing.c.i
 src/packages/signing/signing.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/signing/signing.c.i
 .PHONY : src/packages/signing/signing.c.i
 
 src/packages/signing/signing.s: src/packages/signing/signing.c.s
@@ -801,6 +841,8 @@ src/packages/signing/signing.s: src/packages/signing/signing.c.s
 src/packages/signing/signing.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/signing/signing.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/signing/signing.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/signing/signing.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/signing/signing.c.s
 .PHONY : src/packages/signing/signing.c.s
 
 src/packages/sql/database_gossip.o: src/packages/sql/database_gossip.c.o
@@ -969,6 +1011,8 @@ src/packages/transactions/envelope.o: src/packages/transactions/envelope.c.o
 src/packages/transactions/envelope.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/envelope.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/envelope.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/transactions/envelope.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/transactions/envelope.c.o
 .PHONY : src/packages/transactions/envelope.c.o
 
 src/packages/transactions/envelope.i: src/packages/transactions/envelope.c.i
@@ -978,6 +1022,8 @@ src/packages/transactions/envelope.i: src/packages/transactions/envelope.c.i
 src/packages/transactions/envelope.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/envelope.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/envelope.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/transactions/envelope.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/transactions/envelope.c.i
 .PHONY : src/packages/transactions/envelope.c.i
 
 src/packages/transactions/envelope.s: src/packages/transactions/envelope.c.s
@@ -987,6 +1033,8 @@ src/packages/transactions/envelope.s: src/packages/transactions/envelope.c.s
 src/packages/transactions/envelope.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/transactions/envelope.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/transactions/envelope.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/transactions/envelope.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/transactions/envelope.c.s
 .PHONY : src/packages/transactions/envelope.c.s
 
 src/packages/utils/byteorder.o: src/packages/utils/byteorder.c.o

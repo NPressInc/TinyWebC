@@ -201,13 +201,19 @@ add_executable(init_tool
     src/structs/permission/permission.c
     src/packages/sql/database_gossip.c
     src/packages/sql/message_store.c
+    src/packages/transactions/envelope.c
+    src/packages/encryption/encryption.c
+    src/packages/signing/signing.c
+    src/packages/keystore/keystore.c
 )
+target_sources(init_tool PRIVATE ${GENERATED_SOURCES})
 target_include_directories(init_tool PRIVATE ${GEN_DIR} src scripts)
 target_link_libraries(init_tool PRIVATE 
     cjson 
     ${SODIUM_LIBRARIES} 
     SQLite::SQLite3
     ${PROTOBUFC_LIBRARIES}
+    OpenSSL::Crypto
     pthread
     m
 )
@@ -224,13 +230,19 @@ add_executable(docker_config_generator
     src/structs/permission/permission.c
     src/packages/sql/database_gossip.c
     src/packages/sql/message_store.c
+    src/packages/transactions/envelope.c
+    src/packages/encryption/encryption.c
+    src/packages/signing/signing.c
+    src/packages/keystore/keystore.c
 )
+target_sources(docker_config_generator PRIVATE ${GENERATED_SOURCES})
 target_include_directories(docker_config_generator PRIVATE ${GEN_DIR} src scripts)
 target_link_libraries(docker_config_generator PRIVATE 
     cjson 
     ${SODIUM_LIBRARIES} 
     SQLite::SQLite3
     ${PROTOBUFC_LIBRARIES}
+    OpenSSL::Crypto
     yaml  # libyaml
     pthread
     m
