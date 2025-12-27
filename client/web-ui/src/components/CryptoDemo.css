@@ -191,7 +191,7 @@
   font-weight: 600;
 }
 
-.encrypted-hex, .envelope-hex {
+.encrypted-hex, .message-hex {
   font-family: 'Courier New', monospace;
   font-size: 12px;
   color: #007bff;

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import './ConversationView.css';
-import { detectRunningNodes, getMessages, sendEnvelope, DEFAULT_NODE_URLS } from '../utils/api';
-import { decodeEnvelopeList } from '../utils/protobufDecode';
-import { createDirectMessage } from '../utils/envelope';
-import { serializeEnvelopeToProtobufHex, deserializeEnvelopeFromProtobuf } from '../utils/protobufHelper';
+import { detectRunningNodes, getMessages, sendMessage, DEFAULT_NODE_URLS } from '../utils/api';
+import { createDirectMessage } from '../utils/message';
+import { serializeMessageToProtobuf } from '../utils/messageHelper';
 import { decryptPayload } from '../utils/encryption';
 import keyStore from '../utils/keystore';
 import sodium from 'libsodium-wrappers';
@@ -60,69 +59,72 @@ function ConversationView() {
       const userPubkey = keyStore.getPublicKeyHex();
       const userPubkeyBytes = sodium.from_hex(userPubkey);
 
-      // Fetch messages from API
-      const response = await getMessages(nodeUrl, userPubkey, userId);
+      // Fetch messages from API (now returns Message array directly)
+      const messageList = await getMessages(nodeUrl, userPubkey, userId);
 
-      if (response.envelope_list_hex) {
-        // Decode protobuf envelope list
-        const decoded = await decodeEnvelopeList(response.envelope_list_hex);
-        
-        // Decrypt and format messages
-        const formatted = [];
-        
-        for (const stored of decoded) {
+      // Decrypt and format messages
+      const formatted = [];
+      
+      for (const message of messageList) {
+        try {
+          // Determine if message is outgoing
+          const isOutgoing = sodium.memcmp(
+            new Uint8Array(message.header.senderPubkey),
+            userPubkeyBytes
+          );
+          
+          // Convert recipient pubkeys to X25519 for decryption
+          const encryptionPubkeys = message.header.recipientsPubkey.map(ed25519Pubkey => 
+            sodium.crypto_sign_ed25519_pk_to_curve25519(ed25519Pubkey)
+          );
+          
+          // Decrypt message
+          let messageText = '[Unable to decrypt]';
           try {
-            // Decode envelope from protobuf bytes
-            const envelopeBytes = new Uint8Array(stored.envelope);
-            const envelope = await deserializeEnvelopeFromProtobuf(envelopeBytes);
-            
-            // Determine if message is outgoing
-            const isOutgoing = sodium.memcmp(
-              new Uint8Array(envelope.header.senderPubkey),
-              userPubkeyBytes
+            const plaintext = await decryptPayload(
+              message.encryptedPayload,
+              encryptionPubkeys
             );
-            
-            // Decrypt message
-            let messageText = '[Unable to decrypt]';
-            try {
-              const plaintext = await decryptPayload(
-                envelope.encryptedPayload,
-                envelope.header.recipientPubkeys
-              );
-              messageText = new TextDecoder().decode(plaintext);
-            } catch (decryptErr) {
-              console.warn('Failed to decrypt message:', decryptErr);
-            }
-            
-            formatted.push({
-              id: stored.id,
-              type: stored.contentType,
-              timestamp: stored.timestamp,
-              sender: stored.senderHex,
-              isOutgoing,
-              content: messageText,
-            });
-          } catch (err) {
-            console.error('Error processing envelope:', err);
-            // Add error message as fallback
-            formatted.push({
-              id: stored.id,
-              type: stored.contentType,
-              timestamp: stored.timestamp,
-              sender: stored.senderHex,
-              isOutgoing: false,
-              content: '[Error processing message]',
-            });
+            messageText = new TextDecoder().decode(plaintext);
+          } catch (decryptErr) {
+            console.warn('Failed to decrypt message:', decryptErr);
           }
+          
+          // Convert sender pubkey to hex for display
+          const senderHex = Array.from(message.header.senderPubkey)
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+          
+          // Convert timestamp from seconds to milliseconds
+          const timestamp = message.header.timestamp * 1000;
+          
+          formatted.push({
+            id: senderHex + '_' + timestamp, // Generate ID from sender and timestamp
+            timestamp: timestamp,
+            sender: senderHex,
+            isOutgoing,
+            content: messageText,
+          });
+        } catch (err) {
+          console.error('Error processing message:', err);
+          // Add error message as fallback
+          const senderHex = Array.from(message.header.senderPubkey)
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+          formatted.push({
+            id: senderHex + '_' + (message.header.timestamp * 1000),
+            timestamp: message.header.timestamp * 1000,
+            sender: senderHex,
+            isOutgoing: false,
+            content: '[Error processing message]',
+          });
         }
-
-        // Sort by timestamp (oldest first)
-        formatted.sort((a, b) => a.timestamp - b.timestamp);
-        
-        setMessages(formatted);
-      } else {
-        setMessages([]);
       }
+
+      // Sort by timestamp (oldest first)
+      formatted.sort((a, b) => a.timestamp - b.timestamp);
+      
+      setMessages(formatted);
     } catch (err) {
       console.error('Error loading messages:', err);
       setError(err.message || 'Failed to load messages');
@@ -182,19 +184,14 @@ function ConversationView() {
       const recipientPubkeyBytes = sodium.from_hex(userId);
       console.log('[handleSendMessage] Recipient pubkey bytes length:', recipientPubkeyBytes.length);
 
-      console.log('[handleSendMessage] Creating direct message envelope...');
-      // Create direct message envelope
-      const envelope = await createDirectMessage(recipientPubkeyBytes, newMessage);
-      console.log('[handleSendMessage] Envelope created:', envelope);
+      console.log('[handleSendMessage] Creating direct message...');
+      // Create direct message
+      const message = await createDirectMessage(recipientPubkeyBytes, newMessage);
+      console.log('[handleSendMessage] Message created:', message);
 
-      console.log('[handleSendMessage] Serializing envelope to protobuf hex...');
-      // Serialize to protobuf and hex-encode
-      const envelopeHex = await serializeEnvelopeToProtobufHex(envelope);
-      console.log('[handleSendMessage] Envelope hex length:', envelopeHex?.length);
-
-      console.log('[handleSendMessage] Sending envelope to node:', selectedNode);
-      // Send to node
-      const result = await sendEnvelope(selectedNode, envelopeHex);
+      console.log('[handleSendMessage] Sending message to node:', selectedNode);
+      // Send to node (sends binary protobuf directly)
+      const result = await sendMessage(selectedNode, message);
       console.log('[handleSendMessage] Send result:', result);
 
       // Clear input

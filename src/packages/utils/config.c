@@ -79,31 +79,42 @@ int config_load_node_from_network_config(const char* config_file_path, const cha
         return -1;
     }
     
-    // Find the node in the nodes array
-    cJSON* nodes = cJSON_GetObjectItem(root, "nodes");
-    if (!cJSON_IsArray(nodes)) {
-        cJSON_Delete(root);
-        tw_error_create(TW_ERROR_INVALID_ARGUMENT, "config", __func__, __LINE__, "Config missing nodes array");
-        logger_error("config", "Config missing nodes array");
-        return -1;
-    }
-    
+    // Try to find the node in the nodes array (nested format - master config)
+    // If no nodes array exists, treat root as the node config (flat format - node-specific config)
     cJSON* node = NULL;
-    int node_count = cJSON_GetArraySize(nodes);
-    for (int i = 0; i < node_count; i++) {
-        cJSON* n = cJSON_GetArrayItem(nodes, i);
-        cJSON* id = cJSON_GetObjectItem(n, "id");
-        if (cJSON_IsString(id) && strcmp(id->valuestring, node_id) == 0) {
-            node = n;
-            break;
-        }
-    }
+    cJSON* nodes = cJSON_GetObjectItem(root, "nodes");
     
-    if (!node) {
-        cJSON_Delete(root);
-        tw_error_create(TW_ERROR_NOT_FOUND, "config", __func__, __LINE__, "Node %s not found in config", node_id);
-        logger_error("config", "Node %s not found in config", node_id);
-        return -1;
+    if (cJSON_IsArray(nodes)) {
+        // Nested format: find node in nodes array
+        int node_count = cJSON_GetArraySize(nodes);
+        for (int i = 0; i < node_count; i++) {
+            cJSON* n = cJSON_GetArrayItem(nodes, i);
+            cJSON* id = cJSON_GetObjectItem(n, "id");
+            if (cJSON_IsString(id) && strcmp(id->valuestring, node_id) == 0) {
+                node = n;
+                break;
+            }
+        }
+        
+        if (!node) {
+            cJSON_Delete(root);
+            tw_error_create(TW_ERROR_NOT_FOUND, "config", __func__, __LINE__, "Node %s not found in config", node_id);
+            logger_error("config", "Node %s not found in config", node_id);
+            return -1;
+        }
+    } else {
+        // Flat format: root is the node config (node-specific config file)
+        // Verify the node_id matches
+        cJSON* id = cJSON_GetObjectItem(root, "id");
+        if (!cJSON_IsString(id) || strcmp(id->valuestring, node_id) != 0) {
+            cJSON_Delete(root);
+            tw_error_create(TW_ERROR_NOT_FOUND, "config", __func__, __LINE__, "Node %s not found in config (config has id: %s)", 
+                          node_id, cJSON_IsString(id) ? id->valuestring : "missing");
+            logger_error("config", "Node %s not found in config (config has id: %s)", 
+                        node_id, cJSON_IsString(id) ? id->valuestring : "missing");
+            return -1;
+        }
+        node = root;
     }
     
     // Load node-specific settings

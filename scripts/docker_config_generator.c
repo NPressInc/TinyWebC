@@ -383,92 +383,110 @@ static void free_master_config(MasterConfig* config) {
 // Initialization (Direct Function Calls)
 // ============================================================================
 
-static int initialize_node_direct(cJSON* node, const MasterConfig* master_config, 
+static int initialize_node_direct(const MasterConfig* master_config, 
                                   const char* state_dir) {
-    if (!node || !master_config || !state_dir) return -1;
+    if (!master_config || !state_dir) return -1;
     
-    // Get node_id first (for error messages)
-    cJSON* id_json = cJSON_GetObjectItem(node, "id");
-    const char* node_id = cJSON_IsString(id_json) ? id_json->valuestring : "unknown";
+    // Derive config file path from state_dir
+    // state_dir is like "docker_configs/node_01/state"
+    // config file is at "docker_configs/node_01/network_config.json"
+    char config_path[MAX_PATH_LEN];
+    const char* last_slash = strrchr(state_dir, '/');
+    if (last_slash && strcmp(last_slash, "/state") == 0) {
+        size_t prefix_len = last_slash - state_dir;
+        snprintf(config_path, sizeof(config_path), "%.*s/network_config.json", (int)prefix_len, state_dir);
+    } else {
+        fprintf(stderr, "Error: Invalid state_dir format: %s\n", state_dir);
+        return -1;
+    }
     
-    // Parse node config from JSON
+    // Load and parse the generated node-specific config file
+    FILE* config_file = fopen(config_path, "r");
+    if (!config_file) {
+        fprintf(stderr, "Error: Cannot open generated config file: %s\n", config_path);
+        return -1;
+    }
+    
+    fseek(config_file, 0, SEEK_END);
+    long size = ftell(config_file);
+    fseek(config_file, 0, SEEK_SET);
+    
+    char* buffer = malloc((size_t)size + 1);
+    if (!buffer) {
+        fclose(config_file);
+        fprintf(stderr, "Error: Failed to allocate memory for config\n");
+        return -1;
+    }
+    
+    fread(buffer, 1, (size_t)size, config_file);
+    buffer[size] = '\0';
+    fclose(config_file);
+    
+    cJSON* config_root = cJSON_Parse(buffer);
+    free(buffer);
+    if (!config_root) {
+        fprintf(stderr, "Error: Failed to parse generated config file: %s\n", config_path);
+        return -1;
+    }
+    
+    // Parse node config from the generated config file
     InitNodeConfig node_config = {0};
     
-    if (cJSON_IsString(id_json)) {
-        node_config.id = strdup(id_json->valuestring);
+    // Get node_id from config file (for error messages and initialization)
+    const char* node_id = "unknown";
+    cJSON* config_id = cJSON_GetObjectItem(config_root, "id");
+    if (cJSON_IsString(config_id)) {
+        node_id = config_id->valuestring;
+        node_config.id = strdup(node_id);
     }
     
-    cJSON* name = cJSON_GetObjectItem(node, "name");
-    if (cJSON_IsString(name)) {
-        node_config.name = strdup(name->valuestring);
+    cJSON* config_name = cJSON_GetObjectItem(config_root, "name");
+    if (cJSON_IsString(config_name)) {
+        node_config.name = strdup(config_name->valuestring);
     }
     
-    cJSON* hostname = cJSON_GetObjectItem(node, "hostname");
-    if (cJSON_IsString(hostname)) {
-        node_config.hostname = strdup(hostname->valuestring);
+    cJSON* config_hostname = cJSON_GetObjectItem(config_root, "hostname");
+    if (cJSON_IsString(config_hostname)) {
+        node_config.hostname = strdup(config_hostname->valuestring);
+    }
+    
+    cJSON* config_gossip_port = cJSON_GetObjectItem(config_root, "gossip_port");
+    if (cJSON_IsNumber(config_gossip_port)) {
+        node_config.gossip_port = (uint16_t)config_gossip_port->valueint;
     } else {
-        // Generate hostname if not present
-        char gen_hostname[MAX_HOSTNAME_LEN];
-        if (generate_hostname(node_config.id, &master_config->docker_config.discovery, 
-                             node, gen_hostname, sizeof(gen_hostname)) == 0) {
-            node_config.hostname = strdup(gen_hostname);
-        }
+        node_config.gossip_port = 9000; // Default
     }
     
-    node_config.gossip_port = 9000;
-    node_config.api_port = 8000;
-    
-    // Parse peers if present, or auto-generate for static mode (test-only)
-    cJSON* peers = cJSON_GetObjectItem(node, "peers");
-    if (cJSON_IsArray(peers) && cJSON_GetArraySize(peers) > 0) {
-        // Use explicitly configured peers
-        int peer_count = cJSON_GetArraySize(peers);
-        node_config.peers = calloc(peer_count, sizeof(char*));
-        if (node_config.peers) {
-            for (int i = 0; i < peer_count; i++) {
-                cJSON* peer = cJSON_GetArrayItem(peers, i);
-                if (cJSON_IsString(peer)) {
-                    node_config.peers[i] = strdup(peer->valuestring);
-                }
-            }
-            node_config.peer_count = peer_count;
-        }
-    } else if (strcmp(master_config->docker_config.discovery.mode, "static") == 0 && 
-               master_config->node_count > 1 &&
-               strcmp(master_config->docker_config.mode, "test") == 0) {
-        // Auto-generate peers for static mode from other nodes
-        // NOTE: This is **test-only** behavior, mirroring generate_node_config_json.
-        // It assumes nodes are reachable by Docker service name (node_XX:9000).
-        uint32_t peer_count = master_config->node_count - 1;
-        node_config.peers = calloc(peer_count, sizeof(char*));
-        if (node_config.peers) {
-            uint32_t peer_idx = 0;
-            for (uint32_t j = 0; j < master_config->node_count && peer_idx < peer_count; j++) {
-                cJSON* other_node = cJSON_GetArrayItem(master_config->nodes, (int)j);
-                if (!other_node) continue;
-                
-                cJSON* other_id_json = cJSON_GetObjectItem(other_node, "id");
-                if (!cJSON_IsString(other_id_json)) continue;
-                
-                // Skip self
-                if (strcmp(node_id, other_id_json->valuestring) == 0) continue;
-                
-                // Generate peer hostname
-                char peer_hostname[MAX_HOSTNAME_LEN];
-                if (generate_hostname(other_id_json->valuestring, 
-                                     &master_config->docker_config.discovery, 
-                                     other_node, peer_hostname, sizeof(peer_hostname)) != 0) {
-                    continue;
-                }
-                
-                // Create peer entry in hostname:port format
-                char peer_entry[MAX_HOSTNAME_LEN + 16];
-                snprintf(peer_entry, sizeof(peer_entry), "%s:9000", peer_hostname);
-                node_config.peers[peer_idx++] = strdup(peer_entry);
-            }
-            node_config.peer_count = peer_idx;
-        }
+    cJSON* config_api_port = cJSON_GetObjectItem(config_root, "api_port");
+    if (cJSON_IsNumber(config_api_port)) {
+        node_config.api_port = (uint16_t)config_api_port->valueint;
+    } else {
+        node_config.api_port = 8000; // Default
     }
+    
+    // Parse peers from the generated config file
+    cJSON* config_peers = cJSON_GetObjectItem(config_root, "peers");
+    if (cJSON_IsArray(config_peers)) {
+        int peer_count = cJSON_GetArraySize(config_peers);
+        if (peer_count > 0) {
+            node_config.peers = calloc(peer_count, sizeof(char*));
+            if (node_config.peers) {
+                for (int i = 0; i < peer_count; i++) {
+                    cJSON* peer = cJSON_GetArrayItem(config_peers, i);
+                    if (cJSON_IsString(peer)) {
+                        node_config.peers[i] = strdup(peer->valuestring);
+                    }
+                }
+                node_config.peer_count = (uint32_t)peer_count;
+                printf("    Found %d peer(s) in config file\n", peer_count);
+            }
+        }
+    } else {
+        printf("    No peers array found in config file\n");
+    }
+    
+    // Clean up config JSON
+    cJSON_Delete(config_root);
     
     // Parse users from master config (handles admins/members structure)
     InitUserConfig* users = NULL;
@@ -1119,7 +1137,7 @@ int main(int argc, char* argv[]) {
         
         // Initialize node state (direct function call)
         if (!skip_init) {
-            if (initialize_node_direct(node, &master_config, state_dir) != 0) {
+            if (initialize_node_direct(&master_config, state_dir) != 0) {
                 fprintf(stderr, "  Warning: Failed to initialize state for %s (continuing...)\n", node_id);
             }
         }

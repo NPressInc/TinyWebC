@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './ConversationsList.css';
 import { detectRunningNodes, getRecentMessages, getUsers, DEFAULT_NODE_URLS } from '../utils/api';
-import { decodeEnvelopeList } from '../utils/protobufDecode';
-import { deserializeEnvelopeFromProtobuf } from '../utils/protobufHelper';
 import { decryptPayload } from '../utils/encryption';
-import { calculateConversationId, getConversationIdFromEnvelope } from '../utils/conversationId';
+import { getConversationIdFromMessage } from '../utils/conversationId';
 import keyStore from '../utils/keystore';
 import sodium from 'libsodium-wrappers';
 
@@ -90,100 +88,97 @@ function ConversationsList() {
       const userPubkey = keyStore.getPublicKeyHex();
       const userPubkeyBytes = sodium.from_hex(userPubkey);
 
-      // Fetch all recent messages for this user
-      const response = await getRecentMessages(nodeUrl, userPubkey, 100);
-
-      if (response.envelope_list_hex) {
-        // Decode protobuf envelope list
-        const decoded = await decodeEnvelopeList(response.envelope_list_hex);
-        
-        // Group messages by conversation_id and decrypt
-        const conversationMap = new Map();
-        
-        for (const stored of decoded) {
-          try {
-            // Decode envelope from protobuf bytes
-            const envelopeBytes = new Uint8Array(stored.envelope);
-            const envelope = await deserializeEnvelopeFromProtobuf(envelopeBytes);
-            
-            // Calculate conversation_id
-            const conversationId = await getConversationIdFromEnvelope(envelope, userPubkey);
-            
-            // Determine conversation partner
-            const isOutgoing = sodium.memcmp(
-              new Uint8Array(envelope.header.senderPubkey),
-              userPubkeyBytes
-            );
-            
-            let partnerPubkey;
-            if (isOutgoing) {
-              // We sent it, partner is the recipient
-              partnerPubkey = envelope.header.recipientPubkeys[0];
-            } else {
-              // They sent it, partner is the sender
-              partnerPubkey = envelope.header.senderPubkey;
-            }
-            
-            const partnerHex = Array.from(partnerPubkey)
-              .map(b => b.toString(16).padStart(2, '0'))
-              .join('');
-            
-            // Decrypt message
-            let messageText = '[Unable to decrypt]';
-            try {
-              const plaintext = await decryptPayload(
-                envelope.encryptedPayload,
-                envelope.header.recipientPubkeys
-              );
-              messageText = new TextDecoder().decode(plaintext);
-            } catch (decryptErr) {
-              console.warn('Failed to decrypt message:', decryptErr);
-            }
-            
-            // Get or create conversation by conversation_id
-            if (!conversationMap.has(conversationId)) {
-              conversationMap.set(conversationId, {
-                conversationId,
-                with: partnerHex,
-                messages: [],
-                lastMessageTime: 0,
-              });
-            }
-            
-            const conv = conversationMap.get(conversationId);
-            conv.messages.push({
-              id: stored.id,
-              text: messageText,
-              timestamp: stored.timestamp,
-              isOutgoing,
-            });
-            
-            // Update last message time
-            if (stored.timestamp > conv.lastMessageTime) {
-              conv.lastMessageTime = stored.timestamp;
-            }
-          } catch (err) {
-            console.error('Error processing envelope:', err);
+      // Fetch all recent messages for this user (now returns Message array directly)
+      const messageList = await getRecentMessages(nodeUrl, userPubkey, 100);
+      
+      // Group messages by conversation_id and decrypt
+      const conversationMap = new Map();
+      
+      for (const message of messageList) {
+        try {
+          // Calculate conversation_id
+          const conversationId = await getConversationIdFromMessage(message, userPubkey);
+          
+          // Determine conversation partner
+          const isOutgoing = sodium.memcmp(
+            new Uint8Array(message.header.senderPubkey),
+            userPubkeyBytes
+          );
+          
+          let partnerPubkey;
+          if (isOutgoing) {
+            // We sent it, partner is the recipient
+            partnerPubkey = message.header.recipientsPubkey[0];
+          } else {
+            // They sent it, partner is the sender
+            partnerPubkey = message.header.senderPubkey;
           }
+          
+          const partnerHex = Array.from(partnerPubkey)
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+          
+          // Convert recipient pubkeys to X25519 for decryption
+          const encryptionPubkeys = message.header.recipientsPubkey.map(ed25519Pubkey => 
+            sodium.crypto_sign_ed25519_pk_to_curve25519(ed25519Pubkey)
+          );
+          
+          // Decrypt message
+          let messageText = '[Unable to decrypt]';
+          try {
+            const plaintext = await decryptPayload(
+              message.encryptedPayload,
+              encryptionPubkeys
+            );
+            messageText = new TextDecoder().decode(plaintext);
+          } catch (decryptErr) {
+            console.warn('Failed to decrypt message:', decryptErr);
+          }
+          
+          // Convert timestamp from seconds to milliseconds
+          const timestamp = message.header.timestamp * 1000;
+          
+          // Get or create conversation by conversation_id
+          if (!conversationMap.has(conversationId)) {
+            conversationMap.set(conversationId, {
+              conversationId,
+              with: partnerHex,
+              messages: [],
+              lastMessageTime: 0,
+            });
+          }
+          
+          const conv = conversationMap.get(conversationId);
+          conv.messages.push({
+            id: partnerHex + '_' + timestamp, // Generate ID from partner and timestamp
+            text: messageText,
+            timestamp: timestamp,
+            isOutgoing,
+          });
+          
+          // Update last message time
+          if (timestamp > conv.lastMessageTime) {
+            conv.lastMessageTime = timestamp;
+          }
+        } catch (err) {
+          console.error('Error processing message:', err);
         }
-        
-        // Convert map to array and sort by last message time
-        const formatted = Array.from(conversationMap.values())
-          .map(conv => ({
-            conversationId: conv.conversationId,
-            with: conv.with,
-            lastMessagePreview: conv.messages.length > 0 
-              ? conv.messages[conv.messages.length - 1].text 
-              : 'No messages',
-            messageCount: conv.messages.length,
-            lastMessageTime: conv.lastMessageTime,
-          }))
-          .sort((a, b) => b.lastMessageTime - a.lastMessageTime);
-
-        setConversations(formatted);
-      } else {
-        setConversations([]);
       }
+      
+      // Convert map to array and sort by last message time
+      const formatted = Array.from(conversationMap.values())
+        .map(conv => ({
+          conversationId: conv.conversationId,
+          with: conv.with,
+          lastMessagePreview: conv.messages.length > 0 
+            ? conv.messages[conv.messages.length - 1].text 
+            : 'No messages',
+          messageCount: conv.messages.length,
+          lastMessageTime: conv.lastMessageTime,
+        }))
+        .sort((a, b) => b.lastMessageTime - a.lastMessageTime);
+
+      setConversations(formatted);
     } catch (err) {
       console.error('Error loading conversations:', err);
       setError(err.message || 'Failed to load conversations');

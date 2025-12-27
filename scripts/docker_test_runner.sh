@@ -227,28 +227,26 @@ else
     echo "  No compose file found yet (will be generated in Step 1)"
 fi
 
-# Clean up state directories (keys, databases, etc.) for all nodes
+# Clean up entire node directories (including configs, state, keys, databases, etc.) for all nodes
 # Only if REGEN_KEYS is true
 if [[ "$REGEN_KEYS" == "true" ]]; then
-    echo "  Cleaning up state directories (keys, databases, etc.)..."
-    STATE_CLEANED=0
-    for node_dir in docker_configs/node_*/state; do
+    echo "  Cleaning up node directories (configs, state, keys, databases, etc.)..."
+    NODES_CLEANED=0
+    for node_dir in docker_configs/node_*; do
         if [[ -d "$node_dir" ]]; then
             echo "    Removing $node_dir..."
-            rm -rf "$node_dir"/* 2>/dev/null || true
-            # Remove the state directory itself if it's now empty (but keep parent structure)
-            rmdir "$node_dir" 2>/dev/null || true
-            STATE_CLEANED=$((STATE_CLEANED + 1))
+            rm -rf "$node_dir" 2>/dev/null || true
+            NODES_CLEANED=$((NODES_CLEANED + 1))
         fi
     done
 
-    if [[ $STATE_CLEANED -gt 0 ]]; then
-        echo -e "  ${GREEN}✓ Cleaned up state directories for ${STATE_CLEANED} node(s)${NC}"
+    if [[ $NODES_CLEANED -gt 0 ]]; then
+        echo -e "  ${GREEN}✓ Cleaned up ${NODES_CLEANED} node directory/ies${NC}"
     else
-        echo -e "  ${GREEN}✓ No state directories found to clean${NC}"
+        echo -e "  ${GREEN}✓ No node directories found to clean${NC}"
     fi
 else
-    echo "  Skipping state directory cleanup (--regen false, using existing keys)"
+    echo "  Skipping node directory cleanup (--regen false, using existing keys and configs)"
 fi
 
 echo -e "  ${GREEN}✓ Cleanup complete${NC}"

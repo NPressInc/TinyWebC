@@ -66,7 +66,7 @@ static void print_usage(const char* program_name) {
     printf("  -i, --id <node_id>       Node identifier (default: 0)\n");
     printf("  -g, --gossip-port <port> Gossip UDP port (default: 9000)\n");
     printf("  -p, --api-port <port>    HTTP API port (default: 8000)\n");
-    printf("  -d, --debug              Enable debug logging (deprecated, kept for compatibility)\n");
+    printf("  -d, --debug              Enable debug logging\n");
     printf("  -h, --help               Show this help message\n");
 }
 
@@ -107,7 +107,7 @@ static int parse_arguments(int argc, char* argv[], NodeConfig* config) {
         }
     }
     
-    // Load config from network_config.json
+    // Load node config (sets defaults and node_id, actual config loaded from DB later)
     if (load_node_config(config, node_id, debug_mode) != 0) {
         logger_error("main", "Failed to load node configuration");
         return -1;
@@ -161,15 +161,11 @@ static int load_node_config(NodeConfig* config, uint32_t node_id, bool debug_mod
         strncpy(config->node_id, node_id_str, sizeof(config->node_id) - 1);
     }
     
-    // Note: Configuration should be loaded from database, not from network_config.json
-    // network_config.json is only used during initialization (init_tool)
-    // The main application reads from the database which was populated during init
+    // Configuration is loaded from database (populated during initialization)
+    // This function just sets defaults and node_id - actual config loading happens
+    // in main() after database is initialized
     
-    // Try to load from database (database must be initialized first)
-    // This will be called after initialize_storage(), so DB should be available
-    // For now, we'll load it after DB initialization in the main() function
-    
-    return 0; // Success - defaults are set, will load from DB later if available
+    return 0; // Success - defaults are set, will load from DB later
 }
 
 static int initialize_storage(const NodeConfig* config, NodeStatePaths* paths, char* db_path, size_t db_path_len) {
@@ -914,6 +910,49 @@ int main(int argc, char* argv[]) {
         }
 
         config_merge(&config, &env_config);
+    }
+    
+    // Load peers from database into config->peers for static discovery
+    // This must happen before discover_peers() is called, as static discovery
+    // requires config->peers to be populated
+    if (strcmp(config.discovery_mode, "static") == 0) {
+        GossipPeerInfo* db_peers = NULL;
+        size_t db_peer_count = 0;
+        if (gossip_peers_fetch_all(&db_peers, &db_peer_count) == 0 && db_peers && db_peer_count > 0) {
+            // Allocate peers array (we'll skip self, so allocate for all and adjust count)
+            config.peers = calloc(db_peer_count, sizeof(char*));
+            if (config.peers) {
+                config.peer_count = 0;
+                for (size_t i = 0; i < db_peer_count; i++) {
+                    // Skip self (compare hostname)
+                    if (config.hostname[0] != '\0' && 
+                        db_peers[i].hostname[0] != '\0' &&
+                        strcmp(db_peers[i].hostname, config.hostname) == 0) {
+                        continue;
+                    }
+                    // Skip entries without valid hostname or port
+                    if (db_peers[i].hostname[0] == '\0' || db_peers[i].gossip_port == 0) {
+                        continue;
+                    }
+                    // Format as hostname:port
+                    char* peer_str = malloc(256);
+                    if (peer_str) {
+                        snprintf(peer_str, 256, "%s:%u", 
+                                db_peers[i].hostname, db_peers[i].gossip_port);
+                        config.peers[config.peer_count++] = peer_str;
+                    }
+                }
+                if (config.peer_count > 0) {
+                    logger_info("main", "Loaded %u peer(s) from database for static discovery", 
+                               config.peer_count);
+                } else {
+                    // No peers found (only self), free the array
+                    free(config.peers);
+                    config.peers = NULL;
+                }
+            }
+            gossip_peers_free(db_peers, db_peer_count);
+        }
     }
     
     if (start_gossip_service(config.gossip_port, &validation_config, &config) != 0) {

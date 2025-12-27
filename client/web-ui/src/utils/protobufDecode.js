@@ -1,24 +1,22 @@
 /**
  * Protobuf decoding utilities for API responses
- * Decodes hex-encoded protobuf messages from the backend
+ * Decodes binary protobuf messages from the backend
  */
 
-import protobuf from 'protobufjs';
 import { hexToProtobuf } from './protobufHelper';
 
 let ConversationListType = null;
-let EnvelopeListType = null;
-let StoredEnvelopeType = null;
 
 /**
- * Load protobuf schema for API responses (lazy loading, cached)
+ * Load protobuf schema for ConversationList (lazy loading, cached)
  */
-async function loadApiProtobufSchema() {
-  if (ConversationListType && EnvelopeListType) {
-    return { ConversationListType, EnvelopeListType, StoredEnvelopeType };
+async function loadConversationListSchema() {
+  if (ConversationListType) {
+    return { ConversationListType };
   }
 
   try {
+    const protobuf = await import('protobufjs');
     const protoDefinition = `
       syntax = "proto3";
       package tinyweb;
@@ -34,47 +32,29 @@ async function loadApiProtobufSchema() {
         repeated ConversationSummary conversations = 1;
         uint32 total_count = 2;
       }
-      
-      message StoredEnvelope {
-        uint64 id = 1;
-        uint32 version = 2;
-        uint32 content_type = 3;
-        uint32 schema_version = 4;
-        uint64 timestamp = 5;
-        bytes sender = 6;
-        bytes envelope = 7;
-        uint64 expires_at = 8;
-      }
-      
-      message EnvelopeList {
-        repeated StoredEnvelope envelopes = 1;
-        uint32 total_count = 2;
-      }
     `;
     
     const root = protobuf.parse(protoDefinition, { keepCase: true }).root;
     
     ConversationListType = root.lookupType('tinyweb.ConversationList');
-    EnvelopeListType = root.lookupType('tinyweb.EnvelopeList');
-    StoredEnvelopeType = root.lookupType('tinyweb.StoredEnvelope');
     
-    if (!ConversationListType || !EnvelopeListType || !StoredEnvelopeType) {
-      throw new Error('Failed to load API protobuf types');
+    if (!ConversationListType) {
+      throw new Error('Failed to load ConversationList protobuf type');
     }
     
-    return { ConversationListType, EnvelopeListType, StoredEnvelopeType };
+    return { ConversationListType };
   } catch (error) {
-    throw new Error(`Failed to load API protobuf schema: ${error.message}`);
+    throw new Error(`Failed to load ConversationList protobuf schema: ${error.message}`);
   }
 }
 
 /**
- * Decode conversation_list_hex from API response
+ * Decode ConversationList from API response
  * @param {string} hex - Hex-encoded protobuf ConversationList
  * @returns {Promise<Array>} Array of conversation objects
  */
 export async function decodeConversationList(hex) {
-  const { ConversationListType } = await loadApiProtobufSchema();
+  const { ConversationListType } = await loadConversationListSchema();
   
   const bytes = hexToProtobuf(hex);
   const message = ConversationListType.decode(bytes);
@@ -98,36 +78,14 @@ export async function decodeConversationList(hex) {
 }
 
 /**
- * Decode envelope_list_hex from API response
- * @param {string} hex - Hex-encoded protobuf EnvelopeList
- * @returns {Promise<Array>} Array of stored envelope objects
+ * Decode MessageList from API response
+ * @param {Uint8Array|string} messageListBytes - Binary MessageList protobuf (Uint8Array or hex string)
+ * @returns {Promise<Array>} Array of Message objects
  */
-export async function decodeEnvelopeList(hex) {
-  const { EnvelopeListType } = await loadApiProtobufSchema();
-  
-  const bytes = hexToProtobuf(hex);
-  const message = EnvelopeListType.decode(bytes);
-  
-  const envelopes = [];
-  if (message.envelopes && message.envelopes.length > 0) {
-    for (const stored of message.envelopes) {
-      envelopes.push({
-        id: Number(stored.id),
-        version: stored.version,
-        contentType: stored.content_type,
-        schemaVersion: stored.schema_version,
-        timestamp: Number(stored.timestamp) * 1000, // Convert seconds to ms
-        sender: Array.from(stored.sender || []),
-        senderHex: Array.from(stored.sender || [])
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join(''),
-        envelope: stored.envelope ? Array.from(stored.envelope) : null,
-        expiresAt: Number(stored.expires_at) * 1000, // Convert seconds to ms
-      });
-    }
-  }
-  
-  return envelopes;
+export async function decodeMessageList(messageListBytes) {
+  // Use the messageHelper function
+  const { deserializeMessageListFromProtobuf } = await import('./messageHelper.js');
+  return deserializeMessageListFromProtobuf(messageListBytes);
 }
 
 

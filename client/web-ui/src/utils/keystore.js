@@ -389,41 +389,6 @@ class KeyStore {
     return deserializeEncryptedPayload(bytes);
   }
 
-  async _envelopeToHex(envelope) {
-    if (!this.initialized) await this.init();
-    // Use proper serialization from encryption.js
-    const { serializeEncryptedPayload } = await import('./encryption.js');
-    const envelopeData = {
-      header: {
-        ...envelope.header,
-        senderPubkey: Array.from(envelope.header.senderPubkey), // Convert Uint8Array to regular array
-        recipientPubkeys: envelope.header.recipientPubkeys.map(pk => Array.from(pk))
-      },
-      encryptedPayloadHex: sodium.to_hex(serializeEncryptedPayload(envelope.encryptedPayload)),
-      signatureHex: sodium.to_hex(envelope.signature)
-    };
-    return btoa(JSON.stringify(envelopeData));
-  }
-
-  async _hexToEnvelope(envelopeHex) {
-    if (!this.initialized) await this.init();
-    // Use proper deserialization from encryption.js
-    const { deserializeEncryptedPayload } = await import('./encryption.js');
-    const envelopeData = JSON.parse(atob(envelopeHex));
-
-    // Convert header fields back to Uint8Arrays
-    const header = {
-      ...envelopeData.header,
-      senderPubkey: new Uint8Array(envelopeData.header.senderPubkey),
-      recipientPubkeys: envelopeData.header.recipientPubkeys.map(pk => new Uint8Array(pk))
-    };
-
-    return {
-      header: header,
-      encryptedPayload: deserializeEncryptedPayload(sodium.from_hex(envelopeData.encryptedPayloadHex)),
-      signature: sodium.from_hex(envelopeData.signatureHex)
-    };
-  }
 }
 
 // Export a singleton instance

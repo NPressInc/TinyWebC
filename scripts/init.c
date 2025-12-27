@@ -701,11 +701,15 @@ int initialize_node(const InitNodeConfig* node, const InitUserConfig* users,
     }
 
     if (node->peers && node->peer_count > 0) {
+        printf("  Seeding %u peer(s)...\n", node->peer_count);
+        fflush(stdout);
         if (seed_peers(db, (const char**)node->peers, node->peer_count) != 0) {
             fprintf(stderr, "Failed to seed peers\n");
             db_close();
             return -1;
         }
+        printf("  ✓ Peers seeded successfully\n");
+        fflush(stdout);
     }
 
     // Generate node keypair and store public key in gossip_peers

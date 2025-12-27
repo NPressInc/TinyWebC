@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { keyStore, encryptPayloadMulti, decryptPayload, createDirectMessage, verifyEnvelopeSignature } from '../utils';
+import { keyStore, encryptPayloadMulti, decryptPayload } from '../utils';
+import { createDirectMessage, verifyMessageSignature } from '../utils/message';
+import { serializeMessageToProtobufHex, deserializeMessageFromProtobuf } from '../utils/messageHelper';
 import './CryptoDemo.css';
 
 function CryptoDemo() {
@@ -13,7 +15,7 @@ function CryptoDemo() {
   const [encryptedHex, setEncryptedHex] = useState('');
   const [decryptedMessage, setDecryptedMessage] = useState('');
   const [decryptedByCharlie, setDecryptedByCharlie] = useState('');
-  const [envelopeHex, setEnvelopeHex] = useState('');
+  const [messageHex, setMessageHex] = useState('');
   const [verificationResult, setVerificationResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -145,9 +147,9 @@ function CryptoDemo() {
     }
   };
 
-  const handleCreateEnvelope = async () => {
+  const handleCreateMessage = async () => {
     if (!message.trim()) {
-      setError('Please enter a message to envelope');
+      setError('Please enter a message');
       return;
     }
 
@@ -155,34 +157,33 @@ function CryptoDemo() {
       setLoading(true);
       setError('');
 
-      // Use Bob's X25519 encryption public key
-      if (!bobKeypair || !bobKeypair.encryptionPublicKey) {
+      // Use Bob's Ed25519 public key for message creation
+      if (!bobKeypair || !bobKeypair.publicKey) {
         throw new Error('Bob\'s keypair not available');
       }
 
-      console.log('📝 Creating envelope...');
+      console.log('📝 Creating message...');
       console.log('👤 Bob publicKey (Ed25519):', bobKeypair.publicKey);
       console.log('👤 Bob publicKey type:', bobKeypair.publicKey?.constructor?.name);
       console.log('👤 Bob publicKey length:', bobKeypair.publicKey?.length);
-      console.log('🔐 Bob encryptionPublicKey (X25519):', bobKeypair.encryptionPublicKey);
 
-      // Create signed envelope (uses Ed25519 key for signing, not X25519 for encryption)
-      const envelope = await createDirectMessage(bobKeypair.publicKey, message);
-      console.log('✅ Envelope created:', envelope);
-      console.log('📋 Envelope header:', envelope.header);
-      console.log('👤 Envelope sender pubkey:', envelope.header.senderPubkey);
-      console.log('👤 Envelope sender pubkey type:', envelope.header.senderPubkey?.constructor?.name);
+      // Create signed message (uses Ed25519 key for signing)
+      const msg = await createDirectMessage(bobKeypair.publicKey, message);
+      console.log('✅ Message created:', msg);
+      console.log('📋 Message header:', msg.header);
+      console.log('👤 Message sender pubkey:', msg.header.senderPubkey);
+      console.log('👤 Message sender pubkey type:', msg.header.senderPubkey?.constructor?.name);
 
-      // Convert to hex for display (simplified)
-      const envelopeHex = await keyStore._envelopeToHex(envelope);
-      setEnvelopeHex(envelopeHex);
+      // Serialize to protobuf and convert to hex for display
+      const messageHex = await serializeMessageToProtobufHex(msg);
+      setMessageHex(messageHex);
 
-      console.log('✅ Envelope serialized to hex');
+      console.log('✅ Message serialized to hex');
 
     } catch (err) {
-      console.error('❌ Envelope creation error:', err);
+      console.error('❌ Message creation error:', err);
       console.error('Stack trace:', err.stack);
-      setError('Envelope creation failed: ' + err.message);
+      setError('Message creation failed: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -230,9 +231,9 @@ function CryptoDemo() {
     }
   };
 
-  const handleVerifyEnvelope = async () => {
-    if (!envelopeHex) {
-      setError('No envelope to verify');
+  const handleVerifyMessage = async () => {
+    if (!messageHex) {
+      setError('No message to verify');
       return;
     }
 
@@ -240,20 +241,20 @@ function CryptoDemo() {
       setLoading(true);
       setError('');
 
-      // Convert hex back to envelope
-      console.log('🔍 Deserializing envelope from hex...');
-      const envelope = await keyStore._hexToEnvelope(envelopeHex);
-      console.log('📦 Envelope:', envelope);
-      console.log('📋 Header:', envelope.header);
-      console.log('👤 Sender pubkey type:', envelope.header.senderPubkey?.constructor?.name);
-      console.log('👤 Sender pubkey length:', envelope.header.senderPubkey?.length);
-      console.log('👤 Sender pubkey:', envelope.header.senderPubkey);
-      console.log('🔑 Signature type:', envelope.signature?.constructor?.name);
-      console.log('🔑 Signature length:', envelope.signature?.length);
+      // Convert hex back to message
+      console.log('🔍 Deserializing message from hex...');
+      const msg = await deserializeMessageFromProtobuf(messageHex);
+      console.log('📦 Message:', msg);
+      console.log('📋 Header:', msg.header);
+      console.log('👤 Sender pubkey type:', msg.header.senderPubkey?.constructor?.name);
+      console.log('👤 Sender pubkey length:', msg.header.senderPubkey?.length);
+      console.log('👤 Sender pubkey:', msg.header.senderPubkey);
+      console.log('🔑 Signature type:', msg.signature?.constructor?.name);
+      console.log('🔑 Signature length:', msg.signature?.length);
 
       // Verify signature
       console.log('✅ Verifying signature...');
-      const isValid = await verifyEnvelopeSignature(envelope);
+      const isValid = await verifyMessageSignature(msg);
 
       setVerificationResult(isValid ? '✅ Signature is VALID' : '❌ Signature is INVALID');
 
@@ -377,28 +378,28 @@ function CryptoDemo() {
         </div>
 
         <div className="demo-section">
-          <h3>Envelope Creation & Signing</h3>
+          <h3>Message Creation & Signing</h3>
           <div className="button-group">
             <button
-              onClick={handleCreateEnvelope}
+              onClick={handleCreateMessage}
               disabled={loading || !message.trim()}
               className="demo-button primary"
             >
-              ✉️ Create Signed Envelope
+              ✉️ Create Signed Message
             </button>
           </div>
 
-          {envelopeHex && (
+          {messageHex && (
             <div className="result-display">
-              <h4>Envelope (Hex):</h4>
-              <code className="envelope-hex">{envelopeHex.slice(0, 100)}...</code>
+              <h4>Message (Hex):</h4>
+              <code className="message-hex">{messageHex.slice(0, 100)}...</code>
             </div>
           )}
 
-          {envelopeHex && (
+          {messageHex && (
             <div className="button-group">
               <button
-                onClick={handleVerifyEnvelope}
+                onClick={handleVerifyMessage}
                 disabled={loading}
                 className="demo-button secondary"
               >

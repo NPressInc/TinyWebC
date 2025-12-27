@@ -66,13 +66,13 @@ export async function getPartnerFromConversationId(userPubkey, conversationId) {
 }
 
 /**
- * Get conversation ID from an envelope
+ * Get conversation ID from a message
  * Extracts sender and recipient(s) and calculates conversation_id
- * @param {Object} envelope - Decoded envelope object
+ * @param {Object} message - Decoded message object
  * @param {string} userPubkey - User's public key (hex)
  * @returns {Promise<string>} Conversation ID (hex string)
  */
-export async function getConversationIdFromEnvelope(envelope, userPubkey) {
+export async function getConversationIdFromMessage(message, userPubkey) {
   await sodium.ready;
   
   const userPubkeyBytes = sodium.from_hex(userPubkey);
@@ -81,19 +81,19 @@ export async function getConversationIdFromEnvelope(envelope, userPubkey) {
   let partnerPubkey = null;
   
   // Check if user is sender
-  const senderHex = Array.from(envelope.header.senderPubkey)
+  const senderHex = Array.from(message.header.senderPubkey)
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
   
   const isUserSender = sodium.memcmp(
-    new Uint8Array(envelope.header.senderPubkey),
+    new Uint8Array(message.header.senderPubkey),
     userPubkeyBytes
   );
   
   if (isUserSender) {
     // User is sender, partner is first recipient
-    if (envelope.header.recipientPubkeys && envelope.header.recipientPubkeys.length > 0) {
-      partnerPubkey = Array.from(envelope.header.recipientPubkeys[0])
+    if (message.header.recipientsPubkey && message.header.recipientsPubkey.length > 0) {
+      partnerPubkey = Array.from(message.header.recipientsPubkey[0])
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
     }
@@ -103,7 +103,7 @@ export async function getConversationIdFromEnvelope(envelope, userPubkey) {
   }
   
   if (!partnerPubkey) {
-    throw new Error('Could not determine conversation partner from envelope');
+    throw new Error('Could not determine conversation partner from message');
   }
   
   return calculateConversationId(userPubkey, partnerPubkey);

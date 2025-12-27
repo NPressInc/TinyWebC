@@ -10,7 +10,9 @@ export * from './keystore.js';
 
 export * from './encryption.js';
 
-export * from './envelope.js';
+// Note: envelope.js removed - client only uses Message structure for user messaging
+// System messages (LocationUpdate, EmergencyAlert) are not handled by this client
+export * from './message.js';
 
 // Re-export libsodium for convenience
 export { default as sodium } from 'libsodium-wrappers';

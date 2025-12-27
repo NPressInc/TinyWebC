@@ -93,46 +93,47 @@ export async function getPeers(nodeUrl) {
 }
 
 /**
- * Send a user message envelope to a node
+ * Send a user message to a node
  * @param {string} nodeUrl - Base URL of the node
- * @param {string} envelopeHex - Hex-encoded protobuf-serialized envelope (user-signed)
- * @returns {Promise<Object>} Response object
+ * @param {Object} message - JavaScript Message object (from createSignedMessage)
+ * @returns {Promise<Object>} Response object with status
  */
-export async function sendEnvelope(nodeUrl, envelopeHex) {
+export async function sendMessage(nodeUrl, message) {
   try {
-    console.log('[sendEnvelope] Sending envelope to:', nodeUrl);
-    console.log('[sendEnvelope] Envelope hex length:', envelopeHex?.length);
+    console.log('[sendMessage] Sending message to:', nodeUrl);
     
-    const url = `${nodeUrl}/messages/send`;
-    const body = JSON.stringify({
-      envelope_hex: envelopeHex,
-    });
+    // Serialize message to binary protobuf
+    const { serializeMessageToProtobuf } = await import('./messageHelper.js');
+    const messageBytes = await serializeMessageToProtobuf(message);
     
-    console.log('[sendEnvelope] POST URL:', url);
-    console.log('[sendEnvelope] Body length:', body.length);
+    const url = `${nodeUrl}/messages/submit`;
+    
+    console.log('[sendMessage] POST URL:', url);
+    console.log('[sendMessage] Message size:', messageBytes.length, 'bytes');
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-protobuf',
       },
-      body: body,
+      body: messageBytes,
     });
     
-    console.log('[sendEnvelope] Response status:', response.status);
+    console.log('[sendMessage] Response status:', response.status);
     
+    // Backend returns JSON response (not binary)
     const data = await response.json();
     
     if (!response.ok) {
-      console.error('[sendEnvelope] Error response:', data);
+      console.error('[sendMessage] Error response:', data);
       throw new Error(data.error || `HTTP ${response.status}`);
     }
     
-    console.log('[sendEnvelope] Success:', data);
+    console.log('[sendMessage] Success:', data);
     return data;
   } catch (error) {
-    console.error('[sendEnvelope] Exception:', error);
-    throw new Error(`Failed to send envelope to ${nodeUrl}: ${error.message}`);
+    console.error('[sendMessage] Exception:', error);
+    throw new Error(`Failed to send message to ${nodeUrl}: ${error.message}`);
   }
 }
 
@@ -141,7 +142,7 @@ export async function sendEnvelope(nodeUrl, envelopeHex) {
  * @param {string} nodeUrl - Base URL of the node
  * @param {string} userPubkey - User's public key (hex)
  * @param {string} withPubkey - Other user's public key (hex)
- * @returns {Promise<Object>} Messages response (contains envelope_list_hex)
+ * @returns {Promise<Array>} Array of Message objects
  */
 export async function getMessages(nodeUrl, userPubkey, withPubkey) {
   try {
@@ -153,7 +154,7 @@ export async function getMessages(nodeUrl, userPubkey, withPubkey) {
     
     const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Accept': 'application/x-protobuf' },
     });
     
     if (!response.ok) {
@@ -169,7 +170,21 @@ export async function getMessages(nodeUrl, userPubkey, withPubkey) {
       throw new Error(errorMsg);
     }
     
-    return await response.json();
+    // Check Content-Type header
+    const contentType = response.headers.get('Content-Type');
+    if (!contentType || !contentType.includes('application/x-protobuf')) {
+      throw new Error(`Unexpected Content-Type: ${contentType}, expected application/x-protobuf`);
+    }
+    
+    // Get binary response
+    const arrayBuffer = await response.arrayBuffer();
+    const messageBytes = new Uint8Array(arrayBuffer);
+    
+    // Deserialize MessageList
+    const { deserializeMessageListFromProtobuf } = await import('./messageHelper.js');
+    const messages = await deserializeMessageListFromProtobuf(messageBytes);
+    
+    return messages;
   } catch (error) {
     throw new Error(`Failed to get messages from ${nodeUrl}: ${error.message}`);
   }
@@ -180,7 +195,7 @@ export async function getMessages(nodeUrl, userPubkey, withPubkey) {
  * @param {string} nodeUrl - Base URL of the node
  * @param {string} userPubkey - User's public key (hex)
  * @param {number} limit - Maximum number of messages to return (default: 50)
- * @returns {Promise<Object>} Recent messages response (contains envelope_list_hex)
+ * @returns {Promise<Array>} Array of Message objects
  */
 export async function getRecentMessages(nodeUrl, userPubkey, limit = 50) {
   try {
@@ -190,14 +205,28 @@ export async function getRecentMessages(nodeUrl, userPubkey, limit = 50) {
     
     const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Accept': 'application/x-protobuf' },
     });
     
     if (!response.ok) {
       throw new Error(`Failed to get recent messages: ${response.status}`);
     }
     
-    return await response.json();
+    // Check Content-Type header
+    const contentType = response.headers.get('Content-Type');
+    if (!contentType || !contentType.includes('application/x-protobuf')) {
+      throw new Error(`Unexpected Content-Type: ${contentType}, expected application/x-protobuf`);
+    }
+    
+    // Get binary response
+    const arrayBuffer = await response.arrayBuffer();
+    const messageBytes = new Uint8Array(arrayBuffer);
+    
+    // Deserialize MessageList
+    const { deserializeMessageListFromProtobuf } = await import('./messageHelper.js');
+    const messages = await deserializeMessageListFromProtobuf(messageBytes);
+    
+    return messages;
   } catch (error) {
     throw new Error(`Failed to get recent messages from ${nodeUrl}: ${error.message}`);
   }
@@ -207,7 +236,7 @@ export async function getRecentMessages(nodeUrl, userPubkey, limit = 50) {
  * Get conversations for a user
  * @param {string} nodeUrl - Base URL of the node
  * @param {string} userPubkey - User's public key (hex)
- * @returns {Promise<Object>} Conversations response
+ * @returns {Promise<Array>} Array of ConversationSummary objects
  */
 export async function getConversations(nodeUrl, userPubkey) {
   try {
@@ -216,14 +245,32 @@ export async function getConversations(nodeUrl, userPubkey) {
     
     const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Accept': 'application/x-protobuf' },
     });
     
     if (!response.ok) {
       throw new Error(`Failed to get conversations: ${response.status}`);
     }
     
-    return await response.json();
+    // Check Content-Type header
+    const contentType = response.headers.get('Content-Type');
+    if (!contentType || !contentType.includes('application/x-protobuf')) {
+      throw new Error(`Unexpected Content-Type: ${contentType}, expected application/x-protobuf`);
+    }
+    
+    // Get binary response
+    const arrayBuffer = await response.arrayBuffer();
+    const conversationListBytes = new Uint8Array(arrayBuffer);
+    
+    // Deserialize ConversationList using existing protobufDecode
+    const { decodeConversationList } = await import('./protobufDecode.js');
+    // decodeConversationList expects hex, so convert
+    const hex = Array.from(conversationListBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    const conversations = await decodeConversationList(hex);
+    
+    return conversations;
   } catch (error) {
     throw new Error(`Failed to get conversations from ${nodeUrl}: ${error.message}`);
   }
