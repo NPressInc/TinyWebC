@@ -1,4 +1,5 @@
 #include "gossip.h"
+#include "message.pb-c.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -22,7 +23,8 @@ static void gossip_service_clear_peers(GossipService* service);
 
 int gossip_service_init(GossipService* service,
                         uint16_t listen_port,
-                        GossipEnvelopeHandler handler,
+                        GossipEnvelopeHandler envelope_handler,
+                        GossipMessageHandler message_handler,
                         void* handler_context) {
     if (!service) {
         return -1;
@@ -30,7 +32,8 @@ int gossip_service_init(GossipService* service,
 
     memset(service, 0, sizeof(*service));
     service->listen_port = listen_port;
-    service->handler = handler;
+    service->envelope_handler = envelope_handler;
+    service->message_handler = message_handler;
     service->handler_context = handler_context;
     service->socket_fd = -1;
 
@@ -159,25 +162,13 @@ void gossip_service_stop(GossipService* service) {
     pthread_mutex_destroy(&service->peer_lock);
 }
 
-static int gossip_service_send_envelope(GossipService* service,
-                                         Tinyweb__Envelope* envelope,
-                                         const struct sockaddr_in* exclude_source) {
-    if (!service || service->socket_fd < 0 || !envelope) {
+static int gossip_service_send_data(GossipService* service,
+                                    const unsigned char* buffer,
+                                    size_t serialized_size,
+                                    const struct sockaddr_in* exclude_source) {
+    if (!service || service->socket_fd < 0 || !buffer || serialized_size == 0) {
         return -1;
     }
-
-    // Serialize envelope
-    size_t serialized_size = tinyweb__envelope__get_packed_size(envelope);
-    if (serialized_size == 0 || serialized_size > GOSSIP_MAX_MESSAGE_SIZE) {
-        return -1;
-    }
-
-    unsigned char* buffer = malloc(serialized_size);
-    if (!buffer) {
-        return -1;
-    }
-
-    tinyweb__envelope__pack(envelope, buffer);
 
     pthread_mutex_lock(&service->peer_lock);
 
@@ -199,7 +190,7 @@ static int gossip_service_send_envelope(GossipService* service,
 
         struct addrinfo hints;
         memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_UNSPEC;
+        hints.ai_family = AF_INET; // Force IPv4 for simplicity in memcmp below
         hints.ai_socktype = SOCK_DGRAM;
         hints.ai_protocol = IPPROTO_UDP;
 
@@ -248,8 +239,24 @@ static int gossip_service_send_envelope(GossipService* service,
     }
 
     pthread_mutex_unlock(&service->peer_lock);
-    free(buffer);
     return 0;
+}
+
+static int gossip_service_send_envelope(GossipService* service,
+                                         Tinyweb__Envelope* envelope,
+                                         const struct sockaddr_in* exclude_source) {
+    if (!service || !envelope) return -1;
+
+    size_t size = tinyweb__envelope__get_packed_size(envelope);
+    if (size == 0 || size > GOSSIP_MAX_MESSAGE_SIZE) return -1;
+
+    unsigned char* buf = malloc(size);
+    if (!buf) return -1;
+
+    tinyweb__envelope__pack(envelope, buf);
+    int rc = gossip_service_send_data(service, buf, size, exclude_source);
+    free(buf);
+    return rc;
 }
 
 int gossip_service_broadcast_envelope(GossipService* service,
@@ -261,6 +268,39 @@ int gossip_service_rebroadcast_envelope(GossipService* service,
                                         Tinyweb__Envelope* envelope,
                                         const struct sockaddr_in* source) {
     return gossip_service_send_envelope(service, envelope, source);
+}
+
+int gossip_service_broadcast_message(GossipService* service,
+                                     const Tinyweb__Message* message) {
+    if (!service || !message) return -1;
+
+    size_t size = tinyweb__message__get_packed_size((Tinyweb__Message*)message);
+    if (size == 0 || size > GOSSIP_MAX_MESSAGE_SIZE) return -1;
+
+    unsigned char* buf = malloc(size);
+    if (!buf) return -1;
+
+    tinyweb__message__pack((Tinyweb__Message*)message, buf);
+    int rc = gossip_service_send_data(service, buf, size, NULL);
+    free(buf);
+    return rc;
+}
+
+int gossip_service_rebroadcast_message(GossipService* service,
+                                       const Tinyweb__Message* message,
+                                       const struct sockaddr_in* source) {
+    if (!service || !message) return -1;
+
+    size_t size = tinyweb__message__get_packed_size((Tinyweb__Message*)message);
+    if (size == 0 || size > GOSSIP_MAX_MESSAGE_SIZE) return -1;
+
+    unsigned char* buf = malloc(size);
+    if (!buf) return -1;
+
+    tinyweb__message__pack((Tinyweb__Message*)message, buf);
+    int rc = gossip_service_send_data(service, buf, size, source);
+    free(buf);
+    return rc;
 }
 
 size_t gossip_service_peer_count(const GossipService* service) {
@@ -296,23 +336,37 @@ static void* gossip_receive_loop(void* arg) {
             continue;
         }
 
-        // Deserialize envelope
+        // 1. Try unpacking as Message first (new standard)
+        Tinyweb__Message* message = tinyweb__message__unpack(NULL, (size_t)bytes, buffer);
+        if (message && message->header && message->header->sender_pubkey.len == 32) {
+            // Sane message - handle it
+            if (service->message_handler) {
+                if (service->message_handler(service, message, &source, service->handler_context) != 0) {
+                    logger_error("gossip", "message handler rejected message from %s:%d",
+                               inet_ntoa(source.sin_addr), ntohs(source.sin_port));
+                }
+            }
+            tinyweb__message__free_unpacked(message, NULL);
+            continue;
+        }
+        if (message) tinyweb__message__free_unpacked(message, NULL);
+
+        // 2. Fallback to legacy Envelope
         Tinyweb__Envelope* envelope = tinyweb__envelope__unpack(NULL, (size_t)bytes, buffer);
-        if (!envelope) {
-            logger_error("gossip", "failed to deserialize envelope from %s:%d (%zd bytes)",
-                    inet_ntoa(source.sin_addr), ntohs(source.sin_port), bytes);
+        if (envelope) {
+            // Sane envelope - handle it
+            if (service->envelope_handler) {
+                if (service->envelope_handler(service, envelope, &source, service->handler_context) != 0) {
+                    logger_error("gossip", "envelope handler rejected envelope content_type %u",
+                                envelope->header ? envelope->header->content_type : 0);
+                }
+            }
+            tinyweb__envelope__free_unpacked(envelope, NULL);
             continue;
         }
 
-        // Call handler
-        if (service->handler) {
-            if (service->handler(service, envelope, &source, service->handler_context) != 0) {
-                logger_error("gossip", "handler rejected envelope content_type %u",
-                        envelope->header ? envelope->header->content_type : 0);
-            }
-        }
-
-        tinyweb__envelope__free_unpacked(envelope, NULL);
+        logger_error("gossip", "Failed to deserialize as either Message or Envelope from %s:%d (%zd bytes)",
+                   inet_ntoa(source.sin_addr), ntohs(source.sin_port), bytes);
     }
 
     return NULL;

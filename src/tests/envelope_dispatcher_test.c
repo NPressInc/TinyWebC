@@ -81,15 +81,15 @@ static int test_handler_registration(void) {
     ASSERT_TEST(envelope_dispatcher_init() == 0, "Failed to init dispatcher");
     
     // Register a custom handler
-    int result = envelope_register_handler(TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE, test_handler);
+    int result = envelope_register_handler(TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE, test_handler);
     ASSERT_TEST(result == 0, "Failed to register handler");
     
     // Try to register again (should succeed, replacing previous)
-    result = envelope_register_handler(TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE, test_handler);
+    result = envelope_register_handler(TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE, test_handler);
     ASSERT_TEST(result == 0, "Failed to re-register handler");
     
     // Unregister handler
-    envelope_unregister_handler(TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE);
+    envelope_unregister_handler(TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE);
     
     envelope_dispatcher_cleanup();
     
@@ -114,19 +114,19 @@ static int test_dispatch_routing(void) {
     ASSERT_TEST(keystore_init() == 0, "Failed to init keystore");
     ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) == 0, "Failed to load keypair");
     
-    // Create DirectMessage content
-    Tinyweb__DirectMessage direct_msg = TINYWEB__DIRECT_MESSAGE__INIT;
-    direct_msg.text = "Test dispatch message";
+    // Create LocationUpdate content
+    Tinyweb__LocationUpdate loc_update = TINYWEB__LOCATION_UPDATE__INIT;
+    loc_update.lat = 45.0;
     
-    size_t content_size = tinyweb__direct_message__get_packed_size(&direct_msg);
+    size_t content_size = tinyweb__location_update__get_packed_size(&loc_update);
     unsigned char* content_data = malloc(content_size);
     ASSERT_TEST(content_data != NULL, "Failed to allocate content data");
-    tinyweb__direct_message__pack(&direct_msg, content_data);
+    tinyweb__location_update__pack(&loc_update, content_data);
     
     // Create envelope header
     tw_envelope_header_view_t header = {
         .version = 1,
-        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
         .schema_version = 1,
         .timestamp = (uint64_t)time(NULL),
         .sender_pubkey = admin_pubkey,
@@ -146,14 +146,14 @@ static int test_dispatch_routing(void) {
     // Register test handler
     g_handler_called = 0;
     g_last_content_type = 0;
-    ASSERT_TEST(envelope_register_handler(TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE, test_handler) == 0,
+    ASSERT_TEST(envelope_register_handler(TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE, test_handler) == 0,
                "Failed to register test handler");
     
     // Dispatch envelope
     result = envelope_dispatch(envelope, NULL);
     ASSERT_TEST(result == 0, "envelope_dispatch failed");
     ASSERT_TEST(g_handler_called == 1, "Handler was not called");
-    ASSERT_TEST(g_last_content_type == TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+    ASSERT_TEST(g_last_content_type == TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
                "Handler received wrong content type");
     
     // Test unregistered content type
@@ -186,18 +186,18 @@ static int test_default_handlers(void) {
     ASSERT_TEST(keystore_init() == 0, "Failed to init keystore");
     ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) == 0, "Failed to load keypair");
     
-    // Test DirectMessage handler
-    Tinyweb__DirectMessage direct_msg = TINYWEB__DIRECT_MESSAGE__INIT;
-    direct_msg.text = "Test direct message";
+    // Test LocationUpdate handler
+    Tinyweb__LocationUpdate loc_update = TINYWEB__LOCATION_UPDATE__INIT;
+    loc_update.lat = 45.0;
     
-    size_t content_size = tinyweb__direct_message__get_packed_size(&direct_msg);
+    size_t content_size = tinyweb__location_update__get_packed_size(&loc_update);
     unsigned char* content_data = malloc(content_size);
     ASSERT_TEST(content_data != NULL, "Failed to allocate content data");
-    tinyweb__direct_message__pack(&direct_msg, content_data);
+    tinyweb__location_update__pack(&loc_update, content_data);
     
     tw_envelope_header_view_t header = {
         .version = 1,
-        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
         .schema_version = 1,
         .timestamp = (uint64_t)time(NULL),
         .sender_pubkey = admin_pubkey,

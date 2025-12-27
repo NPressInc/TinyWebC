@@ -210,6 +210,71 @@
   cursor: not-allowed;
 }
 
+.new-conversation-button {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.new-conversation-button:hover {
+  background: #0056b3;
+}
+
+.new-conversation-form {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+}
+
+.new-conversation-form h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.new-conversation-form input {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.new-conversation-form button {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.new-conversation-form button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.new-conversation-form button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.new-conversation-form button:last-child {
+  background: #6c757d;
+}
+
+.new-conversation-form button:last-child:hover {
+  background: #5a6268;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .conversations-list {

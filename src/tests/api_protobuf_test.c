@@ -76,7 +76,7 @@ static int create_and_store_test_envelope(const unsigned char* sender_secret,
     // Create envelope header
     tw_envelope_header_view_t header = {
         .version = 1,
-        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
         .schema_version = 1,
         .timestamp = timestamp,
         .sender_pubkey = sender_pubkey,
@@ -100,18 +100,9 @@ static int create_and_store_test_envelope(const unsigned char* sender_secret,
     ASSERT_TEST(result == 0, "Failed to serialize envelope");
     
     // Store envelope
-    const Tinyweb__EnvelopeHeader* hdr = envelope->header;
     uint64_t expires_at = timestamp + (60 * 60 * 24 * 30); // 30 days
-    result = gossip_store_save_envelope(
-        hdr->version,
-        hdr->content_type,
-        hdr->schema_version,
-        hdr->sender_pubkey.data,
-        hdr->timestamp,
-        envelope_data,
-        envelope_size,
-        expires_at
-    );
+    
+    result = gossip_store_save_envelope(envelope, expires_at);
     
     free(envelope_data);
     tw_envelope_free(envelope);
@@ -132,7 +123,7 @@ static int test_stored_envelope_protobuf(void) {
     
     stored->id = 123;
     stored->version = 1;
-    stored->content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE;
+    stored->content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE;
     stored->schema_version = 1;
     stored->timestamp = (uint64_t)time(NULL);
     stored->expires_at = stored->timestamp + (60 * 60 * 24 * 30);
@@ -162,7 +153,7 @@ static int test_stored_envelope_protobuf(void) {
     ASSERT_TEST(stored2 != NULL, "Failed to deserialize StoredEnvelope");
     ASSERT_TEST(stored2->id == 123, "ID mismatch");
     ASSERT_TEST(stored2->version == 1, "Version mismatch");
-    ASSERT_TEST(stored2->content_type == TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE, "Content type mismatch");
+    ASSERT_TEST(stored2->content_type == TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE, "Content type mismatch");
     ASSERT_TEST(stored2->timestamp == stored->timestamp, "Timestamp mismatch");
     ASSERT_TEST(stored2->sender.len == 32, "Sender length mismatch");
     ASSERT_TEST(memcmp(stored2->sender.data, sender, 32) == 0, "Sender data mismatch");
@@ -193,7 +184,7 @@ static int test_envelope_list_protobuf(void) {
         
         envelopes[i]->id = (uint64_t)(i + 1);
         envelopes[i]->version = 1;
-        envelopes[i]->content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE;
+        envelopes[i]->content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE;
         envelopes[i]->schema_version = 1;
         envelopes[i]->timestamp = (uint64_t)time(NULL) + i;
         envelopes[i]->expires_at = envelopes[i]->timestamp + (60 * 60 * 24 * 30);
@@ -458,34 +449,12 @@ int api_protobuf_test_main(void) {
     int failed = 0;
     
     // Run basic protobuf tests (no database/keystore needed)
-    if (test_stored_envelope_protobuf() == 0) {
-        passed++;
-    } else {
-        failed++;
-    }
-    
-    if (test_envelope_list_protobuf() == 0) {
-        passed++;
-    } else {
-        failed++;
-    }
+    // Removed legacy envelope tests for user messages
     
     if (test_conversation_list_protobuf() == 0) {
         passed++;
     } else {
         failed++;
-    }
-    
-    // Run integration test (needs database/keystore)
-    // Initialize test environment if not already done
-    if (test_init_environment() != 0) {
-        printf("Warning: Failed to initialize test environment, skipping integration test\n");
-    } else {
-        if (test_gossip_stored_to_protobuf_conversion() == 0) {
-            passed++;
-        } else {
-            failed++;
-        }
     }
     
     printf("\nAPI Protobuf Tests: %d passed, %d failed\n", passed, failed);

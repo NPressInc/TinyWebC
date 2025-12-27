@@ -12,6 +12,7 @@
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/schema.h"
 #include "packages/sql/gossip_peers.h"
+#include "packages/sql/message_store.h"
 
 #define TEST_BASE_PATH "test_state"
 #define CONFIG_PATH "scripts/configs/network_config.json"
@@ -313,6 +314,10 @@ int test_init_environment(void) {
         }
         if (gossip_peers_init() != 0) {
             fprintf(stderr, "Warning: Failed to initialize gossip peers schema\n");
+        }
+        // Initialize message store schema (user_messages, message_recipients tables)
+        if (message_store_init() != 0) {
+            fprintf(stderr, "Warning: Failed to initialize message store schema\n");
         }
         db_close();  // Close the network-level DB, tests will reopen it
     } else {

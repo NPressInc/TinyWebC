@@ -43,6 +43,14 @@ set(GOSSIP_DB_SOURCES
     src/packages/sql/database_gossip.c
     src/packages/sql/permissions.c
     src/packages/sql/schema.c
+    src/packages/sql/message_store.c
+)
+
+# Messaging specific sources
+set(MESSAGING_SOURCES
+    src/packages/comm/messagesApi.c
+    src/packages/comm/message_permissions.c
+    src/packages/validation/message_validation.c
 )
 
 # Protobuf-C generation for envelope/content
@@ -59,6 +67,7 @@ set(PROTO_FILES
     ${PROTO_DIR}/envelope.proto
     ${PROTO_DIR}/content.proto
     ${PROTO_DIR}/api.proto
+    ${PROTO_DIR}/message.proto
 )
 
 set(GENERATED_SOURCES)
@@ -83,7 +92,7 @@ add_custom_target(generate_proto DEPENDS ${GENERATED_SOURCES} ${GENERATED_HEADER
 
 add_executable(tinyweb ${SOURCES})
 include_directories(src) 
-target_sources(tinyweb PRIVATE ${GENERATED_SOURCES} ${GOSSIP_DB_SOURCES})
+target_sources(tinyweb PRIVATE ${GENERATED_SOURCES} ${GOSSIP_DB_SOURCES} ${MESSAGING_SOURCES})
 target_include_directories(tinyweb PRIVATE ${GEN_DIR})
 add_dependencies(tinyweb generate_proto)
 
@@ -142,8 +151,12 @@ set(TEST_MAIN "src/tests/test_runner.c")
 add_executable(tinyweb_tests ${TEST_MAIN} ${TEST_SOURCES} ${LIB_SOURCES} 
     scripts/init.c
     src/packages/comm/httpClient.c
-    src/packages/sql/schema.c)
-target_sources(tinyweb_tests PRIVATE ${GENERATED_SOURCES} ${GOSSIP_DB_SOURCES})
+    src/packages/sql/schema.c
+    src/tests/message_store_test.c
+    src/tests/message_api_test.c
+    src/tests/message_permissions_test.c
+)
+target_sources(tinyweb_tests PRIVATE ${GENERATED_SOURCES} ${GOSSIP_DB_SOURCES} ${MESSAGING_SOURCES})
 add_dependencies(tinyweb_tests generate_proto)
 target_link_libraries(tinyweb_tests PRIVATE 
     ${MICROHTTPD_LIBRARIES} 
@@ -177,7 +190,7 @@ add_test(NAME MongooseTest COMMAND tinyweb_tests mongoose)
 
 
 
-# Add init_tool executable (before blockchain subdirectory)
+# Add init_tool executable
 add_executable(init_tool 
     scripts/init_tool.c 
     scripts/init.c
@@ -186,15 +199,20 @@ add_executable(init_tool
     src/packages/utils/logger.c
     src/packages/utils/error.c
     src/structs/permission/permission.c
+    src/packages/sql/database_gossip.c
+    src/packages/sql/message_store.c
 )
-target_sources(init_tool PRIVATE ${GOSSIP_DB_SOURCES})
+target_include_directories(init_tool PRIVATE ${GEN_DIR} src scripts)
 target_link_libraries(init_tool PRIVATE 
     cjson 
     ${SODIUM_LIBRARIES} 
     SQLite::SQLite3
+    ${PROTOBUFC_LIBRARIES}
     pthread
     m
 )
+add_dependencies(init_tool generate_proto)
+
 # Add docker_config_generator executable
 add_executable(docker_config_generator 
     scripts/docker_config_generator.c 
@@ -204,28 +222,18 @@ add_executable(docker_config_generator
     src/packages/utils/logger.c
     src/packages/utils/error.c
     src/structs/permission/permission.c
+    src/packages/sql/database_gossip.c
+    src/packages/sql/message_store.c
 )
-target_sources(docker_config_generator PRIVATE ${GOSSIP_DB_SOURCES})
+target_include_directories(docker_config_generator PRIVATE ${GEN_DIR} src scripts)
 target_link_libraries(docker_config_generator PRIVATE 
     cjson 
     ${SODIUM_LIBRARIES} 
     SQLite::SQLite3
+    ${PROTOBUFC_LIBRARIES}
     yaml  # libyaml
     pthread
     m
 )
-target_include_directories(docker_config_generator PRIVATE
-    ${SODIUM_INCLUDE_DIRS}
-    /usr/include/cjson
-    src
-    scripts
-    ${GEN_DIR}
-)
-
-target_include_directories(init_tool PRIVATE 
-    ${SODIUM_INCLUDE_DIRS} 
-    /usr/include/cjson 
-    src
-    scripts
-)
+add_dependencies(docker_config_generator generate_proto)
 

@@ -41,6 +41,11 @@ static int test_gossip_seen_cache(void) {
     ensure_directory_exists("test_state");
     const char* db_path = "test_state/gossip_seen_test.db";
     remove(db_path);
+    
+    // Ensure any existing DB is closed before opening a new one
+    if (db_is_initialized()) {
+        db_close();
+    }
 
     ASSERT_OR_FAIL(db_init_gossip(db_path) == 0, "db_init_gossip failed");
     ASSERT_OR_FAIL(gossip_store_init() == 0, "gossip_store_init failed");
@@ -80,6 +85,11 @@ static int test_envelope_storage(void) {
     ensure_directory_exists("test_state");
     const char* db_path = "test_state/envelope_store_test.db";
     remove(db_path);
+    
+    // Ensure any existing DB is closed before opening a new one
+    if (db_is_initialized()) {
+        db_close();
+    }
 
     ASSERT_OR_FAIL(db_init_gossip(db_path) == 0, "db_init_gossip failed");
     ASSERT_OR_FAIL(gossip_store_init() == 0, "gossip_store_init failed");
@@ -94,17 +104,29 @@ static int test_envelope_storage(void) {
     uint64_t now = (uint64_t)time(NULL);
     uint64_t expires_at = now + 3600;
 
-    // Save envelope
-    ASSERT_OR_FAIL(gossip_store_save_envelope(
-        1,  // version
-        100,  // content_type
-        1,  // schema_version
-        test_sender,
-        now,
-        test_envelope_data,
-        sizeof(test_envelope_data),
-        expires_at
-    ) == 0, "gossip_store_save_envelope failed");
+    // Create dummy envelope for storage test
+    Tinyweb__Envelope envelope = TINYWEB__ENVELOPE__INIT;
+    Tinyweb__EnvelopeHeader header = TINYWEB__ENVELOPE_HEADER__INIT;
+    envelope.header = &header;
+    header.version = 1;
+    header.content_type = 100;
+    header.schema_version = 1;
+    header.timestamp = now;
+    header.sender_pubkey.len = PUBKEY_SIZE;
+    header.sender_pubkey.data = test_sender;
+    
+    envelope.payload_nonce.len = 24;
+    envelope.payload_nonce.data = test_envelope_data; // Dummy nonce
+    envelope.ephemeral_pubkey.len = PUBKEY_SIZE;
+    envelope.ephemeral_pubkey.data = test_sender; // Dummy ephemeral
+    envelope.payload_ciphertext.len = sizeof(test_envelope_data);
+    envelope.payload_ciphertext.data = test_envelope_data;
+    envelope.signature.len = 64;
+    unsigned char dummy_sig[64] = {0};
+    envelope.signature.data = dummy_sig;
+
+    // Save envelope (no recipients for this test)
+    ASSERT_OR_FAIL(gossip_store_save_envelope(&envelope, expires_at) == 0, "gossip_store_save_envelope failed");
 
     // Fetch recent envelopes
     GossipStoredEnvelope* envelopes = NULL;

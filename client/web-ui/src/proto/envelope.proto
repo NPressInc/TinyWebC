@@ -12,9 +12,9 @@ enum ContentType {
   CONTENT_USER_REGISTRATION = 1;
   CONTENT_ROLE_ASSIGNMENT = 2;
   
-  // Communication (10-19)
-  CONTENT_DIRECT_MESSAGE = 10;
-  CONTENT_GROUP_MESSAGE = 11;
+  // NOTE: DirectMessage and GroupMessage (10-11) have been moved to the
+  // separate Message system (message.proto). Envelopes are now for system
+  // messages only.
   
   // Group Management (20-29)
   CONTENT_GROUP_CREATE = 20;

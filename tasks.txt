@@ -1,0 +1,481 @@
+# TinyWeb Implementation Tasks
+
+## Architectural Decision: Separate Schemes per Communication Type
+
+We are abandoning the "single envelope for everything" approach. Instead, we'll have:
+- **Separate structures** for different communication types (messaging, system messages, media, location, etc.)
+- **Right tool for the job**: Each type uses the structure that fits its needs
+- **Focus on messaging first**: Start with user-to-user messages (DirectMessage, GroupMessage)
+- **Extend later**: Add other types (system messages, media, location, emergency) with their own structures
+
+## Phase 1: Messaging Implementation
+
+### Overview
+- **2 endpoints**: `POST /messages/submit` (client ingress) and `POST /gossip/message` (node rebroadcast)
+- **Storage**: Header fields in cleartext, payload as encrypted blob
+- **Tables**: `user_messages` and `message_recipients` (not generic "transactions")
+
+### Testing Framework
+- Uses existing test infrastructure: `test_init.h/c`, `test_runner.c`
+- Tests use `test_state/` directory (created/cleaned by `test_init_environment()`)
+- Helper functions: `test_get_db_path()`, `test_get_base_path()`, `test_get_keys_dir()`
+- Test pattern: `*_test_main()` function, `ASSERT_OR_FAIL` macro, register in `test_runner.c`
+- Run tests: `./test_runner` (all) or `./test_runner <test_name>` (specific)
+
+### Migration Readiness
+- **See `MIGRATION_READINESS.md`** for comprehensive assessment of:
+  - What already exists (encryption, signing, gossip, validation, etc.)
+  - What needs to be created (message.proto, new tables, storage functions, etc.)
+  - What needs to be modified (main.c, gossip service, API endpoints, etc.)
+  - What needs to be removed (double-envelope logic, legacy endpoints, etc.)
+  - Dependencies and potential issues
+
+---
+
+## TODO List
+
+### 1. Define Messaging Protobuf Structure
+- [x] Create `src/proto/message.proto` with:
+  - `MessageHeader`: version, timestamp, sender_pubkey, recipients_pubkey (repeated, for group messages), group_id (optional)
+  - `Message`: header, payload_nonce, ephemeral_pubkey, payload_ciphertext, keywraps, signature
+- [x] Ensure it supports multi-recipient encryption (keywraps array)
+- [x] Ensure it supports multiple recipients in header (repeated recipients_pubkey for group messages)
+- [x] Ensure it uses Ed25519 signatures for user authenticity
+- [x] Update `CMakeLists.txt` to add `message.proto` to `PROTO_FILES` list (line 62)
+- [ ] Regenerate protobuf C code (`message.pb-c.h`, `message.pb-c.c`) - automatic via CMake build
+
+### 2. Create Database Schema for Messages
+**CRITICAL: Protobuf is for transmission only. Never store serialized protobuf blobs except for encrypted payloads.**
+
+**Note**: Write schema tests in `schema_test.c` as you implement (see Task 11).
+
+**Location**: Add to `src/packages/sql/message_store.c` (create new `message_store_init()` function)
+
+- [x] Create `user_messages` table with columns:
+  - id INTEGER PRIMARY KEY AUTOINCREMENT
+  - version INTEGER NOT NULL
+  - timestamp INTEGER NOT NULL (UNIX epoch seconds)
+  - sender_pubkey BLOB NOT NULL (32 bytes Ed25519)
+  - recipient_pubkey BLOB NOT NULL (32 bytes Ed25519, primary recipient)
+  - group_id BLOB (nullable, 16 bytes if present)
+  - payload_nonce BLOB NOT NULL (24 bytes)
+  - ephemeral_pubkey BLOB NOT NULL (32 bytes)
+  - encrypted_payload BLOB NOT NULL (ciphertext + MAC - ONLY serialized blob allowed)
+  - signature BLOB NOT NULL (64 bytes Ed25519)
+  - expires_at INTEGER NOT NULL (UNIX epoch seconds)
+  - created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+- [x] Create `message_recipients` table with columns:
+  - message_id INTEGER NOT NULL (FK to user_messages.id)
+  - recipient_pubkey BLOB NOT NULL (32 bytes Ed25519)
+  - key_nonce BLOB NOT NULL (24 bytes)
+  - wrapped_key BLOB NOT NULL (encrypted symmetric key for this recipient)
+  - PRIMARY KEY (message_id, recipient_pubkey)
+  - FOREIGN KEY (message_id) REFERENCES user_messages(id) ON DELETE CASCADE
+- [x] **Optimize indexes for common query patterns:**
+  - `CREATE INDEX idx_user_messages_timestamp ON user_messages(timestamp DESC)` - for recent messages
+  - `CREATE INDEX idx_user_messages_sender ON user_messages(sender_pubkey, timestamp DESC)` - for sender queries
+  - `CREATE INDEX idx_user_messages_recipient ON user_messages(recipient_pubkey, timestamp DESC)` - for recipient queries
+  - `CREATE INDEX idx_user_messages_conversation ON user_messages(sender_pubkey, recipient_pubkey, timestamp DESC)` - for conversation queries
+  - `CREATE INDEX idx_user_messages_group ON user_messages(group_id, timestamp DESC) WHERE group_id IS NOT NULL` - for group messages
+  - `CREATE INDEX idx_user_messages_expires ON user_messages(expires_at)` - for TTL cleanup
+  - `CREATE INDEX idx_message_recipients_recipient ON message_recipients(recipient_pubkey)` - for recipient lookups
+- [x] Verify NO serialized protobuf storage:
+  - All header fields (version, timestamp, sender, recipient, group_id) stored as individual columns
+  - Only `encrypted_payload` is stored as a blob (because it's encrypted ciphertext)
+  - Signature stored as blob (64 bytes, not serialized protobuf)
+  - No `envelope_bytes` or `message_bytes` columns
+
+### 3. Implement Message Storage Functions
+**CRITICAL: Extract individual fields from protobuf, never store serialized protobuf.**
+
+**Note**: Write storage tests in `message_store_test.c` as you implement (see Task 11).
+
+- [x] Create `message_store_save()` function:
+  - Takes Message protobuf (transmission format)
+  - **Extract individual fields** from protobuf:
+    - `header->version` → `version` column
+    - `header->timestamp` → `timestamp` column
+    - `header->sender_pubkey` → `sender_pubkey` column (BLOB)
+    - `header->recipients_pubkey[0]` → `recipient_pubkey` column (BLOB, primary recipient - first in array)
+  - `header->recipients_pubkey[1..N]` → stored in `message_recipients` table (all recipients)
+    - `header->group_id` → `group_id` column (BLOB or NULL)
+    - `payload_nonce` → `payload_nonce` column (BLOB)
+    - `ephemeral_pubkey` → `ephemeral_pubkey` column (BLOB)
+    - `payload_ciphertext` → `encrypted_payload` column (BLOB - only serialized blob)
+    - `signature` → `signature` column (BLOB)
+  - Store header fields as individual columns (NOT serialized)
+  - Store `encrypted_payload` as blob (encrypted, so blob is acceptable)
+  - Store recipients in `message_recipients` table (extract from keywraps array)
+  - **Never serialize entire Message protobuf for storage**
+- [x] Create `message_store_compute_digest()` function:
+  - Computes SHA256 digest of serialized Message (for deduplication only)
+  - Helper function for API endpoints
+- [x] Create `message_store_has_seen()` function:
+  - Computes SHA256 digest of serialized Message (for deduplication only)
+  - Checks against `gossip_seen` table (reused for messages)
+  - Digest table structure: `digest BLOB PRIMARY KEY, expires_at INTEGER`
+- [x] Create `message_store_mark_seen()` function:
+  - Records digest with expiration timestamp in `gossip_seen` table (reused for messages)
+- [x] Create `message_store_fetch_recent()` function:
+  - Queries `user_messages` using optimized indexes
+  - Reconstructs Message protobuf from individual columns for transmission
+  - Uses `timestamp DESC` index for efficient recent message queries
+- [x] Create `message_store_fetch_conversation()` function:
+  - Queries using `idx_user_messages_conversation` index
+  - Filters by sender_pubkey AND recipient_pubkey (both directions)
+  - Reconstructs Message protobuf from columns for transmission
+- [x] Create `message_store_free_messages()` function:
+  - Frees array of messages returned by fetch functions
+
+### 4. Implement HTTP Endpoint: POST /messages/submit
+**Location**: Create new file `src/packages/comm/messagesApi.c` and `messagesApi.h`
+
+- [x] Create handler in `messagesApi.c`:
+  - Accept raw protobuf Message in HTTP body (Content-Type: application/x-protobuf)
+  - Unpack Message using `tinyweb__message__unpack()`
+  - Validate signature using Ed25519 verification
+  - Validate timestamp is within 60 seconds of now (replay protection)
+  - Validate payload size against node config
+  - Check permissions: sender can message recipient (parent-child, peer relationship)
+  - Check duplicate via `message_store_has_seen()`
+  - If new and authorized:
+    - Store via `message_store_save()`
+    - Mark seen via `message_store_mark_seen()`
+    - Broadcast via `gossip_service_broadcast_message()`
+  - Return 202 Accepted or appropriate error
+
+### 5. Implement HTTP Endpoint: POST /gossip/message
+**Location**: Update existing `src/packages/comm/gossipApi.c`
+
+- [x] Create handler in `gossipApi.c`:
+  - Accept raw protobuf Message in HTTP body (Content-Type: application/x-protobuf)
+  - Unpack Message using `tinyweb__message__unpack()`
+  - Validate signature using Ed25519 verification
+  - Validate timestamp within configured TTL (GossipValidationConfig)
+  - Validate payload size
+  - Check duplicate via `message_store_has_seen()`
+  - If new:
+    - Store via `message_store_save()`
+    - Mark seen via `message_store_mark_seen()`
+    - Rebroadcast via `gossip_service_rebroadcast_message()`
+  - Return 202 Accepted or appropriate error
+
+### 6. Update Gossip Service for Messages
+**Location**: Update `src/packages/comm/gossip/gossip.h` and `gossip.c`
+
+- [x] Create `gossip_service_broadcast_message()` function:
+  - Takes Message protobuf
+  - Serializes and broadcasts via UDP to all known peers
+- [x] Create `gossip_service_rebroadcast_message()` function:
+  - Takes Message protobuf and source address
+  - Rebroadcasts to all peers except source
+- [x] Update gossip receive handler to:
+  - Accept Message protobuf (not generic Envelope)
+  - Validate, store, and rebroadcast using message-specific functions
+
+### 7. Implement Permissions Module for Messaging
+**Location**: Create new file `src/packages/comm/message_permissions.c` and `message_permissions.h`
+
+**Note**: Write permissions tests in `message_permissions_test.c` as you implement (see Task 11).
+
+- [x] Create `message_permissions_check()` function:
+  - Takes sender_pubkey, recipient_pubkey, group_id (optional)
+  - Returns: allowed/denied
+  - Rules:
+    - Parents can message children (any direction)
+    - Peers can message each other if relationship exists in database
+    - Group members can message group (if group_id present, check membership)
+- [x] Integrate into `/messages/submit` handler
+
+### 8. Remove Legacy Code (Clean Migration - No Backwards Compatibility)
+
+#### 8.1 Remove Double-Envelope Wrapping Functions
+- [ ] **`src/packages/transactions/envelope.c`**: Delete `tw_envelope_wrap_for_gossip()` function (line 238)
+- [ ] **`src/packages/transactions/envelope.c`**: Delete `tw_envelope_unwrap_from_gossip()` function (line 341)
+- [ ] **`src/packages/transactions/envelope.h`**: Remove function declarations (lines 54-60)
+- [ ] **`src/proto/envelope.proto`**: Remove `CONTENT_GOSSIP_WRAPPED_MESSAGE = 42` enum value (line 36)
+- [x] **`src/main.c`**: Remove entire double-envelope unwrapping logic block (lines 302-380)
+- [x] **`src/main.c`**: Remove `CONTENT_GOSSIP_WRAPPED_MESSAGE` content type check
+
+#### 8.2 Remove Old HTTP Endpoints
+- [ ] **`src/packages/comm/transactionsApi.c`**: Delete entire file (only contains `/envelopes/submit` for user messages)
+- [ ] **`src/packages/comm/transactionsApi.h`**: Delete entire file
+- [ ] **`src/packages/comm/gossipApi.c`**: Remove `/gossip/envelope` endpoint handler (lines 134-218) - **OR** repurpose for system messages only
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove any `/messages/send` endpoint (if exists, check for JSON+hex encoding)
+- [ ] **`src/packages/comm/gossipApi.c`**: Remove routing to `transactions_api_handler()` (if exists)
+
+#### 8.3 Remove Envelope Dispatcher Handlers for User Messages
+- [ ] **`src/packages/comm/envelope_dispatcher.c`**: Remove `handle_direct_message()` function (lines 214-252)
+- [ ] **`src/packages/comm/envelope_dispatcher.c`**: Remove `handle_group_message()` function (lines 254-294)
+- [ ] **`src/packages/comm/envelope_dispatcher.c`**: Remove registration of DirectMessage and GroupMessage handlers (lines 41-42)
+- [ ] **`src/packages/comm/envelope_dispatcher.c`**: Remove `CONTENT_DIRECT_MESSAGE` and `CONTENT_GROUP_MESSAGE` from `envelope_content_type_name()` switch (lines 113-114)
+- [ ] **Note**: Keep envelope dispatcher for other content types (LocationUpdate, EmergencyAlert, etc.)
+
+#### 8.4 Remove Old Storage Functions (User Messages Only)
+- [ ] **`src/packages/sql/schema.c`**: Remove `gossip_store_save_envelope()` function (lines 412-690) - **ONLY if not used for system messages**
+- [ ] **`src/packages/sql/schema.c`**: Remove `gossip_store_fetch_recent_envelopes()` function (lines 692-733) - **ONLY if not used for system messages**
+- [ ] **`src/packages/sql/schema.c`**: Remove `gossip_store_fetch_recent_envelopes_for_user()` function (lines 735-800) - **ONLY if not used for system messages**
+- [ ] **`src/packages/sql/schema.h`**: Remove function declarations (lines 38-48) - **ONLY if functions removed**
+- [ ] **`src/packages/sql/schema.h`**: Remove `GossipStoredEnvelope` struct (lines 16-26) - **ONLY if not used for system messages**
+- [ ] **`src/packages/sql/schema.c`**: Remove `gossip_envelopes` table creation (lines 31-46) - **ONLY if not used for system messages**
+- [ ] **`src/packages/sql/schema.c`**: Remove `gossip_envelope_recipients` table creation (lines 54-65) - **ONLY if not used for system messages**
+- [ ] **`src/packages/sql/schema.c`**: Remove related indexes for `gossip_envelopes` (lines 48-52, 64-65) - **ONLY if tables removed**
+- [ ] **Note**: Keep `gossip_store_has_seen()` and `gossip_store_mark_seen()` - these are generic and can be reused
+
+#### 8.5 Remove Hex Encoding/Decoding for Messages
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove `hex_decode()` function (lines 93-120)
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove `hex_encode()` function (lines 122-145)
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove all hex encoding in read endpoints (`handle_get_recent`, `handle_get_messages`, `handle_get_conversations`)
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove JSON+hex response format - replace with raw protobuf binary responses
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove `gossip_stored_to_protobuf()` and related conversion functions if they serialize entire envelope
+
+#### 8.6 Remove Old API Response Formats
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove `gossip_create_envelope_list()` function (if it creates `Tinyweb__EnvelopeList` from `GossipStoredEnvelope`)
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove `gossip_envelope_list_free()` function
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Update read endpoints to return raw Message protobuf binary (not JSON+hex, not EnvelopeList)
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove `api.pb-c.h` include if only used for EnvelopeList
+
+#### 8.7 Remove Old Content Type References
+- [ ] **`src/packages/transactions/envelope.h`**: Remove `TW_CONTENT_DIRECT_MESSAGE` and `TW_CONTENT_GROUP_MESSAGE` enum values (lines 14-15)
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove any references to `CONTENT_DIRECT_MESSAGE` or `CONTENT_GROUP_MESSAGE` content types
+- [ ] **`src/main.c`**: Remove any content type checks for user messages
+
+#### 8.8 Remove Old Test Code
+- [ ] **`src/tests/api_protobuf_test.c`**: Remove tests that use `gossip_store_save_envelope()` for user messages (lines 123+)
+- [ ] **`src/tests/api_protobuf_test.c`**: Remove tests that use `CONTENT_DIRECT_MESSAGE` (lines 79, 159, 189, 220)
+- [ ] **`src/tests/envelope_test.c`**: Remove tests that use `CONTENT_DIRECT_MESSAGE` (multiple locations)
+- [ ] **`src/tests/envelope_test.c`**: Remove tests that use `gossip_store_save_envelope()` for user messages (line 327)
+- [ ] **`src/tests/envelope_test.c`**: Remove tests that use `gossip_store_fetch_recent_envelopes()` for user messages (line 350)
+- [ ] **`src/tests/gossip_store_test.c`**: Remove tests for `gossip_store_save_envelope()` if testing user messages (lines 98-131)
+- [ ] **`src/tests/envelope_dispatcher_test.c`**: Remove tests for `CONTENT_DIRECT_MESSAGE` handler (lines 84, 88, 92, 129, 149, 156, 200)
+- [ ] **`src/tests/gossip_validation_test.c`**: Remove tests using `CONTENT_DIRECT_MESSAGE` (line 75)
+- [ ] **`src/tests/schema_test.c`**: Remove tests for `gossip_envelopes` table if it's being removed
+
+#### 8.9 Update Main Loop
+- [ ] **`src/main.c`**: Remove all `gossip_store_save_envelope()` calls for user messages (lines 356, 413)
+- [ ] **`src/main.c`**: Remove `tw_envelope_unwrap_from_gossip()` call (line 308)
+- [ ] **`src/main.c`**: Remove inner envelope serialization and digest computation (lines 320-331)
+- [ ] **`src/main.c`**: Remove inner envelope storage logic (lines 333-380)
+- [ ] **`src/main.c`**: Update gossip receive handler to handle Message protobuf directly (not wrapped Envelope)
+
+#### 8.10 Clean Up Includes and Dependencies
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove `transactionsApi.h` include if exists
+- [ ] **`src/packages/comm/gossipApi.c`**: Remove `transactionsApi.h` include if exists
+- [ ] **`src/main.c`**: Remove `transactionsApi.h` include if exists
+- [ ] **`CMakeLists.txt`**: Remove `transactionsApi.c` from source files if file deleted
+- [ ] **`src/packages/comm/userMessagesApi.c`**: Remove unused includes (`cJSON` if only used for JSON+hex)
+
+#### 8.11 Verify No Orphaned Code
+- [ ] Search codebase for any remaining references to:
+  - `tw_envelope_wrap_for_gossip`
+  - `tw_envelope_unwrap_from_gossip`
+  - `CONTENT_GOSSIP_WRAPPED_MESSAGE`
+  - `handle_submit_envelope` (from transactionsApi.c)
+  - `transactions_api_handler`
+  - `/envelopes/submit` endpoint
+  - `gossip_store_save_envelope` (if removed)
+  - `gossip_store_fetch_recent_envelopes` (if removed)
+  - `gossip_store_fetch_recent_envelopes_for_user` (if removed)
+- [ ] Remove any found orphaned references
+
+### 9. Update Read Endpoints (if needed)
+**Location**: Update `src/packages/comm/userMessagesApi.c` or create in `messagesApi.c`
+
+- [ ] Update `/messages/recent` to:
+  - Query `user_messages` using `idx_user_messages_timestamp` index
+  - Filter by sender_pubkey OR recipient_pubkey (user is involved)
+  - Reconstruct Message protobuf from individual columns
+  - Serialize protobuf only for HTTP response (transmission)
+- [ ] Update `/messages/conversation` to:
+  - Query using `idx_user_messages_conversation` index
+  - Filter by (sender, recipient) OR (recipient, sender) for both directions
+  - Reconstruct Message protobuf from columns
+  - Serialize protobuf only for HTTP response
+- [ ] Update `/messages/conversations` to:
+  - Query using sender/recipient indexes
+  - Group by conversation partner
+  - Return conversation summaries (no full message reconstruction needed)
+- [ ] **Verify**: All read endpoints reconstruct protobuf from columns, never read serialized blobs
+- [ ] **Verify**: Protobuf serialization only happens for HTTP transmission, never for storage
+
+### 10. Update Main Loop and Gossip Handler
+**Location**: Update `src/main.c`
+
+- [x] Update `gossip_receive_handler()` function:
+  - Remove double-envelope unwrapping logic
+  - Accept Message protobuf directly (not wrapped Envelope)
+  - Use `message_validate()` instead of `gossip_validate_envelope()`
+  - Use `message_store_save()` instead of `gossip_store_save_envelope()`
+  - Use `message_store_has_seen()` for deduplication
+- [x] Update gossip service initialization to handle Message protobuf
+- [x] Remove `tw_envelope_unwrap_from_gossip()` call
+
+### 11. Schema and Index Optimization Verification
+- [x] Verify all common query patterns use indexes:
+  - Recent messages by user: uses `idx_user_messages_timestamp` or sender/recipient indexes
+  - Conversation between two users: uses `idx_user_messages_conversation`
+  - Group messages: uses `idx_user_messages_group`
+  - TTL cleanup: uses `idx_user_messages_expires`
+- [x] Run EXPLAIN QUERY PLAN on all read queries to verify index usage
+- [x] Verify no full table scans on common operations
+- [x] Test query performance with realistic data volumes
+- [x] Verify database file size is reasonable (no unnecessary bloat from serialized protobuf)
+
+### 12. Update Build System
+**Location**: Update `CMakeLists.txt`
+
+- [x] Add `message.proto` to `PROTO_FILES` list (line 58-62)
+- [x] Add `src/packages/sql/message_store.c` to source files (line 46)
+- [x] Add `src/packages/comm/messagesApi.c` to source files (line 51)
+- [x] Add `src/packages/validation/message_validation.c` to source files (line 53)
+- [x] Add `src/packages/comm/message_permissions.c` to source files (line 52)
+- [x] Verify protobuf generation includes `message.pb-c.c` and `message.pb-c.h`
+
+### 13. Create/Update Tests
+**Use existing test framework: `test_init.h/c`, `test_runner.c`, `test_state/` directory**
+
+- [ ] Create `message_store_test.c` and `message_store_test.h`:
+  - Use `test_init_environment()` for setup (creates `test_state/` with full network)
+  - Use `test_get_db_path()` to get database path
+  - Test `message_store_save()`:
+    - Create Message protobuf with test data
+    - Call `message_store_save()`
+    - Verify individual columns in `user_messages` table (not serialized blob)
+    - Verify recipients stored in `message_recipients` table
+    - Query database directly to verify column values match protobuf fields
+  - Test `message_store_has_seen()` and `message_store_mark_seen()`:
+    - Verify digest-based deduplication works
+    - Verify expiration cleanup
+  - Test `message_store_fetch_recent()`:
+    - Store multiple messages with different timestamps
+    - Fetch recent messages
+    - Verify protobuf reconstruction from columns works correctly
+    - Verify index usage (check query plan)
+  - Test `message_store_fetch_conversation()`:
+    - Store messages between two users (both directions)
+    - Fetch conversation
+    - Verify both directions included
+    - Verify index usage
+  - Follow pattern from `gossip_store_test.c` (use `ASSERT_OR_FAIL` macro)
+  - Add `message_store_test_main()` function
+  - Register in `test_runner.c` as `"messagestore"` test
+
+- [ ] Create `message_api_test.c` and `message_api_test.h`:
+  - Test `POST /messages/submit` endpoint:
+    - Create valid Message protobuf, serialize to binary
+    - POST to endpoint with `Content-Type: application/x-protobuf`
+    - Verify 202 Accepted response
+    - Verify message stored in database (check columns, not blob)
+    - Test invalid signature (should reject)
+    - Test timestamp outside 60-second window (should reject)
+    - Test permission checks (parent-child allowed, unauthorized peer rejected)
+    - Test duplicate detection (same message twice, second should be rejected)
+  - Test `POST /gossip/message` endpoint:
+    - Create valid Message protobuf
+    - POST to endpoint
+    - Verify storage and rebroadcast
+    - Test TTL validation
+  - Use Mongoose test utilities from `mongoose_test.c` if available
+  - Add `message_api_test_main()` function
+  - Register in `test_runner.c` as `"messageapi"` test
+
+- [ ] Update `schema_test.c`:
+  - Add tests for `user_messages` table creation
+  - Add tests for `message_recipients` table creation
+  - Add tests for all message-related indexes:
+    - Verify `idx_user_messages_timestamp` exists
+    - Verify `idx_user_messages_sender` exists
+    - Verify `idx_user_messages_recipient` exists
+    - Verify `idx_user_messages_conversation` exists
+    - Verify `idx_user_messages_group` exists
+    - Verify `idx_user_messages_expires` exists
+    - Verify `idx_message_recipients_recipient` exists
+  - Use `test_get_db_path()` for database access
+  - Verify table structure matches specification (column types, sizes)
+
+- [ ] Create `message_permissions_test.c` and `message_permissions_test.h`:
+  - Test `message_permissions_check()` function:
+    - Test parent-child messaging (should allow)
+    - Test peer messaging with relationship (should allow)
+    - Test peer messaging without relationship (should deny)
+    - Test group messaging (verify membership check)
+  - Use `test_init_environment()` to get test users from network config
+  - Use `test_get_user_key_path()` if needed for user keys
+  - Add `message_permissions_test_main()` function
+  - Register in `test_runner.c` as `"messageperms"` test
+
+- [ ] Update `gossip_validation_test.c` (if needed):
+  - Add tests for Message validation (not Envelope)
+  - Test timestamp validation for messages
+  - Test signature validation for messages
+  - Test payload size limits for messages
+
+- [ ] Create integration test in `foundational_features_test.c` or new file:
+  - Test full message flow:
+    - Client creates Message, signs it
+    - POST to `/messages/submit`
+    - Verify stored in database (columns, not blob)
+    - Verify broadcast via gossip
+    - Another node receives via `/gossip/message`
+    - Verify stored and rebroadcast
+    - Verify deduplication prevents infinite loops
+  - Test multi-recipient message:
+    - Create message with multiple recipients
+    - Verify all recipients stored in `message_recipients` table
+    - Verify each recipient can decrypt (if test keys available)
+
+- [ ] Verify all tests run successfully:
+  - Run `./test_runner` to run all tests
+  - Run `./test_runner messagestore` for message store tests
+  - Run `./test_runner messageapi` for API tests
+  - Run `./test_runner messageperms` for permissions tests
+  - Verify `test_state/` directory is created and cleaned up properly
+  - Verify no test pollution (each test cleans up after itself)
+
+- [ ] **Verify in tests**: No serialized protobuf blobs in database (except encrypted_payload)
+  - Query database directly in tests
+  - Verify no `message_bytes` or `envelope_bytes` columns exist
+  - Verify only `encrypted_payload` is stored as blob
+  - Verify all header fields are individual columns
+
+- [ ] **Verify in tests**: Protobuf only used for HTTP transmission, not storage
+  - Test that storage functions extract individual fields
+  - Test that retrieval functions reconstruct protobuf from columns
+  - Verify protobuf serialization only happens for HTTP responses
+
+### 14. Create Message Validation Module
+**Location**: Create new file `src/packages/validation/message_validation.c` and `message_validation.h`
+
+- [x] Create `message_validate()` function:
+  - Validate Ed25519 signature using `tw_envelope_verify()` logic (adapt for Message)
+  - Validate timestamp is within 60 seconds of now (replay protection)
+  - Validate payload size against node config
+  - Return validation result enum (similar to `GossipValidationResult`)
+- [x] Create `message_validation_get_expiration()` function:
+  - Calculate expiration timestamp based on message timestamp + TTL
+- [x] Create `message_validation_result_to_string()` function:
+  - Return human-readable error messages
+
+---
+
+## Future Phases (Not in Scope Yet)
+
+### Phase 2: System Messages
+- Separate structure: node-signed, no encryption
+- Endpoint: `/gossip/system` or similar
+- Table: `system_messages`
+
+### Phase 3: Media
+- Separate structure: references to storage, not in message payload
+- Endpoint: `/media/upload`, `/media/download`
+- Table: `media_references` + file storage
+
+### Phase 4: Location Updates
+- Separate structure: real-time routing, different delivery
+- Endpoint: `/location/update`
+- Table: `location_updates`
+
+### Phase 5: Emergency Alerts
+- Separate structure: guaranteed delivery
+- Endpoint: `/emergency/alert`
+- Table: `emergency_alerts`

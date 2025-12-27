@@ -10,6 +10,7 @@ TEST_SCRIPT=""
 COMPOSE_FILE="docker_configs/docker-compose.test.yml"
 TIMEOUT=120  # seconds
 POLL_INTERVAL=2  # seconds
+REGEN_KEYS=false  # Default: don't regenerate keys, use existing ones
 
 # Colors for output
 RED='\033[0;31m'
@@ -28,12 +29,24 @@ while [[ $# -gt 0 ]]; do
             TEST_SCRIPT="$2"
             shift 2
             ;;
+        --regen)
+            if [[ "$2" == "true" ]]; then
+                REGEN_KEYS=true
+            elif [[ "$2" == "false" ]]; then
+                REGEN_KEYS=false
+            else
+                echo "Error: --regen requires 'true' or 'false'"
+                exit 1
+            fi
+            shift 2
+            ;;
         --help|-h)
-            echo "Usage: $0 [--config <config.json>] [--test-script <script.sh>]"
+            echo "Usage: $0 [--config <config.json>] [--test-script <script.sh>] [--regen <true|false>]"
             echo ""
             echo "Options:"
             echo "  --config <file>      Master network config file (default: scripts/configs/network_config.json)"
             echo "  --test-script <file> Optional test script to run after containers are healthy"
+            echo "  --regen <true|false> Regenerate keys (default: false, uses existing keys)"
             echo "  --help, -h           Show this help message"
             exit 0
             ;;
@@ -215,22 +228,27 @@ else
 fi
 
 # Clean up state directories (keys, databases, etc.) for all nodes
-echo "  Cleaning up state directories (keys, databases, etc.)..."
-STATE_CLEANED=0
-for node_dir in docker_configs/node_*/state; do
-    if [[ -d "$node_dir" ]]; then
-        echo "    Removing $node_dir..."
-        rm -rf "$node_dir"/* 2>/dev/null || true
-        # Remove the state directory itself if it's now empty (but keep parent structure)
-        rmdir "$node_dir" 2>/dev/null || true
-        STATE_CLEANED=$((STATE_CLEANED + 1))
-    fi
-done
+# Only if REGEN_KEYS is true
+if [[ "$REGEN_KEYS" == "true" ]]; then
+    echo "  Cleaning up state directories (keys, databases, etc.)..."
+    STATE_CLEANED=0
+    for node_dir in docker_configs/node_*/state; do
+        if [[ -d "$node_dir" ]]; then
+            echo "    Removing $node_dir..."
+            rm -rf "$node_dir"/* 2>/dev/null || true
+            # Remove the state directory itself if it's now empty (but keep parent structure)
+            rmdir "$node_dir" 2>/dev/null || true
+            STATE_CLEANED=$((STATE_CLEANED + 1))
+        fi
+    done
 
-if [[ $STATE_CLEANED -gt 0 ]]; then
-    echo -e "  ${GREEN}✓ Cleaned up state directories for ${STATE_CLEANED} node(s)${NC}"
+    if [[ $STATE_CLEANED -gt 0 ]]; then
+        echo -e "  ${GREEN}✓ Cleaned up state directories for ${STATE_CLEANED} node(s)${NC}"
+    else
+        echo -e "  ${GREEN}✓ No state directories found to clean${NC}"
+    fi
 else
-    echo -e "  ${GREEN}✓ No state directories found to clean${NC}"
+    echo "  Skipping state directory cleanup (--regen false, using existing keys)"
 fi
 
 echo -e "  ${GREEN}✓ Cleanup complete${NC}"
@@ -238,9 +256,19 @@ echo ""
 
 # Step 1: Generate configs
 echo "Step 1: Generating Docker configs..."
-if ! ./build/docker_config_generator --master-config "$CONFIG_FILE" --mode test; then
-    echo -e "${RED}Error: Config generation failed${NC}" >&2
-    exit 1
+if [[ "$REGEN_KEYS" == "true" ]]; then
+    # Regenerate everything including keys
+    if ! ./build/docker_config_generator --master-config "$CONFIG_FILE" --mode test; then
+        echo -e "${RED}Error: Config generation failed${NC}" >&2
+        exit 1
+    fi
+else
+    # Skip initialization to preserve existing keys and database
+    echo "  Skipping initialization (using existing keys and database)"
+    if ! ./build/docker_config_generator --master-config "$CONFIG_FILE" --mode test --skip-init; then
+        echo -e "${RED}Error: Config generation failed${NC}" >&2
+        exit 1
+    fi
 fi
 echo ""
 

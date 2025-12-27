@@ -272,6 +272,33 @@ generated/envelope.pb-c.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/envelope.pb-c.c.s
 .PHONY : generated/envelope.pb-c.c.s
 
+generated/message.pb-c.o: generated/message.pb-c.c.o
+.PHONY : generated/message.pb-c.o
+
+# target to build an object file
+generated/message.pb-c.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/message.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/message.pb-c.c.o
+.PHONY : generated/message.pb-c.c.o
+
+generated/message.pb-c.i: generated/message.pb-c.c.i
+.PHONY : generated/message.pb-c.i
+
+# target to preprocess a source file
+generated/message.pb-c.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/message.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/message.pb-c.c.i
+.PHONY : generated/message.pb-c.c.i
+
+generated/message.pb-c.s: generated/message.pb-c.c.s
+.PHONY : generated/message.pb-c.s
+
+# target to generate assembly for a file
+generated/message.pb-c.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/message.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/message.pb-c.c.s
+.PHONY : generated/message.pb-c.c.s
+
 scripts/docker_config_generator.o: scripts/docker_config_generator.c.o
 .PHONY : scripts/docker_config_generator.o
 
@@ -505,6 +532,87 @@ src/packages/comm/httpClient.s: src/packages/comm/httpClient.c.s
 src/packages/comm/httpClient.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.s
 .PHONY : src/packages/comm/httpClient.c.s
+
+src/packages/comm/message_permissions.o: src/packages/comm/message_permissions.c.o
+.PHONY : src/packages/comm/message_permissions.o
+
+# target to build an object file
+src/packages/comm/message_permissions.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/message_permissions.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/message_permissions.c.o
+.PHONY : src/packages/comm/message_permissions.c.o
+
+src/packages/comm/message_permissions.i: src/packages/comm/message_permissions.c.i
+.PHONY : src/packages/comm/message_permissions.i
+
+# target to preprocess a source file
+src/packages/comm/message_permissions.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/message_permissions.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/message_permissions.c.i
+.PHONY : src/packages/comm/message_permissions.c.i
+
+src/packages/comm/message_permissions.s: src/packages/comm/message_permissions.c.s
+.PHONY : src/packages/comm/message_permissions.s
+
+# target to generate assembly for a file
+src/packages/comm/message_permissions.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/message_permissions.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/message_permissions.c.s
+.PHONY : src/packages/comm/message_permissions.c.s
+
+src/packages/comm/messagesApi.o: src/packages/comm/messagesApi.c.o
+.PHONY : src/packages/comm/messagesApi.o
+
+# target to build an object file
+src/packages/comm/messagesApi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/messagesApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/messagesApi.c.o
+.PHONY : src/packages/comm/messagesApi.c.o
+
+src/packages/comm/messagesApi.i: src/packages/comm/messagesApi.c.i
+.PHONY : src/packages/comm/messagesApi.i
+
+# target to preprocess a source file
+src/packages/comm/messagesApi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/messagesApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/messagesApi.c.i
+.PHONY : src/packages/comm/messagesApi.c.i
+
+src/packages/comm/messagesApi.s: src/packages/comm/messagesApi.c.s
+.PHONY : src/packages/comm/messagesApi.s
+
+# target to generate assembly for a file
+src/packages/comm/messagesApi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/messagesApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/messagesApi.c.s
+.PHONY : src/packages/comm/messagesApi.c.s
+
+src/packages/comm/userMessagesApi.o: src/packages/comm/userMessagesApi.c.o
+.PHONY : src/packages/comm/userMessagesApi.o
+
+# target to build an object file
+src/packages/comm/userMessagesApi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/userMessagesApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/userMessagesApi.c.o
+.PHONY : src/packages/comm/userMessagesApi.c.o
+
+src/packages/comm/userMessagesApi.i: src/packages/comm/userMessagesApi.c.i
+.PHONY : src/packages/comm/userMessagesApi.i
+
+# target to preprocess a source file
+src/packages/comm/userMessagesApi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/userMessagesApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/userMessagesApi.c.i
+.PHONY : src/packages/comm/userMessagesApi.c.i
+
+src/packages/comm/userMessagesApi.s: src/packages/comm/userMessagesApi.c.s
+.PHONY : src/packages/comm/userMessagesApi.s
+
+# target to generate assembly for a file
+src/packages/comm/userMessagesApi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/userMessagesApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/userMessagesApi.c.s
+.PHONY : src/packages/comm/userMessagesApi.c.s
 
 src/packages/discovery/discovery.o: src/packages/discovery/discovery.c.o
 .PHONY : src/packages/discovery/discovery.o
@@ -761,6 +869,39 @@ src/packages/sql/gossip_peers.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/gossip_peers.c.s
 .PHONY : src/packages/sql/gossip_peers.c.s
 
+src/packages/sql/message_store.o: src/packages/sql/message_store.c.o
+.PHONY : src/packages/sql/message_store.o
+
+# target to build an object file
+src/packages/sql/message_store.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/message_store.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/message_store.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/message_store.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/message_store.c.o
+.PHONY : src/packages/sql/message_store.c.o
+
+src/packages/sql/message_store.i: src/packages/sql/message_store.c.i
+.PHONY : src/packages/sql/message_store.i
+
+# target to preprocess a source file
+src/packages/sql/message_store.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/message_store.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/message_store.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/message_store.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/message_store.c.i
+.PHONY : src/packages/sql/message_store.c.i
+
+src/packages/sql/message_store.s: src/packages/sql/message_store.c.s
+.PHONY : src/packages/sql/message_store.s
+
+# target to generate assembly for a file
+src/packages/sql/message_store.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/message_store.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/message_store.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/message_store.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/message_store.c.s
+.PHONY : src/packages/sql/message_store.c.s
+
 src/packages/sql/permissions.o: src/packages/sql/permissions.c.o
 .PHONY : src/packages/sql/permissions.o
 
@@ -768,8 +909,6 @@ src/packages/sql/permissions.o: src/packages/sql/permissions.c.o
 src/packages/sql/permissions.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/permissions.c.o
 .PHONY : src/packages/sql/permissions.c.o
 
 src/packages/sql/permissions.i: src/packages/sql/permissions.c.i
@@ -779,8 +918,6 @@ src/packages/sql/permissions.i: src/packages/sql/permissions.c.i
 src/packages/sql/permissions.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/permissions.c.i
 .PHONY : src/packages/sql/permissions.c.i
 
 src/packages/sql/permissions.s: src/packages/sql/permissions.c.s
@@ -790,8 +927,6 @@ src/packages/sql/permissions.s: src/packages/sql/permissions.c.s
 src/packages/sql/permissions.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/permissions.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/permissions.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/permissions.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/permissions.c.s
 .PHONY : src/packages/sql/permissions.c.s
 
 src/packages/sql/schema.o: src/packages/sql/schema.c.o
@@ -1082,6 +1217,33 @@ src/packages/validation/gossip_validation.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/gossip_validation.c.s
 .PHONY : src/packages/validation/gossip_validation.c.s
 
+src/packages/validation/message_validation.o: src/packages/validation/message_validation.c.o
+.PHONY : src/packages/validation/message_validation.o
+
+# target to build an object file
+src/packages/validation/message_validation.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/message_validation.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/message_validation.c.o
+.PHONY : src/packages/validation/message_validation.c.o
+
+src/packages/validation/message_validation.i: src/packages/validation/message_validation.c.i
+.PHONY : src/packages/validation/message_validation.i
+
+# target to preprocess a source file
+src/packages/validation/message_validation.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/message_validation.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/message_validation.c.i
+.PHONY : src/packages/validation/message_validation.c.i
+
+src/packages/validation/message_validation.s: src/packages/validation/message_validation.c.s
+.PHONY : src/packages/validation/message_validation.s
+
+# target to generate assembly for a file
+src/packages/validation/message_validation.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/message_validation.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/message_validation.c.s
+.PHONY : src/packages/validation/message_validation.c.s
+
 src/structs/permission/permission.o: src/structs/permission/permission.c.o
 .PHONY : src/structs/permission/permission.o
 
@@ -1331,6 +1493,78 @@ src/tests/httpclient_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/httpclient_test.c.s
 .PHONY : src/tests/httpclient_test.c.s
 
+src/tests/message_api_test.o: src/tests/message_api_test.c.o
+.PHONY : src/tests/message_api_test.o
+
+# target to build an object file
+src/tests/message_api_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_api_test.c.o
+.PHONY : src/tests/message_api_test.c.o
+
+src/tests/message_api_test.i: src/tests/message_api_test.c.i
+.PHONY : src/tests/message_api_test.i
+
+# target to preprocess a source file
+src/tests/message_api_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_api_test.c.i
+.PHONY : src/tests/message_api_test.c.i
+
+src/tests/message_api_test.s: src/tests/message_api_test.c.s
+.PHONY : src/tests/message_api_test.s
+
+# target to generate assembly for a file
+src/tests/message_api_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_api_test.c.s
+.PHONY : src/tests/message_api_test.c.s
+
+src/tests/message_permissions_test.o: src/tests/message_permissions_test.c.o
+.PHONY : src/tests/message_permissions_test.o
+
+# target to build an object file
+src/tests/message_permissions_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_permissions_test.c.o
+.PHONY : src/tests/message_permissions_test.c.o
+
+src/tests/message_permissions_test.i: src/tests/message_permissions_test.c.i
+.PHONY : src/tests/message_permissions_test.i
+
+# target to preprocess a source file
+src/tests/message_permissions_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_permissions_test.c.i
+.PHONY : src/tests/message_permissions_test.c.i
+
+src/tests/message_permissions_test.s: src/tests/message_permissions_test.c.s
+.PHONY : src/tests/message_permissions_test.s
+
+# target to generate assembly for a file
+src/tests/message_permissions_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_permissions_test.c.s
+.PHONY : src/tests/message_permissions_test.c.s
+
+src/tests/message_store_test.o: src/tests/message_store_test.c.o
+.PHONY : src/tests/message_store_test.o
+
+# target to build an object file
+src/tests/message_store_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_store_test.c.o
+.PHONY : src/tests/message_store_test.c.o
+
+src/tests/message_store_test.i: src/tests/message_store_test.c.i
+.PHONY : src/tests/message_store_test.i
+
+# target to preprocess a source file
+src/tests/message_store_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_store_test.c.i
+.PHONY : src/tests/message_store_test.c.i
+
+src/tests/message_store_test.s: src/tests/message_store_test.c.s
+.PHONY : src/tests/message_store_test.s
+
+# target to generate assembly for a file
+src/tests/message_store_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/message_store_test.c.s
+.PHONY : src/tests/message_store_test.c.s
+
 src/tests/mongoose_test.o: src/tests/mongoose_test.c.o
 .PHONY : src/tests/mongoose_test.o
 
@@ -1498,6 +1732,9 @@ help:
 	@echo "... generated/envelope.pb-c.o"
 	@echo "... generated/envelope.pb-c.i"
 	@echo "... generated/envelope.pb-c.s"
+	@echo "... generated/message.pb-c.o"
+	@echo "... generated/message.pb-c.i"
+	@echo "... generated/message.pb-c.s"
 	@echo "... scripts/docker_config_generator.o"
 	@echo "... scripts/docker_config_generator.i"
 	@echo "... scripts/docker_config_generator.s"
@@ -1525,6 +1762,15 @@ help:
 	@echo "... src/packages/comm/httpClient.o"
 	@echo "... src/packages/comm/httpClient.i"
 	@echo "... src/packages/comm/httpClient.s"
+	@echo "... src/packages/comm/message_permissions.o"
+	@echo "... src/packages/comm/message_permissions.i"
+	@echo "... src/packages/comm/message_permissions.s"
+	@echo "... src/packages/comm/messagesApi.o"
+	@echo "... src/packages/comm/messagesApi.i"
+	@echo "... src/packages/comm/messagesApi.s"
+	@echo "... src/packages/comm/userMessagesApi.o"
+	@echo "... src/packages/comm/userMessagesApi.i"
+	@echo "... src/packages/comm/userMessagesApi.s"
 	@echo "... src/packages/discovery/discovery.o"
 	@echo "... src/packages/discovery/discovery.i"
 	@echo "... src/packages/discovery/discovery.s"
@@ -1552,6 +1798,9 @@ help:
 	@echo "... src/packages/sql/gossip_peers.o"
 	@echo "... src/packages/sql/gossip_peers.i"
 	@echo "... src/packages/sql/gossip_peers.s"
+	@echo "... src/packages/sql/message_store.o"
+	@echo "... src/packages/sql/message_store.i"
+	@echo "... src/packages/sql/message_store.s"
 	@echo "... src/packages/sql/permissions.o"
 	@echo "... src/packages/sql/permissions.i"
 	@echo "... src/packages/sql/permissions.s"
@@ -1585,6 +1834,9 @@ help:
 	@echo "... src/packages/validation/gossip_validation.o"
 	@echo "... src/packages/validation/gossip_validation.i"
 	@echo "... src/packages/validation/gossip_validation.s"
+	@echo "... src/packages/validation/message_validation.o"
+	@echo "... src/packages/validation/message_validation.i"
+	@echo "... src/packages/validation/message_validation.s"
 	@echo "... src/structs/permission/permission.o"
 	@echo "... src/structs/permission/permission.i"
 	@echo "... src/structs/permission/permission.s"
@@ -1615,6 +1867,15 @@ help:
 	@echo "... src/tests/httpclient_test.o"
 	@echo "... src/tests/httpclient_test.i"
 	@echo "... src/tests/httpclient_test.s"
+	@echo "... src/tests/message_api_test.o"
+	@echo "... src/tests/message_api_test.i"
+	@echo "... src/tests/message_api_test.s"
+	@echo "... src/tests/message_permissions_test.o"
+	@echo "... src/tests/message_permissions_test.i"
+	@echo "... src/tests/message_permissions_test.s"
+	@echo "... src/tests/message_store_test.o"
+	@echo "... src/tests/message_store_test.i"
+	@echo "... src/tests/message_store_test.s"
 	@echo "... src/tests/mongoose_test.o"
 	@echo "... src/tests/mongoose_test.i"
 	@echo "... src/tests/mongoose_test.s"

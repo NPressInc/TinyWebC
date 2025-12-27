@@ -23,8 +23,6 @@ static size_t g_handler_count = 0;
 static pthread_mutex_t g_handler_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Forward declarations for default handlers
-static int handle_direct_message(const Tinyweb__Envelope* envelope, const unsigned char* payload, size_t payload_len, void* context);
-static int handle_group_message(const Tinyweb__Envelope* envelope, const unsigned char* payload, size_t payload_len, void* context);
 static int handle_location_update(const Tinyweb__Envelope* envelope, const unsigned char* payload, size_t payload_len, void* context);
 static int handle_emergency_alert(const Tinyweb__Envelope* envelope, const unsigned char* payload, size_t payload_len, void* context);
 
@@ -36,10 +34,6 @@ int envelope_dispatcher_init(void) {
     
     // Register default handlers for MVP content types
     g_handler_count = 0;
-    
-    // Communication handlers (use internal version since we already have the lock)
-    envelope_register_handler_internal(TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE, handle_direct_message);
-    envelope_register_handler_internal(TINYWEB__CONTENT_TYPE__CONTENT_GROUP_MESSAGE, handle_group_message);
     
     // Safety handlers
     envelope_register_handler_internal(TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE, handle_location_update);
@@ -110,8 +104,6 @@ const char* envelope_content_type_name(uint32_t content_type) {
         // Phase 1: MVP
         case TINYWEB__CONTENT_TYPE__CONTENT_USER_REGISTRATION: return "UserRegistration";
         case TINYWEB__CONTENT_TYPE__CONTENT_ROLE_ASSIGNMENT: return "RoleAssignment";
-        case TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE: return "DirectMessage";
-        case TINYWEB__CONTENT_TYPE__CONTENT_GROUP_MESSAGE: return "GroupMessage";
         case TINYWEB__CONTENT_TYPE__CONTENT_GROUP_CREATE: return "GroupCreate";
         case TINYWEB__CONTENT_TYPE__CONTENT_GROUP_UPDATE: return "GroupUpdate";
         case TINYWEB__CONTENT_TYPE__CONTENT_GROUP_MEMBER_ADD: return "GroupMemberAdd";
@@ -210,88 +202,6 @@ int envelope_dispatch(const Tinyweb__Envelope* envelope, void* context) {
 }
 
 // ===== Default Handlers =====
-
-static int handle_direct_message(const Tinyweb__Envelope* envelope, 
-                                 const unsigned char* payload, 
-                                 size_t payload_len, 
-                                 void* context) {
-    (void)context;
-    
-    if (!envelope || !envelope->header || !envelope->header->sender_pubkey.data) {
-        logger_error("envelope_dispatch", "handle_direct_message: invalid envelope");
-        return -1;
-    }
-    
-    // Check permission: user must have SEND_MESSAGE permission in SCOPE_DIRECT
-    if (envelope->header->sender_pubkey.len == 32) {
-        if (!check_user_permission(envelope->header->sender_pubkey.data, 
-                                   PERMISSION_SEND_MESSAGE, SCOPE_DIRECT)) {
-            logger_error("envelope_dispatch", "handle_direct_message: user does not have permission to send direct messages");
-            return -1;
-        }
-    }
-    
-    if (!payload) {
-        logger_error("envelope_dispatch", "handle_direct_message: unable to decrypt payload (not a recipient?)");
-        return 0; // Not an error - we may not be a recipient of this message
-    }
-    
-    // Parse DirectMessage from payload
-    Tinyweb__DirectMessage* msg = tinyweb__direct_message__unpack(NULL, payload_len, payload);
-    if (!msg) {
-        logger_error("envelope_dispatch", "handle_direct_message: failed to parse DirectMessage");
-        return -1;
-    }
-    
-    printf("DirectMessage from %p: %s\n", 
-           (void*)envelope->header->sender_pubkey.data, 
-           msg->text);
-    
-    tinyweb__direct_message__free_unpacked(msg, NULL);
-    return 0;
-}
-
-static int handle_group_message(const Tinyweb__Envelope* envelope,
-                               const unsigned char* payload,
-                               size_t payload_len,
-                               void* context) {
-    (void)context;
-    
-    if (!envelope || !envelope->header || !envelope->header->sender_pubkey.data) {
-        logger_error("envelope_dispatch", "handle_group_message: invalid envelope");
-        return -1;
-    }
-    
-    // Check permission: user must have SEND_MESSAGE permission in PRIMARY_GROUP or EXTENDED_GROUP scope
-    if (envelope->header->sender_pubkey.len == 32) {
-        bool has_perm = check_user_permission(envelope->header->sender_pubkey.data, 
-                                             PERMISSION_SEND_MESSAGE, SCOPE_PRIMARY_GROUP) ||
-                       check_user_permission(envelope->header->sender_pubkey.data, 
-                                             PERMISSION_SEND_MESSAGE, SCOPE_EXTENDED_GROUP);
-        if (!has_perm) {
-            logger_error("envelope_dispatch", "handle_group_message: user does not have permission to send group messages");
-            return -1;
-        }
-    }
-    
-    if (!payload) {
-        logger_error("envelope_dispatch", "handle_group_message: unable to decrypt payload (not a recipient?)");
-        return 0; // Not an error - we may not be a recipient of this message
-    }
-    
-    Tinyweb__GroupMessage* msg = tinyweb__group_message__unpack(NULL, payload_len, payload);
-    if (!msg) {
-        logger_error("envelope_dispatch", "handle_group_message: failed to parse GroupMessage");
-        return -1;
-    }
-    
-    printf("GroupMessage to group %p: %s\n",
-           (void*)msg->group_id.data,
-           msg->text);
-    
-    tinyweb__group_message__free_unpacked(msg, NULL);
-    return 0;
-}
 
 static int handle_location_update(const Tinyweb__Envelope* envelope,
                                   const unsigned char* payload,

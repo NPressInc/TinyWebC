@@ -20,6 +20,21 @@ function KeyManagement() {
   const initializeKeyStore = async () => {
     try {
       await keyStore.init();
+      
+      // Try to auto-load from localStorage if available
+      // Check if we have a saved keypair
+      const stored = localStorage.getItem('tinyweb_keypair');
+      if (stored && !keyStore.isKeypairLoaded()) {
+        // Try to load with empty passphrase (if it was saved that way)
+        try {
+          await keyStore.loadKeypair('');
+          console.log('Auto-loaded keypair from localStorage');
+        } catch (err) {
+          // If empty passphrase doesn't work, keys are encrypted - user needs to enter passphrase
+          console.log('Keypair found but requires passphrase');
+        }
+      }
+      
       if (keyStore.isKeypairLoaded()) {
         setUserKey(keyStore.getPublicKeyHex());
         setIsLoaded(true);
@@ -99,7 +114,7 @@ function KeyManagement() {
       setError('');
       setLoading(true);
 
-      await keyStore.loadRawKeypair(newKeyHex.trim());
+      await keyStore.loadRawKeypair(newKeyHex.trim(), true); // Auto-save to localStorage
       setUserKey(keyStore.getPublicKeyHex());
       setIsLoaded(true);
       setNewKeyHex('');
@@ -193,6 +208,13 @@ function KeyManagement() {
           // Decrypt and load (public key will be derived from secret key)
           await keyStore.loadKeypair(passphrase);
 
+          // Save to regular storage for future auto-loading
+          if (passphrase.trim()) {
+            await keyStore.saveKeypair(passphrase);
+          } else {
+            await keyStore.saveKeypair('');
+          }
+
           // Clean up temp data
           localStorage.removeItem('tinyweb_import_key');
 
@@ -208,7 +230,7 @@ function KeyManagement() {
 
           // Convert binary key to hex and load
           const keyHex = sodium.to_hex(bytes);
-          await keyStore.loadRawKeypair(keyHex);
+          await keyStore.loadRawKeypair(keyHex, true); // Auto-save to localStorage
           setUserKey(keyStore.getPublicKeyHex());
           setIsLoaded(true);
           setSelectedFile(null);
@@ -248,6 +270,13 @@ function KeyManagement() {
             // Now load it (this will use the passphrase to decrypt)
             await keyStore.loadKeypair(passphrase);
 
+            // Save to regular storage for future auto-loading
+            if (passphrase.trim()) {
+              await keyStore.saveKeypair(passphrase);
+            } else {
+              await keyStore.saveKeypair('');
+            }
+
             // Clean up temp data
             localStorage.removeItem('tinyweb_import_key');
 
@@ -264,7 +293,7 @@ function KeyManagement() {
           const trimmedContent = fileContent.trim();
           if (/^[0-9a-fA-F]+$/.test(trimmedContent) && trimmedContent.length === 128) {
             // Looks like a hex private key
-            await keyStore.loadRawKeypair(trimmedContent);
+            await keyStore.loadRawKeypair(trimmedContent, true); // Auto-save to localStorage
             setUserKey(keyStore.getPublicKeyHex());
             setIsLoaded(true);
             setSelectedFile(null);

@@ -12,6 +12,7 @@
 #include "packages/comm/gossip/gossip.h"
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/schema.h"
+#include "packages/sql/message_store.h"
 #include "packages/sql/gossip_peers.h"
 #include "packages/utils/statePaths.h"
 #include "packages/utils/logger.h"
@@ -21,9 +22,10 @@
 #include "packages/comm/envelope_dispatcher.h"
 #include "packages/utils/config.h"
 #include "packages/discovery/discovery.h"
-#include "packages/transactions/envelope.h"
 #include "packages/keystore/keystore.h"
 #include "packages/encryption/encryption.h"
+#include "packages/validation/message_validation.h"
+#include "message.pb-c.h"
 #include "content.pb-c.h"  // For Tinyweb__NodeRegistration
 #include <netdb.h>  // For gethostbyaddr
 #include <arpa/inet.h>  // For inet_ntoa
@@ -44,7 +46,8 @@ static void bootstrap_known_peers(GossipService* service);
 static void stop_gossip_service(void);
 static int start_http_api(uint16_t port, const GossipValidationConfig* validation_config);
 static void stop_http_api(void);
-static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* envelope, const struct sockaddr_in* source, void* context);
+static int gossip_receive_envelope_handler(GossipService* service, Tinyweb__Envelope* envelope, const struct sockaddr_in* source, void* context);
+static int gossip_receive_message_handler(GossipService* service, Tinyweb__Message* message, const struct sockaddr_in* source, void* context);
 static void discover_peer_from_source(GossipService* service, const struct sockaddr_in* source);
 static void handle_node_announcement(GossipService* service, const Tinyweb__Envelope* envelope, const struct sockaddr_in* source);
 static int send_node_announcement(GossipService* service, const NodeConfig* config);
@@ -196,6 +199,11 @@ static int initialize_storage(const NodeConfig* config, NodeStatePaths* paths, c
         return -1;
     }
 
+    if (message_store_init() != 0) {
+        logger_error("main", "Failed to initialize message store");
+        return -1;
+    }
+
     if (gossip_peers_init() != 0) {
         logger_error("main", "Failed to initialize gossip peer store");
         return -1;
@@ -205,7 +213,7 @@ static int initialize_storage(const NodeConfig* config, NodeStatePaths* paths, c
 }
 
 static int start_gossip_service(uint16_t port, const GossipValidationConfig* validation_config, const NodeConfig* config) {
-    if (gossip_service_init(&g_gossip_service, port, gossip_receive_handler, validation_config) != 0) {
+    if (gossip_service_init(&g_gossip_service, port, gossip_receive_envelope_handler, gossip_receive_message_handler, (void*)validation_config) != 0) {
         logger_error("main", "Failed to initialize gossip service");
         return -1;
     }
@@ -276,7 +284,7 @@ static void stop_http_api(void) {
     g_http_server_running = false;
 }
 
-static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* envelope, const struct sockaddr_in* source, void* context) {
+static int gossip_receive_envelope_handler(GossipService* service, Tinyweb__Envelope* envelope, const struct sockaddr_in* source, void* context) {
 
     const GossipValidationConfig* config = (const GossipValidationConfig*)context;
     uint64_t now = (uint64_t)time(NULL);
@@ -300,6 +308,7 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
         return -1;
     }
 
+    // For non-wrapped messages, serialize and store as normal
     // Serialize envelope to compute digest
     unsigned char* ser = NULL;
     size_t ser_len = 0;
@@ -324,10 +333,9 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
 
     uint64_t expires_at = gossip_validation_expiration(envelope, config);
     if (db_is_initialized()) {
-        const Tinyweb__EnvelopeHeader* hdr = envelope->header;
-        if (gossip_store_save_envelope(hdr->version, hdr->content_type, hdr->schema_version,
-                                       hdr->sender_pubkey.data, hdr->timestamp,
-                                       ser, ser_len, expires_at) != 0) {
+        int save_result = gossip_store_save_envelope(envelope, expires_at);
+        
+        if (save_result != 0) {
             logger_error("gossip", "Failed to persist gossip envelope");
             free(ser);
             return -1;
@@ -339,20 +347,18 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
 
     free(ser);
 
-    // Phase 2.1: Dynamic Peer Addition on Message Receive
-    // Check if source peer is known, if not, discover and add it
+    // Dynamic Peer Addition on Message Receive
     if (source) {
         discover_peer_from_source(service, source);
     }
 
     // Phase 2.3: Handle Node Announcement Messages
-    // Check if this is a node registration announcement
     if (envelope->header && 
         envelope->header->content_type == TINYWEB__CONTENT_TYPE__CONTENT_NODE_REGISTRATION) {
         handle_node_announcement(service, envelope, source);
     }
 
-    // Dispatch to content-specific handlers
+    // Dispatch to content-specific handlers (for non-wrapped messages)
     if (envelope_dispatch(envelope, NULL) != 0) {
         logger_error("gossip", "envelope dispatch failed, continuing anyway");
     }
@@ -360,6 +366,65 @@ static int gossip_receive_handler(GossipService* service, Tinyweb__Envelope* env
     // Rebroadcast to other peers
     if (gossip_service_rebroadcast_envelope(service, envelope, source) != 0) {
         logger_error("gossip", "failed to rebroadcast gossip envelope");
+    }
+
+    return 0;
+}
+
+static int gossip_receive_message_handler(GossipService* service, Tinyweb__Message* message, const struct sockaddr_in* source, void* context) {
+    (void)context;
+
+    // 1. Validate message (Signature, Timestamp, Size)
+    MessageValidationResult val_res = message_validate(message);
+    if (val_res != MESSAGE_VALIDATION_OK) {
+        logger_error("gossip", "Rejected gossip message: %s", message_validation_result_to_string(val_res));
+        return -1;
+    }
+
+    // 2. Authorization check (whitelist)
+    if (message->header && message->header->sender_pubkey.data && message->header->sender_pubkey.len == 32) {
+        GossipPeerInfo peer;
+        if (gossip_peers_get_by_pubkey(message->header->sender_pubkey.data, &peer) != 0) {
+            logger_error("gossip", "Rejected message from unauthorized node (public key not in whitelist)");
+            return -1;
+        }
+    }
+
+    // 3. Deduplication
+    unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE];
+    if (message_store_compute_digest(message, digest) != 0) {
+        return -1;
+    }
+
+    int seen = 0;
+    if (db_is_initialized()) {
+        if (message_store_has_seen(digest, &seen) != 0) {
+            logger_error("gossip", "failed to check message digest cache");
+        } else if (seen) {
+            return 0; // Already processed
+        }
+    }
+
+    // 4. Store
+    uint64_t expires_at = message_validation_get_expiration(message);
+    if (db_is_initialized()) {
+        if (message_store_save(message, expires_at) != 0) {
+            logger_error("gossip", "Failed to persist gossip message");
+            return -1;
+        }
+        if (message_store_mark_seen(digest, expires_at) != 0) {
+            logger_error("gossip", "failed to record message digest");
+        }
+    }
+
+    // 5. Dynamic Peer Discovery
+    if (source) {
+        discover_peer_from_source(service, source);
+    }
+
+    // 6. Rebroadcast
+    if (gossip_service_rebroadcast_message(service, message, source) != 0) {
+        logger_error("gossip", "failed to rebroadcast gossip message");
     }
 
     return 0;

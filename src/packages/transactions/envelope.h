@@ -10,13 +10,6 @@
 // We include protobuf headers here (generated files)
 #include "envelope.pb-c.h"
 
-typedef enum {
-    TW_CONTENT_DIRECT_MESSAGE = 1,
-    TW_CONTENT_GROUP_MESSAGE = 2,
-    TW_CONTENT_LOCATION_UPDATE = 3,
-    TW_CONTENT_EMERGENCY_ALERT = 4
-} tw_content_type_t;
-
 typedef struct {
     uint32_t version;
     uint32_t content_type;

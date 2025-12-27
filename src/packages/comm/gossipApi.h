@@ -14,5 +14,8 @@ void gossip_api_stop(void);
 
 bool gossip_api_is_running(void);
 
+// Get the gossip service instance (for use by other modules like userMessagesApi)
+GossipService* gossip_api_get_service(void);
+
 #endif // GOSSIP_API_H
 

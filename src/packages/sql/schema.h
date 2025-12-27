@@ -5,9 +5,16 @@
 #include <stdint.h>
 #include <sqlite3.h>
 
+// Forward declaration - actual definition in envelope.pb-c.h
+typedef struct Tinyweb__Envelope Tinyweb__Envelope;
+
 #define GOSSIP_SEEN_DIGEST_SIZE 32
 #ifndef PUBKEY_SIZE
+#ifndef PUBKEY_SIZE
+#ifndef PUBKEY_SIZE
 #define PUBKEY_SIZE 32  // Ed25519 public key size
+#endif
+#endif
 #endif
 
 typedef struct {
@@ -30,15 +37,19 @@ int gossip_store_has_seen(const unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE], i
 int gossip_store_mark_seen(const unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE], uint64_t expires_at);
 
 // Envelope APIs
-int gossip_store_save_envelope(uint32_t version, uint32_t content_type, uint32_t schema_version,
-                               const unsigned char sender[PUBKEY_SIZE],
-                               uint64_t timestamp,
-                               const unsigned char* envelope, size_t envelope_size,
+// Save envelope by extracting fields from Tinyweb__Envelope structure
+// This stores header fields and encrypted payload separately for efficient SQL queries
+int gossip_store_save_envelope(const Tinyweb__Envelope* envelope,
                                uint64_t expires_at);
 
 int gossip_store_fetch_recent_envelopes(uint32_t limit,
                                         GossipStoredEnvelope** out,
                                         size_t* count);
+
+int gossip_store_fetch_recent_envelopes_for_user(const unsigned char user_pubkey[PUBKEY_SIZE],
+                                                  uint32_t limit,
+                                                  GossipStoredEnvelope** out,
+                                                  size_t* count);
 
 void gossip_store_free_envelopes(GossipStoredEnvelope* envs, size_t count);
 

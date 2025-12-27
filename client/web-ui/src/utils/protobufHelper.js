@@ -12,7 +12,7 @@ let RecipientKeyWrapType = null;
 /**
  * Load protobuf schema (lazy loading, cached)
  */
-async function loadProtobufSchema() {
+export async function loadProtobufSchema() {
   if (EnvelopeType) {
     return { EnvelopeType, EnvelopeHeaderType, RecipientKeyWrapType };
   }
@@ -25,8 +25,8 @@ async function loadProtobufSchema() {
       
       enum ContentType {
         CONTENT_UNKNOWN = 0;
-        CONTENT_DIRECT_MESSAGE = 10;
-        CONTENT_GROUP_MESSAGE = 11;
+        // NOTE: DirectMessage and GroupMessage (10-11) have been moved to the
+        // separate Message system. Envelopes are for system messages only.
         CONTENT_LOCATION_UPDATE = 33;
         CONTENT_EMERGENCY_ALERT = 34;
       }
@@ -199,5 +199,77 @@ export function hexToProtobuf(hex) {
   }
   return bytes;
 }
+
+/**
+ * Deserialize protobuf-encoded envelope bytes to JavaScript object
+ * @param {Uint8Array|string} envelopeBytes - Protobuf-encoded envelope (Uint8Array or hex string)
+ * @returns {Promise<Object>} Decoded envelope object with header, encryptedPayload, and signature
+ */
+export async function deserializeEnvelopeFromProtobuf(envelopeBytes) {
+  const { EnvelopeType } = await loadProtobufSchema();
+  
+  // Convert hex string to Uint8Array if needed
+  let bytes = envelopeBytes;
+  if (typeof envelopeBytes === 'string') {
+    bytes = hexToProtobuf(envelopeBytes);
+  }
+  
+  // Decode protobuf message
+  const message = EnvelopeType.decode(bytes);
+  
+  // Extract header
+  const header = {
+    version: message.header.version,
+    contentType: message.header.content_type,
+    schemaVersion: message.header.schema_version,
+    timestamp: Number(message.header.timestamp) * 1000, // Convert seconds to ms
+    senderPubkey: new Uint8Array(message.header.sender_pubkey),
+    recipientPubkeys: (message.header.recipients_pubkey || []).map(pk => new Uint8Array(pk)),
+    groupId: message.header.group_id ? new Uint8Array(message.header.group_id) : null,
+  };
+  
+  // Extract encrypted payload structure
+  const { EncryptedPayload } = await import('./encryption.js');
+  const encryptedPayload = new EncryptedPayload();
+  encryptedPayload.ciphertext = new Uint8Array(message.payload_ciphertext);
+  encryptedPayload.nonce = new Uint8Array(message.payload_nonce);
+  encryptedPayload.ephemeralPubkey = new Uint8Array(message.ephemeral_pubkey);
+  
+  // Extract keywraps and map to encryptedKeys/keyNonces arrays
+  // Match keywraps to recipientPubkeys by comparing pubkeys
+  encryptedPayload.encryptedKeys = [];
+  encryptedPayload.keyNonces = [];
+  encryptedPayload.numRecipients = header.recipientPubkeys.length;
+  
+  // Create a map of recipient pubkey to keywrap
+  const keywrapMap = new Map();
+  for (const keywrap of (message.keywraps || [])) {
+    const recipientKey = Array.from(keywrap.recipient_pubkey);
+    keywrapMap.set(recipientKey.join(','), keywrap);
+  }
+  
+  // Match keywraps to recipientPubkeys in order
+  for (const recipientPubkey of header.recipientPubkeys) {
+    const key = Array.from(recipientPubkey).join(',');
+    const keywrap = keywrapMap.get(key);
+    if (keywrap) {
+      encryptedPayload.encryptedKeys.push(new Uint8Array(keywrap.wrapped_key));
+      encryptedPayload.keyNonces.push(new Uint8Array(keywrap.key_nonce));
+    } else {
+      throw new Error(`Keywrap not found for recipient pubkey`);
+    }
+  }
+  
+  // Extract signature
+  const signature = new Uint8Array(message.signature);
+  
+  return {
+    header,
+    encryptedPayload,
+    signature,
+  };
+}
+
+
 
 

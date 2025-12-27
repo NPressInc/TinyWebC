@@ -4,7 +4,8 @@ import './ConversationView.css';
 import { detectRunningNodes, getMessages, sendEnvelope, DEFAULT_NODE_URLS } from '../utils/api';
 import { decodeEnvelopeList } from '../utils/protobufDecode';
 import { createDirectMessage } from '../utils/envelope';
-import { serializeEnvelopeToProtobufHex } from '../utils/protobufHelper';
+import { serializeEnvelopeToProtobufHex, deserializeEnvelopeFromProtobuf } from '../utils/protobufHelper';
+import { decryptPayload } from '../utils/encryption';
 import keyStore from '../utils/keystore';
 import sodium from 'libsodium-wrappers';
 
@@ -26,17 +27,9 @@ function ConversationView() {
     setError(null);
 
     try {
-      // Detect running nodes
-      const nodes = await detectRunningNodes();
-      if (nodes.length === 0) {
-        setError('No running nodes detected. Please start docker containers first.');
-        setLoading(false);
-        return;
-      }
-
-      const nodeUrl = nodes[0].url;
-      setSelectedNode(nodeUrl);
-
+      // Initialize keystore first
+      await keyStore.init();
+      
       // Check if keypair is loaded
       if (!keyStore.isKeypairLoaded()) {
         setError('No keypair loaded. Please load or generate keys first.');
@@ -44,8 +37,28 @@ function ConversationView() {
         return;
       }
 
+      // Always use first detected node (or first default node)
+      const nodes = await detectRunningNodes();
+      let nodeUrl = nodes.length > 0 ? nodes[0].url : '';
+      if (!nodeUrl) {
+        const defaultNodes = Object.values(DEFAULT_NODE_URLS);
+        nodeUrl = defaultNodes[0] || '';
+      }
+      
+      if (!nodeUrl) {
+        setError('No running nodes detected. Please start docker containers first.');
+        setLoading(false);
+        return;
+      }
+      
+      setSelectedNode(nodeUrl);
+
+      // Ensure sodium is ready
+      await sodium.ready;
+
       // Get user's public key
       const userPubkey = keyStore.getPublicKeyHex();
+      const userPubkeyBytes = sodium.from_hex(userPubkey);
 
       // Fetch messages from API
       const response = await getMessages(nodeUrl, userPubkey, userId);
@@ -54,22 +67,54 @@ function ConversationView() {
         // Decode protobuf envelope list
         const decoded = await decodeEnvelopeList(response.envelope_list_hex);
         
-        // Transform to UI format
-        // Note: Messages are encrypted, so we can't show the actual content without decryption
-        // For now, we'll show that messages exist but indicate they need decryption
-        const formatted = decoded.map((env, idx) => {
-          const isOutgoing = env.senderHex.toLowerCase() === userPubkey.toLowerCase();
-          return {
-            id: env.id,
-            type: env.contentType,
-            timestamp: env.timestamp,
-            sender: env.senderHex,
-            isOutgoing,
-            // Message content is encrypted in the envelope, would need decryption to show
-            // For now, show a placeholder
-            content: '[Encrypted message - decryption not yet implemented in UI]',
-          };
-        });
+        // Decrypt and format messages
+        const formatted = [];
+        
+        for (const stored of decoded) {
+          try {
+            // Decode envelope from protobuf bytes
+            const envelopeBytes = new Uint8Array(stored.envelope);
+            const envelope = await deserializeEnvelopeFromProtobuf(envelopeBytes);
+            
+            // Determine if message is outgoing
+            const isOutgoing = sodium.memcmp(
+              new Uint8Array(envelope.header.senderPubkey),
+              userPubkeyBytes
+            );
+            
+            // Decrypt message
+            let messageText = '[Unable to decrypt]';
+            try {
+              const plaintext = await decryptPayload(
+                envelope.encryptedPayload,
+                envelope.header.recipientPubkeys
+              );
+              messageText = new TextDecoder().decode(plaintext);
+            } catch (decryptErr) {
+              console.warn('Failed to decrypt message:', decryptErr);
+            }
+            
+            formatted.push({
+              id: stored.id,
+              type: stored.contentType,
+              timestamp: stored.timestamp,
+              sender: stored.senderHex,
+              isOutgoing,
+              content: messageText,
+            });
+          } catch (err) {
+            console.error('Error processing envelope:', err);
+            // Add error message as fallback
+            formatted.push({
+              id: stored.id,
+              type: stored.contentType,
+              timestamp: stored.timestamp,
+              sender: stored.senderHex,
+              isOutgoing: false,
+              content: '[Error processing message]',
+            });
+          }
+        }
 
         // Sort by timestamp (oldest first)
         formatted.sort((a, b) => a.timestamp - b.timestamp);
@@ -109,40 +154,57 @@ function ConversationView() {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || sending || !selectedNode) return;
+    console.log('[handleSendMessage] Starting send, newMessage:', newMessage, 'sending:', sending, 'selectedNode:', selectedNode);
+    
+    if (!newMessage.trim() || sending || !selectedNode) {
+      console.log('[handleSendMessage] Early return - validation failed');
+      return;
+    }
 
     setSending(true);
     setError(null);
 
     try {
+      console.log('[handleSendMessage] Waiting for sodium...');
       await sodium.ready;
+      console.log('[handleSendMessage] Initializing keystore...');
       await keyStore.init();
 
       if (!keyStore.isKeypairLoaded()) {
+        console.error('[handleSendMessage] No keypair loaded');
         setError('No keypair loaded. Please load or generate keys first.');
         setSending(false);
         return;
       }
 
+      console.log('[handleSendMessage] Converting recipient pubkey from hex:', userId);
       // Convert recipient pubkey from hex to Uint8Array
       const recipientPubkeyBytes = sodium.from_hex(userId);
+      console.log('[handleSendMessage] Recipient pubkey bytes length:', recipientPubkeyBytes.length);
 
+      console.log('[handleSendMessage] Creating direct message envelope...');
       // Create direct message envelope
       const envelope = await createDirectMessage(recipientPubkeyBytes, newMessage);
+      console.log('[handleSendMessage] Envelope created:', envelope);
 
+      console.log('[handleSendMessage] Serializing envelope to protobuf hex...');
       // Serialize to protobuf and hex-encode
       const envelopeHex = await serializeEnvelopeToProtobufHex(envelope);
+      console.log('[handleSendMessage] Envelope hex length:', envelopeHex?.length);
 
+      console.log('[handleSendMessage] Sending envelope to node:', selectedNode);
       // Send to node
       const result = await sendEnvelope(selectedNode, envelopeHex);
+      console.log('[handleSendMessage] Send result:', result);
 
       // Clear input
       setNewMessage('');
 
       // Reload messages to show the new one
+      console.log('[handleSendMessage] Reloading messages...');
       await loadMessages();
     } catch (err) {
-      console.error('Error sending message:', err);
+      console.error('[handleSendMessage] Error sending message:', err);
       setError(err.message || 'Failed to send message');
     } finally {
       setSending(false);
@@ -203,19 +265,39 @@ function ConversationView() {
             <p>Send the first message!</p>
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`message ${message.isOutgoing ? 'outgoing' : 'incoming'}`}
-            >
-              <div className="message-content">
-                {message.content || '[Message]'}
+          messages.map((message, index) => {
+            // Group consecutive messages from same sender
+            const prevMessage = index > 0 ? messages[index - 1] : null;
+            const showAvatar = !prevMessage || 
+              prevMessage.isOutgoing !== message.isOutgoing ||
+              (message.timestamp - prevMessage.timestamp) > 300000; // 5 minutes
+            
+            return (
+              <div
+                key={message.id}
+                className={`message-wrapper ${message.isOutgoing ? 'outgoing' : 'incoming'}`}
+              >
+                {!message.isOutgoing && showAvatar && (
+                  <div className="message-avatar">
+                    {shortenPubkey(message.sender).charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className={`message-bubble ${message.isOutgoing ? 'outgoing' : 'incoming'}`}>
+                  <div className="message-content">
+                    {message.content || '[Message]'}
+                  </div>
+                  <div className="message-time">
+                    {formatTime(message.timestamp)}
+                  </div>
+                </div>
+                {message.isOutgoing && showAvatar && (
+                  <div className="message-avatar outgoing-avatar">
+                    You
+                  </div>
+                )}
               </div>
-              <div className="message-time">
-                {formatTime(message.timestamp)}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

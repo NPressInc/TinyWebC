@@ -2,10 +2,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <openssl/sha.h>
 
 #include "packages/keystore/keystore.h"
 #include "packages/signing/signing.h"
+#include "packages/utils/logger.h"
 
 #include "envelope.pb-c.h"
 
@@ -15,24 +17,59 @@ static int compute_envelope_digest(const Tinyweb__EnvelopeHeader* hdr,
                                    unsigned char out_hash[SHA256_DIGEST_LENGTH]) {
     if (!hdr || !cipher) return -1;
 
-    // Serialize header
-    size_t hdr_len = tinyweb__envelope_header__get_packed_size((Tinyweb__EnvelopeHeader*)hdr);
-    unsigned char* hdr_buf = malloc(hdr_len);
-    if (!hdr_buf) return -1;
-    tinyweb__envelope_header__pack((Tinyweb__EnvelopeHeader*)hdr, hdr_buf);
-
+    // Hash ciphertext first
     unsigned char payload_hash[SHA256_DIGEST_LENGTH];
     SHA256(cipher, cipher_len, payload_hash);
 
+    // Compute digest from raw header data (not protobuf-serialized)
+    // This matches the frontend approach and is cleaner
     SHA256_CTX ctx;
     SHA256_Init(&ctx);
+    
+    // Domain separator
     static const unsigned char domain[] = { 'T','W','E','N','V','E','L','O','P','E','\0' };
     SHA256_Update(&ctx, domain, sizeof(domain));
-    SHA256_Update(&ctx, hdr_buf, hdr_len);
+    
+    // Header fields in canonical order:
+    // 1. version (uint32, 4 bytes, little-endian)
+    uint32_t version = hdr->version;
+    SHA256_Update(&ctx, (unsigned char*)&version, sizeof(version));
+    
+    // 2. content_type (uint32, 4 bytes, little-endian)
+    uint32_t content_type = hdr->content_type;
+    SHA256_Update(&ctx, (unsigned char*)&content_type, sizeof(content_type));
+    
+    // 3. schema_version (uint32, 4 bytes, little-endian)
+    uint32_t schema_version = hdr->schema_version;
+    SHA256_Update(&ctx, (unsigned char*)&schema_version, sizeof(schema_version));
+    
+    // 4. timestamp (uint64, 8 bytes, little-endian)
+    uint64_t timestamp = hdr->timestamp;
+    SHA256_Update(&ctx, (unsigned char*)&timestamp, sizeof(timestamp));
+    
+    // 5. sender_pubkey (32 bytes)
+    if (hdr->sender_pubkey.len != 32) return -1;
+    SHA256_Update(&ctx, hdr->sender_pubkey.data, 32);
+    
+    // 6. recipients_pubkey (count + data for each)
+    uint32_t num_recipients = hdr->n_recipients_pubkey;
+    SHA256_Update(&ctx, (unsigned char*)&num_recipients, sizeof(num_recipients));
+    for (size_t i = 0; i < num_recipients; i++) {
+        if (hdr->recipients_pubkey[i].len != 32) return -1;
+        SHA256_Update(&ctx, hdr->recipients_pubkey[i].data, 32);
+    }
+    
+    // 7. group_id (length + data, or empty)
+    uint32_t group_id_len = hdr->group_id.len;
+    SHA256_Update(&ctx, (unsigned char*)&group_id_len, sizeof(group_id_len));
+    if (group_id_len > 0) {
+        SHA256_Update(&ctx, hdr->group_id.data, group_id_len);
+    }
+    
+    // 8. Payload hash
     SHA256_Update(&ctx, payload_hash, sizeof(payload_hash));
+    
     SHA256_Final(out_hash, &ctx);
-
-    free(hdr_buf);
     return 0;
 }
 
@@ -173,10 +210,17 @@ int tw_envelope_verify(const Tinyweb__Envelope* env) {
     if (!env) return -1;
     unsigned char digest[SHA256_DIGEST_LENGTH];
     if (compute_envelope_digest(env->header, env->payload_ciphertext.data, env->payload_ciphertext.len, digest) != 0) {
+        logger_error("envelope", "Failed to compute envelope digest");
         return -1;
     }
     const unsigned char* pk = env->header->sender_pubkey.data;
-    return verify_signature(env->signature.data, digest, sizeof(digest), pk);
+    int result = verify_signature(env->signature.data, digest, sizeof(digest), pk);
+    if (result != 0) {
+        logger_error("envelope", "Signature verification failed: result=%d", result);
+        logger_error("envelope", "Signature len=%zu, digest len=%zu, pubkey len=%zu", 
+                    env->signature.len, sizeof(digest), env->header->sender_pubkey.len);
+    }
+    return result;
 }
 
 int tw_envelope_peek(const Tinyweb__Envelope* env,

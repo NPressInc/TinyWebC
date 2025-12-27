@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include <time.h>
 #include <sodium.h>
+#include <openssl/sha.h>
+#include <time.h>
 
 #include "packages/utils/error.h"
 #include "packages/utils/config.h"
@@ -13,6 +15,11 @@
 #include "packages/utils/logger.h"
 #include "packages/keystore/keystore.h"
 #include "packages/comm/gossip/gossip.h"
+#include "packages/sql/message_store.h"
+#include "packages/validation/message_validation.h"
+#include "message.pb-c.h"
+#include "packages/sql/database_gossip.h"
+#include "tests/test_init.h"
 #include "init.h"
 
 #define TEST_BASE_PATH "test_state_integration"
@@ -286,7 +293,7 @@ static int test_peer_health_monitoring(void) {
     memset(&service, 0, sizeof(service));
     
     // Initialize gossip service
-    int result = gossip_service_init(&service, 0, NULL, NULL);
+    int result = gossip_service_init(&service, 0, NULL, NULL, NULL);
     ASSERT_TEST(result == 0, "Gossip service initializes");
     
     // Add a peer
@@ -488,6 +495,92 @@ static int test_config_save_load_cycle(void) {
 }
 
 // ============================================================================
+// Test 7: Full Message Flow
+// ============================================================================
+
+static int test_message_full_flow(void) {
+    printf("\n=== Test 7: Full Message Flow ===\n");
+    
+    // Setup test user keys
+    unsigned char sender_sk[64], sender_pk[32], recipient_pk[32];
+    crypto_sign_keypair(sender_pk, sender_sk);
+    memset(recipient_pk, 0xEE, 32);
+    
+    // Create Message protobuf
+    Tinyweb__Message msg = TINYWEB__MESSAGE__INIT;
+    Tinyweb__MessageHeader hdr = TINYWEB__MESSAGE_HEADER__INIT;
+    hdr.version = 1;
+    hdr.timestamp = (uint64_t)time(NULL);
+    hdr.sender_pubkey.len = 32;
+    hdr.sender_pubkey.data = sender_pk;
+    hdr.n_recipients_pubkey = 1;
+    ProtobufCBinaryData recp_data = {32, recipient_pk};
+    hdr.recipients_pubkey = &recp_data;
+    
+    msg.header = &hdr;
+    msg.payload_nonce.len = 24;
+    msg.payload_nonce.data = malloc(24);
+    memset(msg.payload_nonce.data, 0xAA, 24);
+    msg.ephemeral_pubkey.len = 32;
+    msg.ephemeral_pubkey.data = malloc(32);
+    memset(msg.ephemeral_pubkey.data, 0xBB, 32);
+    msg.payload_ciphertext.len = 32;
+    msg.payload_ciphertext.data = malloc(32);
+    memset(msg.payload_ciphertext.data, 0xCC, 32);
+    
+    // Sign message
+    unsigned char payload_hash[32];
+    SHA256(msg.payload_ciphertext.data, msg.payload_ciphertext.len, payload_hash);
+    
+    SHA256_CTX sha_ctx;
+    SHA256_Init(&sha_ctx);
+    static const unsigned char domain[] = { 'T','W','M','E','S','S','A','G','E','\0' };
+    SHA256_Update(&sha_ctx, domain, sizeof(domain));
+    SHA256_Update(&sha_ctx, &hdr.version, 4);
+    SHA256_Update(&sha_ctx, &hdr.timestamp, 8);
+    SHA256_Update(&sha_ctx, hdr.sender_pubkey.data, 32);
+    uint32_t n_recp = 1;
+    SHA256_Update(&sha_ctx, &n_recp, 4);
+    SHA256_Update(&sha_ctx, hdr.recipients_pubkey[0].data, 32);
+    uint32_t group_id_len = 0;
+    SHA256_Update(&sha_ctx, &group_id_len, 4);
+    SHA256_Update(&sha_ctx, payload_hash, 32);
+    
+    unsigned char digest[32];
+    SHA256_Final(digest, &sha_ctx);
+    
+    msg.signature.len = 64;
+    msg.signature.data = malloc(64);
+    crypto_sign_detached(msg.signature.data, NULL, digest, 32, sender_sk);
+    
+    // 1. Validate
+    ASSERT_TEST(message_validate(&msg) == MESSAGE_VALIDATION_OK, "Message validation succeeds");
+    
+    // 2. Store
+    uint64_t expires_at = (uint64_t)time(NULL) + 3600;
+    ASSERT_TEST(message_store_save(&msg, expires_at) == 0, "Message store succeeds");
+    
+    // 3. Deduplication
+    unsigned char msg_digest[32];
+    ASSERT_TEST(message_store_compute_digest(&msg, msg_digest) == 0, "Compute digest succeeds");
+    int seen = 0;
+    ASSERT_TEST(message_store_has_seen(msg_digest, &seen) == 0, "Initial seen check succeeds");
+    ASSERT_TEST(seen == 0, "Message not seen initially");
+    ASSERT_TEST(message_store_mark_seen(msg_digest, expires_at) == 0, "Mark seen succeeds");
+    ASSERT_TEST(message_store_has_seen(msg_digest, &seen) == 0, "Second seen check succeeds");
+    ASSERT_TEST(seen == 1, "Message seen after marking");
+    
+    // Cleanup
+    free(msg.payload_nonce.data);
+    free(msg.ephemeral_pubkey.data);
+    free(msg.payload_ciphertext.data);
+    free(msg.signature.data);
+    
+    printf("  Full message flow tests: %d passed, %d failed\n", tests_passed, tests_failed);
+    return (tests_failed == 0) ? 0 : -1;
+}
+
+// ============================================================================
 // Main Test Runner
 // ============================================================================
 
@@ -519,6 +612,12 @@ int foundational_features_test_main(void) {
     if (test_peer_health_monitoring() != 0) result = 1;
     if (test_keystore_thread_safety() != 0) result = 1;
     if (test_config_save_load_cycle() != 0) result = 1;
+    
+    // Initialize message store for integration test
+    if (db_init_gossip(test_get_db_path()) == 0) {
+        message_store_init();
+        if (test_message_full_flow() != 0) result = 1;
+    }
     
     // Clear any errors before cleanup
     tw_error_clear();

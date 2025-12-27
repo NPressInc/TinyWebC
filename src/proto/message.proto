@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package tinyweb;
+
+// MessageHeader contains metadata for a user-to-user message
+message MessageHeader {
+  uint32 version = 1;              // Protocol version (currently 1)
+  uint64 timestamp = 2;            // UNIX epoch seconds
+  bytes sender_pubkey = 3;         // 32 bytes Ed25519 public key
+  repeated bytes recipients_pubkey = 4; // 32 bytes each - all recipients (for group messages)
+  bytes group_id = 5;              // Optional: 16 bytes group identifier (empty if direct message)
+}
+
+// MessageRecipientKeyWrap contains the encrypted symmetric key for a specific recipient
+// This allows multi-recipient encryption: same payload, different key wraps per recipient
+message MessageRecipientKeyWrap {
+  bytes recipient_pubkey = 1;      // 32 bytes Ed25519 public key
+  bytes key_nonce = 2;             // 24 bytes nonce for key encryption
+  bytes wrapped_key = 3;           // Encrypted symmetric key + MAC
+}
+
+// Message is the complete user-to-user message structure
+// Supports multi-recipient encryption via keywraps array
+// Structure is compatible with encryption functions (same field layout as Envelope)
+message Message {
+  MessageHeader header = 1;                    // Message metadata
+  bytes payload_nonce = 2;                      // 24 bytes nonce for payload encryption
+  bytes ephemeral_pubkey = 3;                   // 32 bytes ephemeral Ed25519 public key
+  bytes payload_ciphertext = 4;                 // Encrypted payload + MAC
+  repeated MessageRecipientKeyWrap keywraps = 5;      // Per-recipient encrypted keys (for multi-recipient)
+  bytes signature = 6;                         // 64 bytes Ed25519 signature over header + payload
+}
+
+// MessageList contains a list of messages for API responses
+message MessageList {
+  repeated Message messages = 1;
+  uint32 total_count = 2;
+}
+
+

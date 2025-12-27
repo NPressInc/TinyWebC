@@ -93,31 +93,45 @@ export async function getPeers(nodeUrl) {
 }
 
 /**
- * Send an envelope to a node
+ * Send a user message envelope to a node
  * @param {string} nodeUrl - Base URL of the node
- * @param {string} envelopeHex - Hex-encoded protobuf-serialized envelope
+ * @param {string} envelopeHex - Hex-encoded protobuf-serialized envelope (user-signed)
  * @returns {Promise<Object>} Response object
  */
 export async function sendEnvelope(nodeUrl, envelopeHex) {
   try {
-    const response = await fetch(`${nodeUrl}/gossip/envelope`, {
+    console.log('[sendEnvelope] Sending envelope to:', nodeUrl);
+    console.log('[sendEnvelope] Envelope hex length:', envelopeHex?.length);
+    
+    const url = `${nodeUrl}/messages/send`;
+    const body = JSON.stringify({
+      envelope_hex: envelopeHex,
+    });
+    
+    console.log('[sendEnvelope] POST URL:', url);
+    console.log('[sendEnvelope] Body length:', body.length);
+    
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        envelope_hex: envelopeHex,
-      }),
+      body: body,
     });
+    
+    console.log('[sendEnvelope] Response status:', response.status);
     
     const data = await response.json();
     
     if (!response.ok) {
+      console.error('[sendEnvelope] Error response:', data);
       throw new Error(data.error || `HTTP ${response.status}`);
     }
     
+    console.log('[sendEnvelope] Success:', data);
     return data;
   } catch (error) {
+    console.error('[sendEnvelope] Exception:', error);
     throw new Error(`Failed to send envelope to ${nodeUrl}: ${error.message}`);
   }
 }
@@ -131,9 +145,11 @@ export async function sendEnvelope(nodeUrl, envelopeHex) {
  */
 export async function getMessages(nodeUrl, userPubkey, withPubkey) {
   try {
-    const url = new URL(`${nodeUrl}/gossip/messages`);
+    const url = new URL(`${nodeUrl}/messages/conversation`);
     url.searchParams.append('user', userPubkey);
     url.searchParams.append('with', withPubkey);
+    
+    console.log('Fetching messages:', { nodeUrl, userPubkey, withPubkey, url: url.toString() });
     
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -141,7 +157,16 @@ export async function getMessages(nodeUrl, userPubkey, withPubkey) {
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to get messages: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Error response:', response.status, errorText);
+      let errorMsg = `Failed to get messages: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMsg = errorJson.error || errorMsg;
+      } catch (e) {
+        errorMsg = errorText || errorMsg;
+      }
+      throw new Error(errorMsg);
     }
     
     return await response.json();
@@ -151,14 +176,16 @@ export async function getMessages(nodeUrl, userPubkey, withPubkey) {
 }
 
 /**
- * Get recent messages
+ * Get recent messages for a user
  * @param {string} nodeUrl - Base URL of the node
+ * @param {string} userPubkey - User's public key (hex)
  * @param {number} limit - Maximum number of messages to return (default: 50)
  * @returns {Promise<Object>} Recent messages response (contains envelope_list_hex)
  */
-export async function getRecentMessages(nodeUrl, limit = 50) {
+export async function getRecentMessages(nodeUrl, userPubkey, limit = 50) {
   try {
-    const url = new URL(`${nodeUrl}/gossip/recent`);
+    const url = new URL(`${nodeUrl}/messages/recent`);
+    url.searchParams.append('user', userPubkey);
     url.searchParams.append('limit', limit.toString());
     
     const response = await fetch(url.toString(), {
@@ -184,7 +211,7 @@ export async function getRecentMessages(nodeUrl, limit = 50) {
  */
 export async function getConversations(nodeUrl, userPubkey) {
   try {
-    const url = new URL(`${nodeUrl}/gossip/conversations`);
+    const url = new URL(`${nodeUrl}/messages/conversations`);
     url.searchParams.append('user', userPubkey);
     
     const response = await fetch(url.toString(), {
@@ -199,6 +226,28 @@ export async function getConversations(nodeUrl, userPubkey) {
     return await response.json();
   } catch (error) {
     throw new Error(`Failed to get conversations from ${nodeUrl}: ${error.message}`);
+  }
+}
+
+/**
+ * Get all users in the network
+ * @param {string} nodeUrl - Base URL of the node
+ * @returns {Promise<Object>} Users response with array of users
+ */
+export async function getUsers(nodeUrl) {
+  try {
+    const response = await fetch(`${nodeUrl}/users`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get users: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Failed to get users from ${nodeUrl}: ${error.message}`);
   }
 }
 

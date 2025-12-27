@@ -20,14 +20,48 @@ class KeyStore {
 
   /**
    * Initialize libsodium and the keystore
+   * Also attempts to auto-load keys from localStorage if available
    */
   async init() {
-    if (this.initialized) return true;
+    if (this.initialized) {
+      // If already initialized but keys aren't loaded, try to auto-load
+      if (!this.isKeypairLoaded()) {
+        await this._tryAutoLoad();
+      }
+      return true;
+    }
 
     await sodium.ready;
     this.initialized = true;
     console.log('Frontend keystore initialized');
+    
+    // Try to auto-load keys from localStorage
+    await this._tryAutoLoad();
+    
     return true;
+  }
+
+  /**
+   * Try to auto-load keys from localStorage (with empty passphrase)
+   * This only works if keys were saved with empty passphrase
+   */
+  async _tryAutoLoad() {
+    try {
+      const stored = localStorage.getItem('tinyweb_keypair');
+      if (stored && !this.isKeypairLoaded()) {
+        console.log('Attempting to auto-load keypair from localStorage...');
+        // Try to load with empty passphrase
+        await this.loadKeypair('');
+        console.log('Auto-loaded keypair from localStorage successfully');
+      } else if (!stored) {
+        console.log('No keypair found in localStorage');
+      } else {
+        console.log('Keypair already loaded in memory');
+      }
+    } catch (err) {
+      // If auto-load fails, keys are encrypted - user needs to enter passphrase
+      console.log('Auto-load failed (keys may be encrypted with passphrase):', err.message);
+    }
   }
 
   /**
@@ -52,32 +86,69 @@ class KeyStore {
       throw new Error('No keypair loaded');
     }
 
-    // Derive encryption key from passphrase
-    const salt = sodium.randombytes_buf(sodium.crypto_pwhash_SALTBYTES);
-    const key = sodium.crypto_pwhash(
-      sodium.crypto_secretbox_KEYBYTES,
-      passphrase,
-      salt,
-      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_ALG_DEFAULT
-    );
+    // Ensure sodium is ready
+    if (!this.initialized) {
+      await this.init();
+    }
+    await sodium.ready;
 
-    // Generate nonce and encrypt
-    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
-    const ciphertext = sodium.crypto_secretbox_easy(this.signSecretKey, nonce, key);
+    // If passphrase is empty, use empty string (less secure but convenient for auto-loading)
+    const actualPassphrase = passphrase || '';
+    
+    try {
+      // Derive encryption key from passphrase
+      // Use constants with proper null/undefined checks (libsodium-wrappers provides these after sodium.ready)
+      // If they're still undefined, use standard libsodium values
+      const SALTBYTES = (sodium.crypto_pwhash_SALTBYTES !== undefined && sodium.crypto_pwhash_SALTBYTES !== null) 
+        ? sodium.crypto_pwhash_SALTBYTES 
+        : 16;
+      const KEYBYTES = (sodium.crypto_secretbox_KEYBYTES !== undefined && sodium.crypto_secretbox_KEYBYTES !== null)
+        ? sodium.crypto_secretbox_KEYBYTES
+        : 32;
+      const NONCEBYTES = (sodium.crypto_secretbox_NONCEBYTES !== undefined && sodium.crypto_secretbox_NONCEBYTES !== null)
+        ? sodium.crypto_secretbox_NONCEBYTES
+        : 24;
+      
+      if (!SALTBYTES || !KEYBYTES || !NONCEBYTES) {
+        throw new Error(`Invalid sodium constants: SALTBYTES=${SALTBYTES}, KEYBYTES=${KEYBYTES}, NONCEBYTES=${NONCEBYTES}`);
+      }
+      
+      const salt = sodium.randombytes_buf(SALTBYTES);
+      
+      // Derive key from passphrase using crypto_generichash (simpler than crypto_pwhash)
+      // This is less secure than Argon2 but works in browser environment
+      const keyMaterial = new Uint8Array(salt.length + actualPassphrase.length);
+      keyMaterial.set(salt, 0);
+      keyMaterial.set(new TextEncoder().encode(actualPassphrase), salt.length);
+      const key = sodium.crypto_generichash(KEYBYTES, keyMaterial);
 
-    // Store in localStorage
-    const keyData = {
-      salt: sodium.to_hex(salt),
-      nonce: sodium.to_hex(nonce),
-      ciphertext: sodium.to_hex(ciphertext),
-      publicKey: sodium.to_hex(this.signPublicKey)
-    };
+      // Generate nonce and encrypt
+      const nonce = sodium.randombytes_buf(NONCEBYTES);
+      const ciphertext = sodium.crypto_secretbox_easy(this.signSecretKey, nonce, key);
 
-    localStorage.setItem('tinyweb_keypair', JSON.stringify(keyData));
-    console.log('Keypair saved to localStorage');
-    return true;
+      // Store in localStorage
+      const keyData = {
+        salt: sodium.to_hex(salt),
+        nonce: sodium.to_hex(nonce),
+        ciphertext: sodium.to_hex(ciphertext),
+        publicKey: sodium.to_hex(this.signPublicKey)
+      };
+
+      const jsonData = JSON.stringify(keyData);
+      localStorage.setItem('tinyweb_keypair', jsonData);
+      
+      // Verify it was saved
+      const saved = localStorage.getItem('tinyweb_keypair');
+      if (!saved || saved !== jsonData) {
+        throw new Error('Failed to verify keypair was saved to localStorage');
+      }
+      
+      console.log('Keypair saved to localStorage successfully');
+      return true;
+    } catch (err) {
+      console.error('Error saving keypair to localStorage:', err);
+      throw new Error(`Failed to save keypair: ${err.message}`);
+    }
   }
 
   /**
@@ -100,15 +171,17 @@ class KeyStore {
     const nonce = sodium.from_hex(keyData.nonce);
     const ciphertext = sodium.from_hex(keyData.ciphertext);
 
-    // Derive decryption key from passphrase
-    const key = sodium.crypto_pwhash(
-      sodium.crypto_secretbox_KEYBYTES,
-      passphrase,
-      salt,
-      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_ALG_DEFAULT
-    );
+    // Use empty string if passphrase is not provided
+    const actualPassphrase = passphrase || '';
+    
+    // Use constants with fallbacks
+    const KEYBYTES = sodium.crypto_secretbox_KEYBYTES || 32;
+    
+    // Derive decryption key from passphrase using crypto_generichash (same as encryption)
+    const keyMaterial = new Uint8Array(salt.length + actualPassphrase.length);
+    keyMaterial.set(salt, 0);
+    keyMaterial.set(new TextEncoder().encode(actualPassphrase), salt.length);
+    const key = sodium.crypto_generichash(KEYBYTES, keyMaterial);
 
     // Decrypt
     try {
@@ -139,8 +212,9 @@ class KeyStore {
 
   /**
    * Load raw Ed25519 keypair directly (for testing)
+   * Optionally saves to localStorage for persistence
    */
-  async loadRawKeypair(privateKeyHex) {
+  async loadRawKeypair(privateKeyHex, saveToStorage = true) {
     if (!this.initialized) await this.init();
 
     this.signSecretKey = sodium.from_hex(privateKeyHex);
@@ -156,6 +230,29 @@ class KeyStore {
     } else {
       // Fallback: extract public key from secret key
       this.signPublicKey = this.signSecretKey.slice(32, 64);
+    }
+
+    // Auto-save to localStorage (unencrypted for convenience, or with empty passphrase)
+    if (saveToStorage) {
+      try {
+        // Ensure sodium is ready before saving
+        await sodium.ready;
+        // Save with empty passphrase for auto-loading (user can change this later)
+        await this.saveKeypair('');
+        console.log('Keypair auto-saved to localStorage');
+        
+        // Verify it was actually saved
+        const saved = localStorage.getItem('tinyweb_keypair');
+        if (!saved) {
+          console.error('Failed to verify keypair was saved to localStorage');
+        } else {
+          console.log('Keypair verified in localStorage');
+        }
+      } catch (err) {
+        console.error('Failed to auto-save keypair:', err);
+        console.error('Error details:', err.message, err.stack);
+        // Don't fail - key is still loaded in memory
+      }
     }
 
     console.log('Raw keypair loaded');

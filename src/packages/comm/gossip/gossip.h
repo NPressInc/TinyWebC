@@ -9,6 +9,9 @@
 
 #include "envelope.pb-c.h"
 
+// Forward declaration for the new message type
+struct Tinyweb__Message;
+
 #define GOSSIP_MAX_PEERS 32
 #define GOSSIP_MAX_MESSAGE_SIZE 8192
 
@@ -29,6 +32,11 @@ typedef int (*GossipEnvelopeHandler)(struct GossipService* service,
                                      const struct sockaddr_in* source,
                                      void* context);
 
+typedef int (*GossipMessageHandler)(struct GossipService* service,
+                                   struct Tinyweb__Message* message,
+                                   const struct sockaddr_in* source,
+                                   void* context);
+
 typedef struct GossipService {
     int socket_fd;
     uint16_t listen_port;
@@ -40,13 +48,15 @@ typedef struct GossipService {
 
     pthread_t receive_thread;
 
-    GossipEnvelopeHandler handler;
+    GossipEnvelopeHandler envelope_handler;
+    GossipMessageHandler message_handler;
     void* handler_context;
 } GossipService;
 
 int gossip_service_init(GossipService* service,
                         uint16_t listen_port,
-                        GossipEnvelopeHandler handler,
+                        GossipEnvelopeHandler envelope_handler,
+                        GossipMessageHandler message_handler,
                         void* handler_context);
 
 int gossip_service_add_peer(GossipService* service,
@@ -63,6 +73,18 @@ int gossip_service_broadcast_envelope(GossipService* service,
 int gossip_service_rebroadcast_envelope(GossipService* service,
                                         Tinyweb__Envelope* envelope,
                                         const struct sockaddr_in* source);
+
+// Forward declaration for Message protobuf
+struct Tinyweb__Message;
+typedef struct Tinyweb__Message Tinyweb__Message;
+
+// Message broadcast functions (implemented in gossip.c)
+int gossip_service_broadcast_message(GossipService* service,
+                                     const Tinyweb__Message* message);
+
+int gossip_service_rebroadcast_message(GossipService* service,
+                                       const Tinyweb__Message* message,
+                                       const struct sockaddr_in* source);
 
 size_t gossip_service_peer_count(const GossipService* service);
 

@@ -17,6 +17,9 @@
 #include "tests/permissions_test.h"
 #include "tests/foundational_features_test.h"
 #include "tests/discovery_test.h"
+#include "tests/message_store_test.h"
+#include "tests/message_api_test.h"
+#include "tests/message_permissions_test.h"
 
 int main(int argc, char* argv[]) {
     // Initialize libsodium once at the start
@@ -37,7 +40,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         int tests_passed = 0;
         int tests_failed = 0;
-        int total_tests = 13;
+        int total_tests = 14;
 
         printf("Running all gossip tests...\n\n");
 
@@ -84,6 +87,17 @@ int main(int argc, char* argv[]) {
             tests_passed++;
         } else {
             printf("✗ Gossip store tests failed\n");
+            tests_failed++;
+        }
+        printf("\n");
+
+        // Run message store tests
+        printf("Running message store tests...\n");
+        if (message_store_test_main() == 0) {
+            printf("✓ Message store tests passed\n");
+            tests_passed++;
+        } else {
+            printf("✗ Message store tests failed\n");
             tests_failed++;
         }
         printf("\n");
@@ -228,9 +242,15 @@ int main(int argc, char* argv[]) {
             result = foundational_features_test_main();
         } else if (strcmp(test_name, "discovery") == 0) {
             result = discovery_test_main();
+        } else if (strcmp(test_name, "messagestore") == 0) {
+            result = message_store_test_main();
+        } else if (strcmp(test_name, "messageapi") == 0) {
+            result = message_api_test_main();
+        } else if (strcmp(test_name, "messageperms") == 0) {
+            result = message_permissions_test_main();
         } else {
             printf("Unknown test: %s\n", test_name);
-            printf("Available tests: encryption, signing, mongoose, gossipdb, envelope, validation, apipb, dispatcher, schema, httpclient, permissions, foundational, discovery\n");
+            printf("Available tests: encryption, signing, mongoose, gossipdb, envelope, validation, apipb, dispatcher, schema, httpclient, permissions, foundational, discovery, messagestore, messageapi, messageperms\n");
             test_cleanup_environment();
             return 1;
         }

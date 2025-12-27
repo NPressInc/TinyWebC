@@ -9,7 +9,9 @@
 #include <errno.h>
 
 #include "packages/sql/database_gossip.h"
-#include "packages/sql/schema.h"  // Now contains gossip_store_init() (renamed from gossip_store.c)
+#include "packages/sql/schema.h"
+#include "packages/sql/message_store.h"
+#include <time.h>
 
 #define ASSERT_TEST(cond, msg) \
     do { \
@@ -51,6 +53,11 @@ static int test_table_creation(void) {
     const char* db_path = "test_state/schema_test.db";
     remove(db_path);
     
+    // Close any existing DB connection first
+    if (db_is_initialized()) {
+        db_close();
+    }
+    
     int result = -1;
     if (db_init_gossip(db_path) != 0) {
         goto cleanup;
@@ -61,14 +68,22 @@ static int test_table_creation(void) {
         goto cleanup;
     }
     
-    // Create all tables (gossip_store_init() creates all tables and indexes)
-    if (gossip_store_init() != 0) {
+    // Create all tables (gossip_store_init() and message_store_init() create tables)
+    if (gossip_store_init() != 0 || message_store_init() != 0) {
         goto cleanup;
     }
     
     // Verify gossip-related tables exist
     if (table_exists(db, "gossip_messages") != 1) {
         fprintf(stderr, "[FAIL] gossip_messages table not created\n");
+        goto cleanup;
+    }
+    if (table_exists(db, "user_messages") != 1) {
+        fprintf(stderr, "[FAIL] user_messages table not created\n");
+        goto cleanup;
+    }
+    if (table_exists(db, "message_recipients") != 1) {
+        fprintf(stderr, "[FAIL] message_recipients table not created\n");
         goto cleanup;
     }
     if (table_exists(db, "gossip_envelopes") != 1) {
@@ -148,6 +163,10 @@ static int test_index_creation(void) {
     const char* db_path = "test_state/schema_index_test.db";
     remove(db_path);
     
+    if (db_is_initialized()) {
+        db_close();
+    }
+    
     int result = -1;
     if (db_init_gossip(db_path) != 0) {
         goto cleanup;
@@ -158,8 +177,8 @@ static int test_index_creation(void) {
         goto cleanup;
     }
     
-    // gossip_store_init() creates all tables and indexes
-    if (gossip_store_init() != 0) {
+    // gossip_store_init() and message_store_init() create indexes
+    if (gossip_store_init() != 0 || message_store_init() != 0) {
         goto cleanup;
     }
     
@@ -182,6 +201,13 @@ static int test_index_creation(void) {
     int found_user_roles_user = 0;
     int found_user_roles_role = 0;
     int found_role_permissions_role = 0;
+    int found_msg_timestamp = 0;
+    int found_msg_sender = 0;
+    int found_msg_recipient = 0;
+    int found_msg_conversation = 0;
+    int found_msg_group = 0;
+    int found_msg_expires = 0;
+    int found_recp_recipient = 0;
     int found_blockchain_index = 0;
     
     while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -196,6 +222,13 @@ static int test_index_creation(void) {
         if (strcmp(index_name, "idx_user_roles_user") == 0) found_user_roles_user = 1;
         if (strcmp(index_name, "idx_user_roles_role") == 0) found_user_roles_role = 1;
         if (strcmp(index_name, "idx_role_permissions_role") == 0) found_role_permissions_role = 1;
+        if (strcmp(index_name, "idx_user_messages_timestamp") == 0) found_msg_timestamp = 1;
+        if (strcmp(index_name, "idx_user_messages_sender") == 0) found_msg_sender = 1;
+        if (strcmp(index_name, "idx_user_messages_recipient") == 0) found_msg_recipient = 1;
+        if (strcmp(index_name, "idx_user_messages_conversation") == 0) found_msg_conversation = 1;
+        if (strcmp(index_name, "idx_user_messages_group") == 0) found_msg_group = 1;
+        if (strcmp(index_name, "idx_user_messages_expires") == 0) found_msg_expires = 1;
+        if (strcmp(index_name, "idx_message_recipients_recipient") == 0) found_recp_recipient = 1;
         if (strstr(index_name, "transactions") != NULL || strstr(index_name, "blocks") != NULL) {
             found_blockchain_index = 1;
         }
@@ -204,6 +237,34 @@ static int test_index_creation(void) {
     
     if (found_gossip_expires != 1) {
         fprintf(stderr, "[FAIL] idx_gossip_expires_at index not found\n");
+        goto cleanup;
+    }
+    if (found_msg_timestamp != 1) {
+        fprintf(stderr, "[FAIL] idx_user_messages_timestamp index not found\n");
+        goto cleanup;
+    }
+    if (found_msg_sender != 1) {
+        fprintf(stderr, "[FAIL] idx_user_messages_sender index not found\n");
+        goto cleanup;
+    }
+    if (found_msg_recipient != 1) {
+        fprintf(stderr, "[FAIL] idx_user_messages_recipient index not found\n");
+        goto cleanup;
+    }
+    if (found_msg_conversation != 1) {
+        fprintf(stderr, "[FAIL] idx_user_messages_conversation index not found\n");
+        goto cleanup;
+    }
+    if (found_msg_group != 1) {
+        fprintf(stderr, "[FAIL] idx_user_messages_group index not found\n");
+        goto cleanup;
+    }
+    if (found_msg_expires != 1) {
+        fprintf(stderr, "[FAIL] idx_user_messages_expires index not found\n");
+        goto cleanup;
+    }
+    if (found_recp_recipient != 1) {
+        fprintf(stderr, "[FAIL] idx_message_recipients_recipient index not found\n");
         goto cleanup;
     }
     if (found_gossip_sender != 1) {
@@ -267,6 +328,10 @@ static int test_schema_version(void) {
     const char* db_path = "test_state/schema_version_test.db";
     remove(db_path);
     
+    if (db_is_initialized()) {
+        db_close();
+    }
+    
     int result = -1;
     if (db_init_gossip(db_path) != 0) {
         goto cleanup;
@@ -324,6 +389,10 @@ static int test_schema_migration(void) {
     ensure_directory_exists("test_state");
     const char* db_path = "test_state/schema_migration_test.db";
     remove(db_path);
+    
+    if (db_is_initialized()) {
+        db_close();
+    }
     
     int result = -1;
     if (db_init_gossip(db_path) != 0) {
@@ -398,6 +467,10 @@ static int test_table_operations(void) {
     const char* db_path = "test_state/schema_ops_test.db";
     remove(db_path);
     
+    if (db_is_initialized()) {
+        db_close();
+    }
+    
     int result = -1;
     if (db_init_gossip(db_path) != 0) {
         goto cleanup;
@@ -408,9 +481,15 @@ static int test_table_operations(void) {
         goto cleanup;
     }
     
-    // gossip_store_init() creates all tables and indexes
+    // gossip_store_init() creates gossip-related tables
     if (gossip_store_init() != 0) {
         fprintf(stderr, "[FAIL] gossip_store_init failed\n");
+        goto cleanup;
+    }
+    
+    // message_store_init() creates user_messages and message_recipients tables
+    if (message_store_init() != 0) {
+        fprintf(stderr, "[FAIL] message_store_init failed\n");
         goto cleanup;
     }
     
@@ -468,6 +547,60 @@ static int test_table_operations(void) {
         goto cleanup;
     }
     
+    sqlite3_finalize(stmt);
+    
+    // Test INSERT into user_messages table
+    const char* insert_msg_sql = 
+        "INSERT INTO user_messages (version, timestamp, sender_pubkey, recipient_pubkey, payload_nonce, ephemeral_pubkey, encrypted_payload, signature, expires_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    rc = sqlite3_prepare_v2(db, insert_msg_sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "[FAIL] Failed to prepare msg INSERT statement: %s\n", sqlite3_errmsg(db));
+        goto cleanup;
+    }
+    
+    unsigned char dummy_32[32]; memset(dummy_32, 0x11, 32);
+    unsigned char dummy_24[24]; memset(dummy_24, 0x22, 24);
+    unsigned char dummy_64[64]; memset(dummy_64, 0x33, 64);
+    
+    sqlite3_bind_int(stmt, 1, 1);
+    sqlite3_bind_int64(stmt, 2, (sqlite3_int64)time(NULL));
+    sqlite3_bind_blob(stmt, 3, dummy_32, 32, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 4, dummy_32, 32, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 5, dummy_24, 24, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 6, dummy_32, 32, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 7, dummy_32, 32, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 8, dummy_64, 64, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 9, (sqlite3_int64)time(NULL) + 3600);
+    
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "[FAIL] INSERT into user_messages failed: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        goto cleanup;
+    }
+    int64_t msg_id = sqlite3_last_insert_rowid(db);
+    sqlite3_finalize(stmt);
+    
+    // Test INSERT into message_recipients
+    const char* insert_recp_sql = 
+        "INSERT INTO message_recipients (message_id, recipient_pubkey, key_nonce, wrapped_key) VALUES (?, ?, ?, ?);";
+    rc = sqlite3_prepare_v2(db, insert_recp_sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "[FAIL] Failed to prepare recp INSERT statement\n");
+        goto cleanup;
+    }
+    sqlite3_bind_int64(stmt, 1, msg_id);
+    sqlite3_bind_blob(stmt, 2, dummy_32, 32, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 3, dummy_24, 24, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 4, dummy_32, 32, SQLITE_STATIC);
+    
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "[FAIL] INSERT into message_recipients failed\n");
+        sqlite3_finalize(stmt);
+        goto cleanup;
+    }
     sqlite3_finalize(stmt);
     
     result = 0;

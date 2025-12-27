@@ -66,20 +66,22 @@ int test_envelope_create_sign_verify(void) {
     ASSERT_TEST(keystore_load_raw_ed25519_keypair(admin_secret) == 0, 
                 "Failed to load keypair into keystore");
 
-    // Create simple direct message content
-    Tinyweb__DirectMessage direct_msg = TINYWEB__DIRECT_MESSAGE__INIT;
-    direct_msg.text = "Hello from envelope test";
+    // Create simple location update content
+    Tinyweb__LocationUpdate loc_update = TINYWEB__LOCATION_UPDATE__INIT;
+    loc_update.lat = 45.0;
+    loc_update.lon = -90.0;
+    loc_update.accuracy_m = 10;
 
     // Serialize the content
-    size_t content_size = tinyweb__direct_message__get_packed_size(&direct_msg);
+    size_t content_size = tinyweb__location_update__get_packed_size(&loc_update);
     uint8_t* content_data = malloc(content_size);
     ASSERT_TEST(content_data != NULL, "Failed to allocate content buffer");
-    tinyweb__direct_message__pack(&direct_msg, content_data);
+    tinyweb__location_update__pack(&loc_update, content_data);
 
     // Create header view for envelope (sender is also a recipient)
     tw_envelope_header_view_t header = {
         .version = 1,
-        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
         .schema_version = 1,
         .timestamp = (uint64_t)time(NULL),
         .sender_pubkey = admin_pubkey,
@@ -143,7 +145,7 @@ int test_envelope_multi_recipient_encryption(void) {
     // Create header view with recipients
     tw_envelope_header_view_t header = {
         .version = 1,
-        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
         .schema_version = 1,
         .timestamp = (uint64_t)time(NULL),
         .sender_pubkey = admin1_pubkey,
@@ -203,7 +205,7 @@ int test_envelope_serialization(void) {
     // Create header view (sender is also a recipient)
     tw_envelope_header_view_t header = {
         .version = 1,
-        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
         .schema_version = 1,
         .timestamp = (uint64_t)time(NULL),
         .sender_pubkey = admin_pubkey,
@@ -256,7 +258,11 @@ int test_envelope_serialization(void) {
 int test_envelope_gossip_storage(void) {
     printf("  - test_envelope_gossip_storage...\n");
 
-    // Initialize database
+    // Initialize database (close any existing one first)
+    if (db_is_initialized()) {
+        db_close();
+    }
+    
     const char* db_path = test_get_db_path();
     ASSERT_TEST(db_init_gossip(db_path) == 0, "Failed to init database");
     ASSERT_TEST(gossip_store_init() == 0, "Failed to init gossip store");
@@ -283,7 +289,7 @@ int test_envelope_gossip_storage(void) {
     // Create header view (sender is also a recipient)
     tw_envelope_header_view_t header = {
         .version = 1,
-        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
         .schema_version = 1,
         .timestamp = timestamp,
         .sender_pubkey = admin_pubkey,
@@ -306,16 +312,8 @@ int test_envelope_gossip_storage(void) {
 
     // Save to database
     uint64_t expires_at = timestamp + 3600;
-    result = gossip_store_save_envelope(
-        1,  // version
-        TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
-        1,  // schema_version
-        admin_pubkey,
-        timestamp,
-        envelope_data,
-        envelope_size,
-        expires_at
-    );
+    
+    result = gossip_store_save_envelope(envelope, expires_at);
 
     ASSERT_TEST(result == 0, "Failed to save envelope");
 
@@ -328,13 +326,14 @@ int test_envelope_gossip_storage(void) {
     ASSERT_TEST(count >= 1, "No envelopes retrieved");
 
     // Verify retrieved envelope
+    // Note: The envelope_size field now contains encrypted_payload size, not full envelope size
     int found = 0;
     for (size_t i = 0; i < count; ++i) {
         if (memcmp(envelopes[i].sender, admin_pubkey, PUBKEY_SIZE) == 0 &&
-            envelopes[i].envelope_size == envelope_size) {
+            envelopes[i].envelope_size == envelope->payload_ciphertext.len) {
             found = 1;
             ASSERT_TEST(envelopes[i].version == 1, "Version mismatch");
-            ASSERT_TEST(envelopes[i].content_type == TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+            ASSERT_TEST(envelopes[i].content_type == TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
                         "Content type mismatch");
             break;
         }

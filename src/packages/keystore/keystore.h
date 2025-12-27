@@ -6,7 +6,9 @@
 // Key sizes
 #define SIGN_PUBKEY_SIZE crypto_sign_PUBLICKEYBYTES    /* 32 */
 #define SIGN_SECRET_SIZE crypto_sign_SECRETKEYBYTES    /* 64 */
+#ifndef PUBKEY_SIZE
 #define PUBKEY_SIZE crypto_box_PUBLICKEYBYTES          /* 32 */
+#endif
 #define SECRET_SIZE crypto_box_SECRETKEYBYTES          /* 32 */
 
 // Initialize the keystore and libsodium

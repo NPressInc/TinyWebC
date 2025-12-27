@@ -6,11 +6,15 @@
 #include <string.h>
 #include <time.h>
 #include <sodium.h>
+#include <openssl/sha.h>
+#include <time.h>
 
 #include "packages/validation/gossip_validation.h"
+#include "packages/validation/message_validation.h"
 #include "packages/transactions/envelope.h"
 #include "packages/keystore/keystore.h"
 #include "envelope.pb-c.h"
+#include "message.pb-c.h"
 #include "content.pb-c.h"
 
 #define ASSERT_TEST(cond, msg) \
@@ -72,7 +76,7 @@ static Tinyweb__Envelope* create_test_envelope(uint64_t timestamp, size_t payloa
     // Create header
     tw_envelope_header_view_t header = {
         .version = 1,
-        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_DIRECT_MESSAGE,
+        .content_type = TINYWEB__CONTENT_TYPE__CONTENT_LOCATION_UPDATE,
         .schema_version = 1,
         .timestamp = timestamp,
         .sender_pubkey = admin_pubkey,
@@ -377,6 +381,66 @@ static int test_validation_expiration_calculation(void) {
     return 0;
 }
 
+// Test 13: Valid message should pass validation
+static int test_validate_valid_message(void) {
+    printf("  - test_validate_valid_message...\n");
+    
+    unsigned char sk[64], pk[32];
+    crypto_sign_keypair(pk, sk);
+    
+    Tinyweb__Message msg = TINYWEB__MESSAGE__INIT;
+    Tinyweb__MessageHeader hdr = TINYWEB__MESSAGE_HEADER__INIT;
+    hdr.version = 1;
+    hdr.timestamp = (uint64_t)time(NULL);
+    hdr.sender_pubkey.len = 32;
+    hdr.sender_pubkey.data = pk;
+    hdr.n_recipients_pubkey = 1;
+    ProtobufCBinaryData r = {32, pk};
+    hdr.recipients_pubkey = &r;
+    
+    msg.header = &hdr;
+    msg.payload_nonce.len = 24;
+    msg.payload_nonce.data = malloc(24); memset(msg.payload_nonce.data, 0, 24);
+    msg.ephemeral_pubkey.len = 32;
+    msg.ephemeral_pubkey.data = malloc(32); memset(msg.ephemeral_pubkey.data, 0, 32);
+    msg.payload_ciphertext.len = 16;
+    msg.payload_ciphertext.data = malloc(16); memset(msg.payload_ciphertext.data, 0, 16);
+    
+    // Sign
+    unsigned char payload_hash[32];
+    SHA256(msg.payload_ciphertext.data, 16, payload_hash);
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    static const unsigned char domain[] = { 'T','W','M','E','S','S','A','G','E','\0' };
+    SHA256_Update(&ctx, domain, sizeof(domain));
+    SHA256_Update(&ctx, &hdr.version, 4);
+    SHA256_Update(&ctx, &hdr.timestamp, 8);
+    SHA256_Update(&ctx, pk, 32);
+    uint32_t n = 1;
+    SHA256_Update(&ctx, &n, 4);
+    SHA256_Update(&ctx, pk, 32);
+    uint32_t g = 0;
+    SHA256_Update(&ctx, &g, 4);
+    SHA256_Update(&ctx, payload_hash, 32);
+    unsigned char d[32];
+    SHA256_Final(d, &ctx);
+    
+    msg.signature.len = 64;
+    msg.signature.data = malloc(64);
+    crypto_sign_detached(msg.signature.data, NULL, d, 32, sk);
+    
+    MessageValidationResult res = message_validate(&msg);
+    ASSERT_TEST(res == MESSAGE_VALIDATION_OK, "Valid message failed validation");
+    
+    free(msg.payload_nonce.data);
+    free(msg.ephemeral_pubkey.data);
+    free(msg.payload_ciphertext.data);
+    free(msg.signature.data);
+    
+    printf("    ✓ valid message passed\n");
+    return 0;
+}
+
 int gossip_validation_test_main(void) {
     printf("\n=== Gossip Validation Tests ===\n");
     
@@ -397,6 +461,7 @@ int gossip_validation_test_main(void) {
     if (test_validate_null_config() == 0) passed++; else failed++;
     if (test_validate_invalid_signature() == 0) passed++; else failed++;
     if (test_validation_expiration_calculation() == 0) passed++; else failed++;
+    if (test_validate_valid_message() == 0) passed++; else failed++;
     
     printf("\nGossip Validation Tests: %d passed, %d failed\n", passed, failed);
     
