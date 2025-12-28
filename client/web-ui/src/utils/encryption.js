@@ -151,7 +151,15 @@ export async function decryptPayload(encrypted, recipientPubkeys, recipientPrivk
   }
 
   if (recipientIndex === -1) {
-    throw new Error('Recipient public key not found in the list');
+    // Provide more detailed error for debugging
+    const ourKeyHex = sodium.to_hex(ourPublicKey);
+    const recipientKeysHex = recipientPubkeys.map(pk => sodium.to_hex(pk));
+    throw new Error(`Recipient public key not found in the list. Our key: ${ourKeyHex}, Recipients: ${recipientKeysHex.join(', ')}`);
+  }
+  
+  // Verify we have encrypted keys for this index
+  if (recipientIndex >= encrypted.encryptedKeys.length) {
+    throw new Error(`Recipient index ${recipientIndex} out of bounds (${encrypted.encryptedKeys.length} encrypted keys available)`);
   }
 
   // Decrypt the symmetric key using our private key at the matched index

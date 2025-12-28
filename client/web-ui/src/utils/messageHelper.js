@@ -211,23 +211,36 @@ export async function deserializeMessageFromProtobuf(messageBytes) {
   encryptedPayload.keyNonces = [];
   encryptedPayload.numRecipients = header.recipientsPubkey.length;
   
-  // Create a map of recipient pubkey to keywrap
+  // Create a map of recipient pubkey to keywrap using a more robust key comparison
   const keywrapMap = new Map();
   for (const keywrap of (message.keywraps || [])) {
-    const recipientKey = Array.from(keywrap.recipient_pubkey);
-    keywrapMap.set(recipientKey.join(','), keywrap);
+    const recipientKey = new Uint8Array(keywrap.recipient_pubkey);
+    // Use hex string as key for reliable comparison
+    const keyHex = Array.from(recipientKey).map(b => b.toString(16).padStart(2, '0')).join('');
+    keywrapMap.set(keyHex, keywrap);
   }
   
   // Match keywraps to recipientPubkeys in order
+  // This ensures encryptedKeys array matches the order of recipientsPubkey array
   for (const recipientPubkey of header.recipientsPubkey) {
-    const key = Array.from(recipientPubkey).join(',');
-    const keywrap = keywrapMap.get(key);
+    const recipientKey = recipientPubkey instanceof Uint8Array ? recipientPubkey : new Uint8Array(recipientPubkey);
+    const keyHex = Array.from(recipientKey).map(b => b.toString(16).padStart(2, '0')).join('');
+    const keywrap = keywrapMap.get(keyHex);
     if (keywrap) {
       encryptedPayload.encryptedKeys.push(new Uint8Array(keywrap.wrapped_key));
       encryptedPayload.keyNonces.push(new Uint8Array(keywrap.key_nonce));
     } else {
-      throw new Error(`Keywrap not found for recipient pubkey`);
+      // Log warning but don't throw - might be missing keywrap for sender if message was sent before fix
+      console.warn(`Keywrap not found for recipient pubkey: ${keyHex}`);
+      // Still add placeholder to maintain array alignment (will fail decryption but won't crash)
+      encryptedPayload.encryptedKeys.push(new Uint8Array(0));
+      encryptedPayload.keyNonces.push(new Uint8Array(0));
     }
+  }
+  
+  // Verify we have the same number of encrypted keys as recipients
+  if (encryptedPayload.encryptedKeys.length !== header.recipientsPubkey.length) {
+    throw new Error(`Mismatch: ${encryptedPayload.encryptedKeys.length} encrypted keys for ${header.recipientsPubkey.length} recipients`);
   }
   
   // Extract signature

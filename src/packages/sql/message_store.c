@@ -471,13 +471,21 @@ int message_store_fetch_conversation(const unsigned char user1_pubkey[PUBKEY_SIZ
     *out = NULL; *count = 0;
     sqlite3* db = db_get_handle(); if (!db) return -1;
     
+    // Query messages where:
+    // 1. Direct match: (user1 sends to user2) OR (user2 sends to user1)
+    // 2. Multi-recipient: message has both users involved (check message_recipients table)
+    //    - user1 is sender and user2 is in recipients, OR
+    //    - user2 is sender and user1 is in recipients
     const char* sql =
-        "SELECT id, version, timestamp, sender_pubkey, recipient_pubkey, group_id, "
-        "payload_nonce, ephemeral_pubkey, encrypted_payload, signature "
-        "FROM user_messages "
-        "WHERE (sender_pubkey = ? AND recipient_pubkey = ?) "
-        "   OR (sender_pubkey = ? AND recipient_pubkey = ?) "
-        "ORDER BY timestamp DESC LIMIT ?;";
+        "SELECT DISTINCT m.id, m.version, m.timestamp, m.sender_pubkey, m.recipient_pubkey, m.group_id, "
+        "m.payload_nonce, m.ephemeral_pubkey, m.encrypted_payload, m.signature "
+        "FROM user_messages m "
+        "LEFT JOIN message_recipients mr ON m.id = mr.message_id "
+        "WHERE ((m.sender_pubkey = ? AND m.recipient_pubkey = ?) "
+        "    OR (m.sender_pubkey = ? AND m.recipient_pubkey = ?)) "
+        "   OR ((m.sender_pubkey = ? AND mr.recipient_pubkey = ?) "
+        "    OR (m.sender_pubkey = ? AND mr.recipient_pubkey = ?)) "
+        "ORDER BY m.timestamp DESC LIMIT ?;";
     
     sqlite3_stmt* stmt = NULL;
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) return -1;
@@ -486,7 +494,11 @@ int message_store_fetch_conversation(const unsigned char user1_pubkey[PUBKEY_SIZ
     sqlite3_bind_blob(stmt, 2, user2_pubkey, PUBKEY_SIZE, SQLITE_STATIC);
     sqlite3_bind_blob(stmt, 3, user2_pubkey, PUBKEY_SIZE, SQLITE_STATIC);
     sqlite3_bind_blob(stmt, 4, user1_pubkey, PUBKEY_SIZE, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 5, (int)limit);
+    sqlite3_bind_blob(stmt, 5, user1_pubkey, PUBKEY_SIZE, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 6, user2_pubkey, PUBKEY_SIZE, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 7, user2_pubkey, PUBKEY_SIZE, SQLITE_STATIC);
+    sqlite3_bind_blob(stmt, 8, user1_pubkey, PUBKEY_SIZE, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 9, (int)limit);
     
     size_t rows = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW) rows++;
