@@ -49,6 +49,7 @@ set(GOSSIP_DB_SOURCES
 # Messaging specific sources
 set(MESSAGING_SOURCES
     src/packages/comm/messagesApi.c
+    src/packages/comm/request_auth.c
     src/packages/comm/message_permissions.c
     src/packages/validation/message_validation.c
 )

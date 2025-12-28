@@ -34,5 +34,10 @@ bool check_user_permission(const unsigned char* user_pubkey, uint64_t permission
 // count: Number of roles in array
 void free_role_array(Role* roles, size_t count);
 
+// Check if a user exists in the database (is registered)
+// user_pubkey: 32-byte Ed25519 public key
+// Returns true if user exists and is active, false otherwise
+bool user_exists(const unsigned char* user_pubkey);
+
 #endif // PERMISSIONS_H
 

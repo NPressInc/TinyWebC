@@ -1,9 +1,11 @@
 #include "messagesApi.h"
 #include "gossipApi.h"
+#include "request_auth.h"
 #include "message.pb-c.h"
 #include "packages/sql/message_store.h"
 #include "packages/validation/message_validation.h"
 #include "message_permissions.h"
+#include "packages/sql/permissions.h"
 #include "packages/comm/gossip/gossip.h"
 #include "packages/utils/logger.h"
 #include <string.h>
@@ -27,7 +29,7 @@ bool messages_api_handler(struct mg_connection* c, struct mg_http_message* hm) {
         } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
             mg_http_reply(c, 200, "Access-Control-Allow-Origin: *\r\n"
                                  "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
-                                 "Access-Control-Allow-Headers: Content-Type\r\n", "");
+                                 "Access-Control-Allow-Headers: Content-Type, X-User-Pubkey, X-Signature, X-Timestamp\r\n", "");
             return true;
         } else {
             mg_http_reply(c, 405, "Access-Control-Allow-Origin: *\r\n", "Method Not Allowed");
@@ -38,6 +40,16 @@ bool messages_api_handler(struct mg_connection* c, struct mg_http_message* hm) {
 }
 
 static void handle_submit_message(struct mg_connection* c, struct mg_http_message* hm) {
+    // Authenticate request (optional but recommended - validates requester is registered)
+    // Note: Message itself is also signed, providing additional authentication
+    unsigned char requester_pubkey[PUBKEY_SIZE];
+    RequestAuthResult auth_result = validate_request_auth(hm, requester_pubkey);
+    if (auth_result != REQUEST_AUTH_OK) {
+        mg_http_reply(c, 401, "Access-Control-Allow-Origin: *\r\n", 
+                     "{\"error\":\"%s\"}", request_auth_error_string(auth_result));
+        return;
+    }
+    
     struct mg_str body = hm->body;
     if (body.len == 0) {
         mg_http_reply(c, 400, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Empty body\"}");
@@ -68,8 +80,35 @@ static void handle_submit_message(struct mg_connection* c, struct mg_http_messag
         return;
     }
 
-    // 3. Check Permissions
+    // 2.5. Verify requester matches message sender
     const unsigned char* sender = msg->header->sender_pubkey.data;
+    if (memcmp(requester_pubkey, sender, PUBKEY_SIZE) != 0) {
+        logger_error("msg_api", "Requester does not match message sender");
+        mg_http_reply(c, 403, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Requester must match message sender\"}");
+        tinyweb__message__free_unpacked(msg, NULL);
+        return;
+    }
+
+    // 2.6. Validate sender is a registered user
+    if (!user_exists(sender)) {
+        logger_error("msg_api", "Sender is not a registered user");
+        mg_http_reply(c, 403, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Sender not registered\"}");
+        tinyweb__message__free_unpacked(msg, NULL);
+        return;
+    }
+
+    // 2.6. Validate all recipients are registered users
+    for (size_t i = 0; i < msg->header->n_recipients_pubkey; i++) {
+        const unsigned char* recipient = msg->header->recipients_pubkey[i].data;
+        if (!user_exists(recipient)) {
+            logger_error("msg_api", "Recipient %zu is not a registered user", i);
+            mg_http_reply(c, 403, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Recipient not registered\"}");
+            tinyweb__message__free_unpacked(msg, NULL);
+            return;
+        }
+    }
+
+    // 3. Check Permissions
     const unsigned char* group_id = msg->header->group_id.len > 0 ? msg->header->group_id.data : NULL;
     size_t num_recipients = msg->header->n_recipients_pubkey;
     

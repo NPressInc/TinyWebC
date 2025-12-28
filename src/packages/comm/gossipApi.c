@@ -150,7 +150,7 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
             snprintf(cors_headers, sizeof(cors_headers),
                      "Access-Control-Allow-Origin: *\r\n"
                      "Access-Control-Allow-Methods: %s\r\n"
-                     "Access-Control-Allow-Headers: Content-Type\r\n"
+                     "Access-Control-Allow-Headers: Content-Type, X-User-Pubkey, X-Signature, X-Timestamp\r\n"
                      "Access-Control-Max-Age: 86400\r\n"
                      "Content-Length: 0\r\n",
                      allowed_methods);

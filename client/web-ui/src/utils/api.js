@@ -3,6 +3,8 @@
  * Handles HTTP communication with running nodes
  */
 
+import { addAuthHeaders } from './requestAuth.js';
+
 // Default node URLs (with port mappings from docker-compose.test.yml)
 const DEFAULT_NODE_URLS = {
   node_01: 'http://localhost:8001',
@@ -100,18 +102,14 @@ export async function getPeers(nodeUrl) {
  */
 export async function sendMessage(nodeUrl, message) {
   try {
-    console.log('[sendMessage] Sending message to:', nodeUrl);
-    
     // Serialize message to binary protobuf
     const { serializeMessageToProtobuf } = await import('./messageHelper.js');
     const messageBytes = await serializeMessageToProtobuf(message);
     
     const url = `${nodeUrl}/messages/submit`;
     
-    console.log('[sendMessage] POST URL:', url);
-    console.log('[sendMessage] Message size:', messageBytes.length, 'bytes');
-    
-    const response = await fetch(url, {
+    // Add authentication headers
+    const fetchOptions = await addAuthHeaders('POST', url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-protobuf',
@@ -120,20 +118,17 @@ export async function sendMessage(nodeUrl, message) {
       body: messageBytes,
     });
     
-    console.log('[sendMessage] Response status:', response.status);
+    const response = await fetch(url, fetchOptions);
     
     // Backend returns JSON response (not binary)
     const data = await response.json();
     
     if (!response.ok) {
-      console.error('[sendMessage] Error response:', data);
       throw new Error(data.error || `HTTP ${response.status}`);
     }
     
-    console.log('[sendMessage] Success:', data);
     return data;
   } catch (error) {
-    console.error('[sendMessage] Exception:', error);
     throw new Error(`Failed to send message to ${nodeUrl}: ${error.message}`);
   }
 }
@@ -151,16 +146,17 @@ export async function getMessages(nodeUrl, userPubkey, withPubkey) {
     url.searchParams.append('user', userPubkey);
     url.searchParams.append('with', withPubkey);
     
-    console.log('Fetching messages:', { nodeUrl, userPubkey, withPubkey, url: url.toString() });
-    
-    const response = await fetch(url.toString(), {
+    // Add authentication headers
+    const fetchOptions = await addAuthHeaders('GET', url.toString(), {
       method: 'GET',
       headers: { 'Accept': 'application/x-protobuf' },
     });
     
+    const response = await fetch(url.toString(), fetchOptions);
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Error response:', response.status, errorText);
+      console.error('[getMessages] Error response:', response.status, errorText);
       let errorMsg = `Failed to get messages: ${response.status}`;
       try {
         const errorJson = JSON.parse(errorText);
@@ -204,13 +200,29 @@ export async function getRecentMessages(nodeUrl, userPubkey, limit = 50) {
     url.searchParams.append('user', userPubkey);
     url.searchParams.append('limit', limit.toString());
     
-    const response = await fetch(url.toString(), {
+    // Add authentication headers
+    const fetchOptions = await addAuthHeaders('GET', url.toString(), {
       method: 'GET',
       headers: { 'Accept': 'application/x-protobuf' },
     });
     
+    const response = await fetch(url.toString(), fetchOptions);
+    
     if (!response.ok) {
-      throw new Error(`Failed to get recent messages: ${response.status}`);
+      let errorMsg = `Failed to get recent messages: ${response.status}`;
+      try {
+        const errorText = await response.text();
+        console.error('[getRecentMessages] Error response:', response.status, errorText);
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.error || errorMsg;
+        } catch (e) {
+          errorMsg = errorText || errorMsg;
+        }
+      } catch (e) {
+        // Ignore
+      }
+      throw new Error(errorMsg);
     }
     
     // Check Content-Type header
@@ -244,10 +256,13 @@ export async function getConversations(nodeUrl, userPubkey) {
     const url = new URL(`${nodeUrl}/messages/conversations`);
     url.searchParams.append('user', userPubkey);
     
-    const response = await fetch(url.toString(), {
+    // Add authentication headers
+    const fetchOptions = await addAuthHeaders('GET', url.toString(), {
       method: 'GET',
       headers: { 'Accept': 'application/x-protobuf' },
     });
+    
+    const response = await fetch(url.toString(), fetchOptions);
     
     if (!response.ok) {
       throw new Error(`Failed to get conversations: ${response.status}`);

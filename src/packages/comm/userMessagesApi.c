@@ -1,4 +1,5 @@
 #include "userMessagesApi.h"
+#include "request_auth.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,7 +59,7 @@ bool user_messages_api_handler(struct mg_connection* c, struct mg_http_message* 
             mg_http_reply(c, 200,
                           "Access-Control-Allow-Origin: *\r\n"
                           "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
-                          "Access-Control-Allow-Headers: Content-Type\r\n",
+                          "Access-Control-Allow-Headers: Content-Type, X-User-Pubkey, X-Signature, X-Timestamp\r\n",
                           "");
             return true;
         }
@@ -84,6 +85,15 @@ static int hex_decode(const char* hex, unsigned char** out, size_t* out_len) {
 }
 
 static void handle_get_recent(struct mg_connection* c, struct mg_http_message* hm) {
+    // Authenticate request
+    unsigned char requester_pubkey[PUBKEY_SIZE];
+    RequestAuthResult auth_result = validate_request_auth(hm, requester_pubkey);
+    if (auth_result != REQUEST_AUTH_OK) {
+        mg_http_reply(c, 401, "Access-Control-Allow-Origin: *\r\n", 
+                     "{\"error\":\"%s\"}", request_auth_error_string(auth_result));
+        return;
+    }
+    
     unsigned char user_pubkey[PUBKEY_SIZE] = {0};
     bool has_user = false;
     uint32_t limit = 50;
@@ -107,6 +117,12 @@ static void handle_get_recent(struct mg_connection* c, struct mg_http_message* h
 
     if (!has_user) {
         mg_http_reply(c, 400, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Missing user\"}");
+        return;
+    }
+
+    // Verify requester is requesting their own messages
+    if (memcmp(requester_pubkey, user_pubkey, PUBKEY_SIZE) != 0) {
+        mg_http_reply(c, 403, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Unauthorized: can only access own messages\"}");
         return;
     }
 
@@ -148,6 +164,15 @@ static void handle_get_recent(struct mg_connection* c, struct mg_http_message* h
 }
 
 static void handle_get_conversation(struct mg_connection* c, struct mg_http_message* hm) {
+    // Authenticate request
+    unsigned char requester_pubkey[PUBKEY_SIZE];
+    RequestAuthResult auth_result = validate_request_auth(hm, requester_pubkey);
+    if (auth_result != REQUEST_AUTH_OK) {
+        mg_http_reply(c, 401, "Access-Control-Allow-Origin: *\r\n", 
+                     "{\"error\":\"%s\"}", request_auth_error_string(auth_result));
+        return;
+    }
+    
     unsigned char user_pubkey[PUBKEY_SIZE] = {0};
     unsigned char with_pubkey[PUBKEY_SIZE] = {0};
     bool has_user = false, has_with = false;
@@ -169,6 +194,23 @@ static void handle_get_conversation(struct mg_connection* c, struct mg_http_mess
 
     if (!has_user || !has_with) {
         mg_http_reply(c, 400, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Missing params\"}");
+        return;
+    }
+
+    // Verify requester is one of the conversation participants
+    if (memcmp(requester_pubkey, user_pubkey, PUBKEY_SIZE) != 0 && 
+        memcmp(requester_pubkey, with_pubkey, PUBKEY_SIZE) != 0) {
+        mg_http_reply(c, 403, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Unauthorized: must be conversation participant\"}");
+        return;
+    }
+    
+    // Validate both users are registered
+    if (!user_exists(user_pubkey)) {
+        mg_http_reply(c, 403, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"User not registered\"}");
+        return;
+    }
+    if (!user_exists(with_pubkey)) {
+        mg_http_reply(c, 403, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Conversation partner not registered\"}");
         return;
     }
 
@@ -210,6 +252,15 @@ static void handle_get_conversation(struct mg_connection* c, struct mg_http_mess
 }
 
 static void handle_get_conversations(struct mg_connection* c, struct mg_http_message* hm) {
+    // Authenticate request
+    unsigned char requester_pubkey[PUBKEY_SIZE];
+    RequestAuthResult auth_result = validate_request_auth(hm, requester_pubkey);
+    if (auth_result != REQUEST_AUTH_OK) {
+        mg_http_reply(c, 401, "Access-Control-Allow-Origin: *\r\n", 
+                     "{\"error\":\"%s\"}", request_auth_error_string(auth_result));
+        return;
+    }
+    
     unsigned char user_pubkey[PUBKEY_SIZE] = {0};
     bool has_user = false;
     uint32_t limit = 100;
@@ -224,6 +275,12 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
 
     if (!has_user) {
         mg_http_reply(c, 400, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Missing user\"}");
+        return;
+    }
+
+    // Verify requester is requesting their own conversations
+    if (memcmp(requester_pubkey, user_pubkey, PUBKEY_SIZE) != 0) {
+        mg_http_reply(c, 403, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"Unauthorized: can only access own conversations\"}");
         return;
     }
 

@@ -23,6 +23,42 @@ static int hex_encode_pubkey(const unsigned char* pubkey, char* hex_out, size_t 
     return 0;
 }
 
+// Check if a user exists in the database (is registered and active)
+bool user_exists(const unsigned char* user_pubkey) {
+    if (!user_pubkey) return false;
+    
+    sqlite3* db = db_get_handle();
+    if (!db) {
+        logger_error("permissions", "user_exists: database not initialized");
+        return false;
+    }
+    
+    // Convert pubkey to hex
+    char pubkey_hex[65];
+    if (hex_encode_pubkey(user_pubkey, pubkey_hex, sizeof(pubkey_hex)) != 0) {
+        logger_error("permissions", "user_exists: failed to encode pubkey");
+        return false;
+    }
+    
+    sqlite3_stmt* stmt = NULL;
+    if (sqlite3_prepare_v2(db, SQL_SELECT_USER_BY_PUBKEY, -1, &stmt, NULL) != SQLITE_OK) {
+        logger_error("permissions", "user_exists: SQL error: %s", sqlite3_errmsg(db));
+        return false;
+    }
+    
+    sqlite3_bind_text(stmt, 1, pubkey_hex, -1, SQLITE_STATIC);
+    
+    bool exists = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        // Check if user is active (column 6: is_active)
+        int is_active = sqlite3_column_int(stmt, 6);
+        exists = (is_active == 1);
+    }
+    
+    sqlite3_finalize(stmt);
+    return exists;
+}
+
 // Helper structure to group permissions by scope/condition/time
 typedef struct {
     uint32_t scope_flags;
