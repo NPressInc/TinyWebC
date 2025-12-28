@@ -128,11 +128,12 @@ static void handle_get_recent(struct mg_connection* c, struct mg_http_message* h
         tinyweb__message_list__pack(&list, packed);
         
         // Use mg_printf + mg_send for raw binary protobuf data
+        // Cast to unsigned long since mg_printf may not support %zu
         mg_printf(c, "HTTP/1.1 200 OK\r\n"
                      "Content-Type: application/x-protobuf\r\n"
-                     "Content-Length: %zu\r\n"
+                     "Content-Length: %lu\r\n"
                      "Access-Control-Allow-Origin: *\r\n"
-                     "\r\n", packed_size);
+                     "\r\n", (unsigned long)packed_size);
         mg_send(c, packed, packed_size);
         free(packed);
     } else {
@@ -189,11 +190,12 @@ static void handle_get_conversation(struct mg_connection* c, struct mg_http_mess
         tinyweb__message_list__pack(&list, packed);
         
         // Use mg_printf + mg_send for raw binary protobuf data
+        // Cast to unsigned long since mg_printf may not support %zu
         mg_printf(c, "HTTP/1.1 200 OK\r\n"
                      "Content-Type: application/x-protobuf\r\n"
-                     "Content-Length: %zu\r\n"
+                     "Content-Length: %lu\r\n"
                      "Access-Control-Allow-Origin: *\r\n"
-                     "\r\n", packed_size);
+                     "\r\n", (unsigned long)packed_size);
         mg_send(c, packed, packed_size);
         free(packed);
     } else {
@@ -237,11 +239,12 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
         tinyweb__conversation_list__pack(list, packed);
         
         // Use mg_printf + mg_send for raw binary protobuf data
+        // Cast to unsigned long since mg_printf may not support %zu
         mg_printf(c, "HTTP/1.1 200 OK\r\n"
                      "Content-Type: application/x-protobuf\r\n"
-                     "Content-Length: %zu\r\n"
+                     "Content-Length: %lu\r\n"
                      "Access-Control-Allow-Origin: *\r\n"
-                     "\r\n", packed_size);
+                     "\r\n", (unsigned long)packed_size);
         mg_send(c, packed, packed_size);
         free(packed);
     } else {

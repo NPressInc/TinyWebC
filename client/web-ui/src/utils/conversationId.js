@@ -21,6 +21,16 @@ function sortPubkeys(pubkey1, pubkey2) {
 }
 
 /**
+ * Compute SHA256 hash using Web Crypto API (for compatibility)
+ * @param {Uint8Array} data - Data to hash
+ * @returns {Promise<Uint8Array>} - SHA256 hash (32 bytes)
+ */
+async function sha256(data) {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return new Uint8Array(hashBuffer);
+}
+
+/**
  * Calculate conversation_id from participant public keys
  * Uses SHA256 hash of sorted participant pubkeys
  * @param {string} pubkey1 - First participant's public key (hex)
@@ -42,8 +52,8 @@ export async function calculateConversationId(pubkey1, pubkey2) {
   combined.set(p1Bytes, 0);
   combined.set(p2Bytes, p1Bytes.length);
   
-  // Hash with SHA256
-  const hash = sodium.crypto_hash_sha256(combined);
+  // Hash with SHA256 using Web Crypto API
+  const hash = await sha256(combined);
   
   // Return as hex string
   return sodium.to_hex(hash);

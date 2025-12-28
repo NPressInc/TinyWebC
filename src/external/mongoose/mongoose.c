@@ -2456,6 +2456,20 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_READ || ev == MG_EV_CLOSE ||
       (ev == MG_EV_POLL && c->is_accepted && !c->is_draining &&
        c->recv.len > 0)) {  // see #2796
+    // Reset is_resp for new requests on keep-alive connections
+    // This allows parsing the next request after a response was sent
+    if (c->recv.len > 0 && c->recv.buf) {
+      // Check if this looks like the start of a new HTTP request
+      const char *buf = (char *)c->recv.buf;
+      if ((strncmp(buf, "GET ", 4) == 0) || (strncmp(buf, "POST ", 5) == 0) ||
+          (strncmp(buf, "PUT ", 4) == 0) || (strncmp(buf, "DELETE ", 7) == 0) ||
+          (strncmp(buf, "OPTIONS ", 8) == 0) || (strncmp(buf, "HEAD ", 5) == 0) ||
+          (strncmp(buf, "PATCH ", 6) == 0)) {
+        // This is a new request, reset is_resp to allow parsing
+        c->is_resp = 0;
+      }
+    }
+    
     struct mg_http_message hm;
     size_t ofs = 0;  // Parsing offset
     while (c->is_resp == 0 && ofs < c->recv.len) {
@@ -2464,6 +2478,7 @@ static void http_cb(struct mg_connection *c, int ev, void *ev_data) {
       struct mg_str *te;  // Transfer - encoding header
       bool is_chunked = false;
       size_t old_len = c->recv.len;
+      
       if (n < 0) {
         // We don't use mg_error() here, to avoid closing pipelined requests
         // prematurely, see #2592

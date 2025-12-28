@@ -115,45 +115,64 @@ static void* gossip_api_loop(void* arg) {
 }
 
 static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
-    (void)ev_data;
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message* hm = (struct mg_http_message*)ev_data;
-
-        // #region agent log
-        // Use error level to ensure it always shows, and format URI/method safely
+        
+        // Log all incoming HTTP requests for debugging
         char uri_buf[256] = {0};
         char method_buf[16] = {0};
         size_t uri_len = hm->uri.len < sizeof(uri_buf) - 1 ? hm->uri.len : sizeof(uri_buf) - 1;
         size_t method_len = hm->method.len < sizeof(method_buf) - 1 ? hm->method.len : sizeof(method_buf) - 1;
         memcpy(uri_buf, hm->uri.buf, uri_len);
         memcpy(method_buf, hm->method.buf, method_len);
-        logger_error("http_api", "[DEBUG] HTTP request: URI=%s METHOD=%s QUERY_LEN=%zu", uri_buf, method_buf, hm->query.len);
-        // #endregion
+        logger_info("http_api", "HTTP request: %s %s (body_len=%zu, message_len=%zu)", 
+                     method_buf, uri_buf, hm->body.len, hm->message.len);
+
+        // Handle OPTIONS requests globally (CORS preflight) - must be first
+        if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
+            logger_info("http_api", "OPTIONS preflight for %s", uri_buf);
+            
+            // Determine allowed methods based on endpoint
+            const char* allowed_methods = "GET, POST, OPTIONS";
+            if (mg_strcmp(hm->uri, mg_str("/messages/submit")) == 0 ||
+                mg_strcmp(hm->uri, mg_str("/gossip/message")) == 0) {
+                allowed_methods = "POST, OPTIONS";
+            } else if (mg_strcmp(hm->uri, mg_str("/gossip/peers")) == 0 ||
+                       mg_strcmp(hm->uri, mg_str("/health")) == 0 ||
+                       mg_strcmp(hm->uri, mg_str("/messages/recent")) == 0 ||
+                       mg_strcmp(hm->uri, mg_str("/messages/conversation")) == 0 ||
+                       mg_strcmp(hm->uri, mg_str("/messages/conversations")) == 0 ||
+                       mg_strcmp(hm->uri, mg_str("/users")) == 0) {
+                allowed_methods = "GET, OPTIONS";
+            }
+            // Build CORS headers string
+            char cors_headers[512];
+            snprintf(cors_headers, sizeof(cors_headers),
+                     "Access-Control-Allow-Origin: *\r\n"
+                     "Access-Control-Allow-Methods: %s\r\n"
+                     "Access-Control-Allow-Headers: Content-Type\r\n"
+                     "Access-Control-Max-Age: 86400\r\n"
+                     "Content-Length: 0\r\n",
+                     allowed_methods);
+            mg_http_reply(c, 200, cors_headers, "");
+            logger_info("http_api", "OPTIONS preflight handled for %s", uri_buf);
+            return;
+        }
 
         if (mg_strcmp(hm->uri, mg_str("/gossip/message")) == 0) {
             if (mg_strcmp(hm->method, mg_str("POST")) == 0) {
                 handle_gossip_message(c, hm);
-            } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
-                mg_http_reply(c, 200,
-                              "Access-Control-Allow-Origin: *\r\n"
-                              "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
-                              "Access-Control-Allow-Headers: Content-Type\r\n",
-                              "");
             } else {
-                mg_http_reply(c, 405, "Content-Type: application/json\r\n",
+                mg_http_reply(c, 405, "Content-Type: application/json\r\n"
+                              "Access-Control-Allow-Origin: *\r\n",
                               "{\"error\":\"Method Not Allowed\"}");
             }
         } else if (mg_strcmp(hm->uri, mg_str("/gossip/peers")) == 0) {
             if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
                 handle_get_peers(c, hm);
-            } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
-                mg_http_reply(c, 200,
-                              "Access-Control-Allow-Origin: *\r\n"
-                              "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
-                              "Access-Control-Allow-Headers: Content-Type\r\n",
-                              "");
             } else {
-                mg_http_reply(c, 405, "Content-Type: application/json\r\n",
+                mg_http_reply(c, 405, "Content-Type: application/json\r\n"
+                              "Access-Control-Allow-Origin: *\r\n",
                               "{\"error\":\"Method Not Allowed\"}");
             }
         } else if (mg_strcmp(hm->uri, mg_str("/health")) == 0) {
@@ -163,12 +182,6 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                               "Content-Type: application/json\r\n"
                               "Access-Control-Allow-Origin: *\r\n",
                               "{\"status\":\"healthy\",\"service\":\"tinyweb\"}");
-            } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
-                mg_http_reply(c, 200,
-                              "Access-Control-Allow-Origin: *\r\n"
-                              "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
-                              "Access-Control-Allow-Headers: Content-Type\r\n",
-                              "");
             } else {
                 mg_http_reply(c, 405, "Content-Type: application/json\r\n"
                               "Access-Control-Allow-Origin: *\r\n",
@@ -186,6 +199,8 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
             }
 
             // Not handled by either module
+            logger_info("http_api", "404 Not Found: %.*s %.*s", 
+                       (int)hm->method.len, hm->method.buf, (int)hm->uri.len, hm->uri.buf);
             mg_http_reply(c, 404, "Content-Type: application/json\r\n"
                           "Access-Control-Allow-Origin: *\r\n",
                           "{\"error\":\"Not Found\"}");
@@ -214,6 +229,7 @@ static void handle_get_peers(struct mg_connection* c, struct mg_http_message* hm
     size_t peer_count = 0;
     
     if (gossip_peers_fetch_all(&peers, &peer_count) != 0) {
+        logger_error("http_api", "handle_get_peers: failed to fetch peers");
         mg_http_reply(c, 500,
                       "Content-Type: application/json\r\n"
                       "Access-Control-Allow-Origin: *\r\n",

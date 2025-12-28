@@ -115,6 +115,7 @@ export async function sendMessage(nodeUrl, message) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-protobuf',
+        'Content-Length': messageBytes.length.toString(), // Explicitly set Content-Length
       },
       body: messageBytes,
     });

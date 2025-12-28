@@ -171,7 +171,8 @@ HttpResponse* http_client_request(const char* url, HttpMethod method,
             mg_printf(c, "Content-Type: %s\r\n", content_type);
         }
         
-        mg_printf(c, "Content-Length: %zu\r\n", data_len);
+        // Cast to unsigned long since mg_printf may not support %zu
+        mg_printf(c, "Content-Length: %lu\r\n", (unsigned long)data_len);
         mg_printf(c, "Connection: close\r\n");
         mg_printf(c, "\r\n");
         

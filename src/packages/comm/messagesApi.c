@@ -13,7 +13,15 @@ static void handle_submit_message(struct mg_connection* c, struct mg_http_messag
 
 bool messages_api_handler(struct mg_connection* c, struct mg_http_message* hm) {
     if (mg_strcmp(hm->uri, mg_str("/messages/submit")) == 0) {
+        char method_buf[16] = {0};
+        size_t method_len = hm->method.len < sizeof(method_buf) - 1 ? hm->method.len : sizeof(method_buf) - 1;
+        if (hm->method.buf && method_len > 0) {
+            memcpy(method_buf, hm->method.buf, method_len);
+        }
+        logger_info("msg_api", "messages_api_handler: /messages/submit method=%s body_len=%zu", 
+                    method_buf, hm->body.len);
         if (mg_strcmp(hm->method, mg_str("POST")) == 0) {
+            logger_info("msg_api", "Calling handle_submit_message");
             handle_submit_message(c, hm);
             return true;
         } else if (mg_strcmp(hm->method, mg_str("OPTIONS")) == 0) {
@@ -99,18 +107,22 @@ static void handle_submit_message(struct mg_connection* c, struct mg_http_messag
     // 6. Mark Seen
     message_store_mark_seen(digest, expires_at);
 
-    // 7. Broadcast via Gossip
+    // 7. Success Response (send immediately, before gossip broadcast)
+    // This prevents blocking the HTTP response on network I/O (DNS lookups, sendto calls)
+    mg_http_reply(c, 202, "Content-Type: application/json\r\n"
+                         "Access-Control-Allow-Origin: *\r\n", 
+                  "{\"status\":\"accepted\"}");
+
+    // 8. Broadcast via Gossip (after response sent to client)
+    // Note: This is still synchronous but happens after the client gets the response
+    // The gossip broadcast involves DNS lookups (getaddrinfo) and UDP sends (sendto)
+    // which can be slow, but the client already has its response
     GossipService* gossip_service = gossip_api_get_service();
     if (gossip_service) {
         if (gossip_service_broadcast_message(gossip_service, msg) != 0) {
             logger_error("msg_api", "Failed to broadcast message");
         }
     }
-
-    // 8. Success Response
-    mg_http_reply(c, 202, "Content-Type: application/json\r\n"
-                         "Access-Control-Allow-Origin: *\r\n", 
-                  "{\"status\":\"accepted\"}");
 
     tinyweb__message__free_unpacked(msg, NULL);
 }
