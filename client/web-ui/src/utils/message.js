@@ -38,6 +38,16 @@ export async function createSignedMessage(header, plaintext) {
     header.senderPubkey = keyStore.getPublicKey();
   }
 
+  // Ensure sender is in recipients list so they can decrypt their own messages
+  // Add sender at the END to preserve the first recipient for backend storage
+  const senderPubkey = header.senderPubkey;
+  const senderInList = header.recipientsPubkey.some(pk => 
+    sodium.memcmp(senderPubkey, pk)
+  );
+  if (!senderInList) {
+    header.recipientsPubkey = [...header.recipientsPubkey, senderPubkey];
+  }
+
   // Convert Ed25519 recipient pubkeys to X25519 for encryption
   const encryptionPubkeys = header.recipientsPubkey.map(ed25519Pubkey => 
     sodium.crypto_sign_ed25519_pk_to_curve25519(ed25519Pubkey)
