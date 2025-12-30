@@ -312,7 +312,15 @@ static void handle_get_conversations(struct mg_connection* c, struct mg_http_mes
 }
 
 static void handle_get_users(struct mg_connection* c, struct mg_http_message* hm) {
-    (void)hm;
+    // Authenticate request (required for consistency with other messaging endpoints)
+    unsigned char requester_pubkey[PUBKEY_SIZE];
+    RequestAuthResult auth_result = validate_request_auth(hm, requester_pubkey);
+    if (auth_result != REQUEST_AUTH_OK) {
+        mg_http_reply(c, 401, "Access-Control-Allow-Origin: *\r\n", 
+                     "{\"error\":\"%s\"}", request_auth_error_string(auth_result));
+        return;
+    }
+    
     sqlite3* db = db_get_handle();
     if (!db) {
         mg_http_reply(c, 500, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"DB error\"}");

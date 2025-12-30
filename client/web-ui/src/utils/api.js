@@ -299,10 +299,15 @@ export async function getConversations(nodeUrl, userPubkey) {
  */
 export async function getUsers(nodeUrl) {
   try {
-    const response = await fetch(`${nodeUrl}/users`, {
+    const url = `${nodeUrl}/users`;
+    
+    // Add authentication headers
+    const fetchOptions = await addAuthHeaders('GET', url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
+    
+    const response = await fetch(url, fetchOptions);
     
     if (!response.ok) {
       throw new Error(`Failed to get users: ${response.status}`);
