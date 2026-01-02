@@ -6,6 +6,17 @@ import { encryptPayloadMulti } from '../utils/encryption';
 import keyStore from '../utils/keystore';
 import { getNodeUrl } from '../utils/auth';
 import sodium from 'libsodium-wrappers';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default marker icons in React-Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 function LocationDashboard() {
   const [selectedNode, setSelectedNode] = useState('');
@@ -15,6 +26,7 @@ function LocationDashboard() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [location, setLocation] = useState(null);
   const [locationHistory, setLocationHistory] = useState([]);
+  const [timeRangeDays, setTimeRangeDays] = useState(7); // Default to 7 days
   const [showSubmitForm, setShowSubmitForm] = useState(false);
   const [submitForm, setSubmitForm] = useState({
     lat: '',
@@ -165,6 +177,31 @@ function LocationDashboard() {
     return date.toLocaleString();
   };
 
+  // Filter locations based on time range
+  const getFilteredLocations = () => {
+    if (timeRangeDays === 9999) return locationHistory; // Show all
+    
+    const now = Math.floor(Date.now() / 1000);
+    const cutoffTime = now - (timeRangeDays * 24 * 60 * 60);
+    return locationHistory.filter(loc => loc.timestamp >= cutoffTime);
+  };
+
+  // Component to auto-fit map bounds when location data changes
+  const MapBounds = ({ locations }) => {
+    const map = useMap();
+    
+    useEffect(() => {
+      if (locations.length > 0) {
+        const bounds = L.latLngBounds(locations.map(loc => [loc.lat, loc.lon]));
+        map.fitBounds(bounds, { padding: [50, 50] });
+      } else if (location) {
+        map.setView([location.lat, location.lon], 13);
+      }
+    }, [locations, location, map]);
+    
+    return null;
+  };
+
   return (
     <div className="location-dashboard">
       <h1>Location Tracking Dashboard</h1>
@@ -203,6 +240,103 @@ function LocationDashboard() {
             <div className="location-display">
               <h2>Location for {selectedUser.username || 'Unknown'}</h2>
               
+              {/* Time Range Filter */}
+              <div className="time-filter">
+                <label>
+                  Show locations from last: 
+                  <select 
+                    value={timeRangeDays} 
+                    onChange={(e) => setTimeRangeDays(Number(e.target.value))}
+                  >
+                    <option value={1}>1 day</option>
+                    <option value={7}>7 days</option>
+                    <option value={30}>30 days</option>
+                    <option value={90}>90 days</option>
+                    <option value={365}>1 year</option>
+                    <option value={9999}>All time</option>
+                  </select>
+                </label>
+              </div>
+              
+              {/* Embedded Map */}
+              <div className="location-map-container">
+                {(() => {
+                  const filteredHistory = getFilteredLocations();
+                  const hasData = location || filteredHistory.length > 0;
+                  
+                  return hasData ? (
+                    <MapContainer
+                      center={location ? [location.lat, location.lon] : [0, 0]}
+                      zoom={location ? 13 : 2}
+                      style={{ height: '400px', width: '100%' }}
+                      scrollWheelZoom={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <MapBounds locations={location ? [location, ...filteredHistory] : filteredHistory} />
+                      
+                      {/* Current location marker */}
+                      {location && (
+                        <Marker position={[location.lat, location.lon]}>
+                          <Popup>
+                            <div>
+                              <strong>Current Location</strong><br />
+                              {location.location_name && <><strong>Name:</strong> {location.location_name}<br /></>}
+                              <strong>Accuracy:</strong> {location.accuracy_m}m<br />
+                              <strong>Time:</strong> {formatTimestamp(location.timestamp)}
+                            </div>
+                          </Popup>
+                        </Marker>
+                      )}
+                      
+                      {/* Filtered location history markers */}
+                      {filteredHistory.map((loc, idx) => (
+                        <Marker 
+                          key={idx} 
+                          position={[loc.lat, loc.lon]}
+                          opacity={0.7}
+                        >
+                          <Popup>
+                            <div>
+                              <strong>{formatTimestamp(loc.timestamp)}</strong><br />
+                              {loc.location_name && <><strong>Name:</strong> {loc.location_name}<br /></>}
+                              <strong>Accuracy:</strong> {loc.accuracy_m}m
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ))}
+                      
+                      {/* Path connecting filtered history points */}
+                      {filteredHistory.length > 1 && (
+                        <Polyline
+                          positions={filteredHistory.map(loc => [loc.lat, loc.lon])}
+                          color="blue"
+                          opacity={0.5}
+                          weight={2}
+                        />
+                      )}
+                      
+                      {/* Path from current to most recent filtered history */}
+                      {location && filteredHistory.length > 0 && (
+                        <Polyline
+                          positions={[[location.lat, location.lon], [filteredHistory[0].lat, filteredHistory[0].lon]]}
+                          color="green"
+                          opacity={0.7}
+                          weight={3}
+                          dashArray="10, 5"
+                        />
+                      )}
+                    </MapContainer>
+                  ) : (
+                    <div className="map-placeholder">
+                      <p>No location data to display for selected time range</p>
+                    </div>
+                  );
+                })()}
+              </div>
+              
               {location ? (
                 <div className="location-info">
                   <div className="location-field">
@@ -222,15 +356,6 @@ function LocationDashboard() {
                       <strong>Location Name:</strong> {location.location_name}
                     </div>
                   )}
-                  <div className="location-map-link">
-                    <a
-                      href={`https://www.google.com/maps?q=${location.lat},${location.lon}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      View on Google Maps
-                    </a>
-                  </div>
                 </div>
               ) : (
                 <p>No location data available</p>
@@ -238,8 +363,8 @@ function LocationDashboard() {
 
               {/* Location History */}
               <div className="location-history">
-                <h3>Location History</h3>
-                {locationHistory.length > 0 ? (
+                <h3>Location History ({getFilteredLocations().length} locations)</h3>
+                {getFilteredLocations().length > 0 ? (
                   <table className="history-table">
                     <thead>
                       <tr>
@@ -251,7 +376,7 @@ function LocationDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {locationHistory.map((loc, idx) => (
+                      {getFilteredLocations().map((loc, idx) => (
                         <tr key={idx}>
                           <td>{formatTimestamp(loc.timestamp)}</td>
                           <td>{loc.lat}</td>
@@ -263,7 +388,7 @@ function LocationDashboard() {
                     </tbody>
                   </table>
                 ) : (
-                  <p>No location history available</p>
+                  <p>No location history available for selected time range</p>
                 )}
               </div>
             </div>
