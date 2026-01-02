@@ -2,6 +2,7 @@
 #include "userMessagesApi.h"
 #include "messagesApi.h"
 #include "locationApi.h"
+#include "authApi.h"
 #include "packages/sql/message_store.h"
 #include "packages/validation/message_validation.h"
 #include "message.pb-c.h"
@@ -205,6 +206,11 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
 
             // Then, let the location API try
             if (location_api_handler(c, hm)) {
+                return;
+            }
+
+            // Then, let the auth API try
+            if (auth_api_handler(c, hm)) {
                 return;
             }
 

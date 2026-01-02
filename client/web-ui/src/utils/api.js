@@ -5,12 +5,17 @@
 
 import { addAuthHeaders } from './requestAuth.js';
 
+// Get backend host from environment variable or default to localhost
+// For SSH/remote scenarios, set REACT_APP_BACKEND_HOST to the remote server's IP/hostname
+// Example: REACT_APP_BACKEND_HOST=192.168.1.100
+const BACKEND_HOST = process.env.REACT_APP_BACKEND_HOST || 'localhost';
+
 // Default node URLs (with port mappings from docker-compose.test.yml)
 const DEFAULT_NODE_URLS = {
-  node_01: 'http://localhost:8001',
-  node_02: 'http://localhost:8002',
-  node_03: 'http://localhost:8003',
-  node_04: 'http://localhost:8004',
+  node_01: `http://${BACKEND_HOST}:8001`,
+  node_02: `http://${BACKEND_HOST}:8002`,
+  node_03: `http://${BACKEND_HOST}:8003`,
+  node_04: `http://${BACKEND_HOST}:8004`,
 };
 
 /**
@@ -293,6 +298,63 @@ export async function getConversations(nodeUrl, userPubkey) {
 }
 
 /**
+ * Login to the node (verify key and authenticate)
+ * @param {string} nodeUrl - Base URL of the node
+ * @returns {Promise<Object>} Login response with pubkey
+ */
+export async function login(nodeUrl) {
+  try {
+    // Ensure nodeUrl doesn't have trailing slash
+    const cleanNodeUrl = nodeUrl.replace(/\/$/, '');
+    const url = `${cleanNodeUrl}/auth/login`;
+    console.log('[login] Attempting to login to:', url);
+    console.log('[login] Node URL:', nodeUrl, '-> Clean:', cleanNodeUrl);
+    
+    // Test connection first with a simple OPTIONS request
+    try {
+      const testResponse = await fetch(url, {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': window.location.origin,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'content-type,x-user-pubkey,x-signature,x-timestamp'
+        }
+      });
+      console.log('[login] Preflight test response:', testResponse.status, testResponse.statusText);
+    } catch (preflightError) {
+      console.error('[login] Preflight test failed:', preflightError);
+      throw new Error(`Cannot connect to backend at ${url}: ${preflightError.message}`);
+    }
+    
+    // Add authentication headers (signed request)
+    const fetchOptions = await addAuthHeaders('POST', url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}), // Empty body, auth is via headers
+    });
+    
+    console.log('[login] Fetch options:', {
+      method: fetchOptions.method,
+      url: url,
+      hasHeaders: !!fetchOptions.headers
+    });
+    
+    const response = await fetch(url, fetchOptions);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Login failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Failed to login to ${nodeUrl}: ${error.message}`);
+  }
+}
+
+/**
  * Get all users in the network
  * @param {string} nodeUrl - Base URL of the node
  * @returns {Promise<Object>} Users response with array of users
@@ -316,6 +378,121 @@ export async function getUsers(nodeUrl) {
     return await response.json();
   } catch (error) {
     throw new Error(`Failed to get users from ${nodeUrl}: ${error.message}`);
+  }
+}
+
+/**
+ * Submit a location update
+ * @param {string} nodeUrl - Base URL of the node
+ * @param {Object} clientRequest - JavaScript ClientRequest object (from createSignedClientRequest)
+ * @returns {Promise<Object>} Response object with status
+ */
+export async function submitLocation(nodeUrl, clientRequest) {
+  try {
+    // Serialize ClientRequest to binary protobuf
+    const { serializeClientRequestToProtobuf } = await import('./clientRequestHelper.js');
+    const requestBytes = await serializeClientRequestToProtobuf(clientRequest);
+    
+    const url = `${nodeUrl}/location/update`;
+    
+    // Add authentication headers
+    const fetchOptions = await addAuthHeaders('POST', url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-protobuf',
+        'Content-Length': requestBytes.length.toString(),
+      },
+      body: requestBytes,
+    });
+    
+    const response = await fetch(url, fetchOptions);
+    
+    // Backend returns JSON response
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    
+    return data;
+  } catch (error) {
+    throw new Error(`Failed to submit location to ${nodeUrl}: ${error.message}`);
+  }
+}
+
+/**
+ * Get the latest location for a user
+ * @param {string} nodeUrl - Base URL of the node
+ * @param {string} userPubkey - User's public key (hex)
+ * @returns {Promise<Object>} LocationUpdate object with lat, lon, accuracy_m, timestamp, location_name
+ */
+export async function getLocation(nodeUrl, userPubkey) {
+  try {
+    const url = `${nodeUrl}/location/${userPubkey}`;
+    
+    // Add authentication headers
+    const fetchOptions = await addAuthHeaders('GET', url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    const response = await fetch(url, fetchOptions);
+    
+    if (!response.ok) {
+      let errorMsg = `Failed to get location: ${response.status}`;
+      try {
+        const errorText = await response.text();
+        const errorJson = JSON.parse(errorText);
+        errorMsg = errorJson.error || errorMsg;
+      } catch (e) {
+        // Ignore
+      }
+      throw new Error(errorMsg);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Failed to get location from ${nodeUrl}: ${error.message}`);
+  }
+}
+
+/**
+ * Get location history for a user
+ * @param {string} nodeUrl - Base URL of the node
+ * @param {string} userPubkey - User's public key (hex)
+ * @param {number} limit - Maximum number of locations to return (default: 50)
+ * @param {number} offset - Number of locations to skip (default: 0)
+ * @returns {Promise<Array>} Array of LocationUpdate objects
+ */
+export async function getLocationHistory(nodeUrl, userPubkey, limit = 50, offset = 0) {
+  try {
+    const url = new URL(`${nodeUrl}/location/history/${userPubkey}`);
+    url.searchParams.append('limit', limit.toString());
+    url.searchParams.append('offset', offset.toString());
+    
+    // Add authentication headers
+    const fetchOptions = await addAuthHeaders('GET', url.toString(), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    const response = await fetch(url.toString(), fetchOptions);
+    
+    if (!response.ok) {
+      let errorMsg = `Failed to get location history: ${response.status}`;
+      try {
+        const errorText = await response.text();
+        const errorJson = JSON.parse(errorText);
+        errorMsg = errorJson.error || errorMsg;
+      } catch (e) {
+        // Ignore
+      }
+      throw new Error(errorMsg);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Failed to get location history from ${nodeUrl}: ${error.message}`);
   }
 }
 

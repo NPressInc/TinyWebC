@@ -57,6 +57,7 @@ set(MESSAGING_SOURCES
     src/packages/comm/client_request_converter.c
     src/packages/comm/locationApi.c
     src/packages/comm/location_permissions.c
+    src/packages/comm/authApi.c
 )
 
 # Protobuf-C generation for envelope/content
