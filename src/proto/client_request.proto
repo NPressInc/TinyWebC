@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package tinyweb;
+
+// ClientRequestHeader contains metadata for a client request
+// Similar to EnvelopeHeader but used for client-to-server requests
+message ClientRequestHeader {
+  uint32 version = 1;              // Protocol version (currently 1)
+  uint32 content_type = 2;         // Maps to ContentType enum (e.g., CONTENT_LOCATION_UPDATE)
+  uint32 schema_version = 3;        // Version of the content schema
+  uint64 timestamp = 4;            // UNIX epoch seconds
+  bytes sender_pubkey = 5;         // 32 bytes Ed25519 public key
+  repeated bytes recipients_pubkey = 6; // 32 bytes each - all recipients
+  bytes group_id = 7;              // Optional: group identifier (empty if not a group message)
+}
+
+// ClientRequestKeyWrap contains the encrypted symmetric key for a specific recipient
+// This allows multi-recipient encryption: same payload, different key wraps per recipient
+message ClientRequestKeyWrap {
+  bytes recipient_pubkey = 1;      // 32 bytes Ed25519 public key
+  bytes key_nonce = 2;             // 24 bytes nonce for key encryption
+  bytes wrapped_key = 3;           // Encrypted symmetric key + MAC
+}
+
+// ClientRequest is the complete client request structure
+// Supports multi-recipient encryption via keywraps array
+// Structure is compatible with Envelope format for conversion
+// The encrypted payload contains a serialized content message (e.g., LocationUpdate)
+message ClientRequest {
+  ClientRequestHeader header = 1;           // Request metadata
+  bytes payload_nonce = 2;                  // 24 bytes nonce for payload encryption
+  bytes ephemeral_pubkey = 3;               // 32 bytes ephemeral Ed25519 public key
+  bytes payload_ciphertext = 4;             // Encrypted payload + MAC (contains serialized content message)
+  repeated ClientRequestKeyWrap keywraps = 5; // Per-recipient encrypted keys (for multi-recipient)
+  bytes signature = 6;                      // 64 bytes Ed25519 signature over header + payload
+}
+

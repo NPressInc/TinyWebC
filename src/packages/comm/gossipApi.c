@@ -1,6 +1,7 @@
 #include "gossipApi.h"
 #include "userMessagesApi.h"
 #include "messagesApi.h"
+#include "locationApi.h"
 #include "packages/sql/message_store.h"
 #include "packages/validation/message_validation.h"
 #include "message.pb-c.h"
@@ -135,7 +136,8 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
             // Determine allowed methods based on endpoint
             const char* allowed_methods = "GET, POST, OPTIONS";
             if (mg_strcmp(hm->uri, mg_str("/messages/submit")) == 0 ||
-                mg_strcmp(hm->uri, mg_str("/gossip/message")) == 0) {
+                mg_strcmp(hm->uri, mg_str("/gossip/message")) == 0 ||
+                mg_strcmp(hm->uri, mg_str("/location/update")) == 0) {
                 allowed_methods = "POST, OPTIONS";
             } else if (mg_strcmp(hm->uri, mg_str("/gossip/peers")) == 0 ||
                        mg_strcmp(hm->uri, mg_str("/health")) == 0 ||
@@ -143,6 +145,9 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                        mg_strcmp(hm->uri, mg_str("/messages/conversation")) == 0 ||
                        mg_strcmp(hm->uri, mg_str("/messages/conversations")) == 0 ||
                        mg_strcmp(hm->uri, mg_str("/users")) == 0) {
+                allowed_methods = "GET, OPTIONS";
+            } else if (strncmp(uri_buf, "/location/", 10) == 0) {
+                // Location endpoints: GET /location/:user_id or GET /location/history/:user_id
                 allowed_methods = "GET, OPTIONS";
             }
             // Build CORS headers string
@@ -198,7 +203,12 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                 return;
             }
 
-            // Not handled by either module
+            // Then, let the location API try
+            if (location_api_handler(c, hm)) {
+                return;
+            }
+
+            // Not handled by any module
             logger_info("http_api", "404 Not Found: %.*s %.*s", 
                        (int)hm->method.len, hm->method.buf, (int)hm->uri.len, hm->uri.buf);
             mg_http_reply(c, 404, "Content-Type: application/json\r\n"

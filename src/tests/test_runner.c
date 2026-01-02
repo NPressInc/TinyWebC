@@ -20,6 +20,7 @@
 #include "tests/message_store_test.h"
 #include "tests/message_api_test.h"
 #include "tests/message_permissions_test.h"
+#include "tests/location_api_test.h"
 
 int main(int argc, char* argv[]) {
     // Initialize libsodium once at the start
@@ -201,6 +202,17 @@ int main(int argc, char* argv[]) {
         }
         printf("\n");
 
+        // Run location API tests
+        printf("Running location API tests...\n");
+        if (location_api_test_main() == 0) {
+            printf("✓ Location API tests passed\n");
+            tests_passed++;
+        } else {
+            printf("✗ Location API tests failed\n");
+            tests_failed++;
+        }
+        printf("\n");
+
         printf("\n=== Test Summary ===\n");
         printf("Total Tests: %d\n", total_tests);
         printf("Passed: %d\n", tests_passed);
@@ -248,9 +260,11 @@ int main(int argc, char* argv[]) {
             result = message_api_test_main();
         } else if (strcmp(test_name, "messageperms") == 0) {
             result = message_permissions_test_main();
+        } else if (strcmp(test_name, "locationapi") == 0) {
+            result = location_api_test_main();
         } else {
             printf("Unknown test: %s\n", test_name);
-            printf("Available tests: encryption, signing, mongoose, gossipdb, envelope, validation, apipb, dispatcher, schema, httpclient, permissions, foundational, discovery, messagestore, messageapi, messageperms\n");
+            printf("Available tests: encryption, signing, mongoose, gossipdb, envelope, validation, apipb, dispatcher, schema, httpclient, permissions, foundational, discovery, messagestore, messageapi, messageperms, locationapi\n");
             test_cleanup_environment();
             return 1;
         }

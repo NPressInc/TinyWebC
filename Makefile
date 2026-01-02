@@ -224,6 +224,39 @@ generated/api.pb-c.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/api.pb-c.c.s
 .PHONY : generated/api.pb-c.c.s
 
+generated/client_request.pb-c.o: generated/client_request.pb-c.c.o
+.PHONY : generated/client_request.pb-c.o
+
+# target to build an object file
+generated/client_request.pb-c.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/client_request.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/client_request.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/client_request.pb-c.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/client_request.pb-c.c.o
+.PHONY : generated/client_request.pb-c.c.o
+
+generated/client_request.pb-c.i: generated/client_request.pb-c.c.i
+.PHONY : generated/client_request.pb-c.i
+
+# target to preprocess a source file
+generated/client_request.pb-c.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/client_request.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/client_request.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/client_request.pb-c.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/client_request.pb-c.c.i
+.PHONY : generated/client_request.pb-c.c.i
+
+generated/client_request.pb-c.s: generated/client_request.pb-c.c.s
+.PHONY : generated/client_request.pb-c.s
+
+# target to generate assembly for a file
+generated/client_request.pb-c.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/generated/client_request.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/generated/client_request.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/generated/client_request.pb-c.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/generated/client_request.pb-c.c.s
+.PHONY : generated/client_request.pb-c.c.s
+
 generated/content.pb-c.o: generated/content.pb-c.c.o
 .PHONY : generated/content.pb-c.o
 
@@ -452,6 +485,33 @@ src/main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/main.c.s
 .PHONY : src/main.c.s
 
+src/packages/comm/client_request_converter.o: src/packages/comm/client_request_converter.c.o
+.PHONY : src/packages/comm/client_request_converter.o
+
+# target to build an object file
+src/packages/comm/client_request_converter.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/client_request_converter.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/client_request_converter.c.o
+.PHONY : src/packages/comm/client_request_converter.c.o
+
+src/packages/comm/client_request_converter.i: src/packages/comm/client_request_converter.c.i
+.PHONY : src/packages/comm/client_request_converter.i
+
+# target to preprocess a source file
+src/packages/comm/client_request_converter.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/client_request_converter.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/client_request_converter.c.i
+.PHONY : src/packages/comm/client_request_converter.c.i
+
+src/packages/comm/client_request_converter.s: src/packages/comm/client_request_converter.c.s
+.PHONY : src/packages/comm/client_request_converter.s
+
+# target to generate assembly for a file
+src/packages/comm/client_request_converter.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/client_request_converter.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/client_request_converter.c.s
+.PHONY : src/packages/comm/client_request_converter.c.s
+
 src/packages/comm/envelope_dispatcher.o: src/packages/comm/envelope_dispatcher.c.o
 .PHONY : src/packages/comm/envelope_dispatcher.o
 
@@ -557,6 +617,60 @@ src/packages/comm/httpClient.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/httpClient.c.s
 .PHONY : src/packages/comm/httpClient.c.s
 
+src/packages/comm/locationApi.o: src/packages/comm/locationApi.c.o
+.PHONY : src/packages/comm/locationApi.o
+
+# target to build an object file
+src/packages/comm/locationApi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/locationApi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/locationApi.c.o
+.PHONY : src/packages/comm/locationApi.c.o
+
+src/packages/comm/locationApi.i: src/packages/comm/locationApi.c.i
+.PHONY : src/packages/comm/locationApi.i
+
+# target to preprocess a source file
+src/packages/comm/locationApi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/locationApi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/locationApi.c.i
+.PHONY : src/packages/comm/locationApi.c.i
+
+src/packages/comm/locationApi.s: src/packages/comm/locationApi.c.s
+.PHONY : src/packages/comm/locationApi.s
+
+# target to generate assembly for a file
+src/packages/comm/locationApi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/locationApi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/locationApi.c.s
+.PHONY : src/packages/comm/locationApi.c.s
+
+src/packages/comm/location_permissions.o: src/packages/comm/location_permissions.c.o
+.PHONY : src/packages/comm/location_permissions.o
+
+# target to build an object file
+src/packages/comm/location_permissions.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/location_permissions.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/location_permissions.c.o
+.PHONY : src/packages/comm/location_permissions.c.o
+
+src/packages/comm/location_permissions.i: src/packages/comm/location_permissions.c.i
+.PHONY : src/packages/comm/location_permissions.i
+
+# target to preprocess a source file
+src/packages/comm/location_permissions.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/location_permissions.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/location_permissions.c.i
+.PHONY : src/packages/comm/location_permissions.c.i
+
+src/packages/comm/location_permissions.s: src/packages/comm/location_permissions.c.s
+.PHONY : src/packages/comm/location_permissions.s
+
+# target to generate assembly for a file
+src/packages/comm/location_permissions.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/location_permissions.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/location_permissions.c.s
+.PHONY : src/packages/comm/location_permissions.c.s
+
 src/packages/comm/message_permissions.o: src/packages/comm/message_permissions.c.o
 .PHONY : src/packages/comm/message_permissions.o
 
@@ -610,6 +724,33 @@ src/packages/comm/messagesApi.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/messagesApi.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/messagesApi.c.s
 .PHONY : src/packages/comm/messagesApi.c.s
+
+src/packages/comm/request_auth.o: src/packages/comm/request_auth.c.o
+.PHONY : src/packages/comm/request_auth.o
+
+# target to build an object file
+src/packages/comm/request_auth.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/request_auth.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/request_auth.c.o
+.PHONY : src/packages/comm/request_auth.c.o
+
+src/packages/comm/request_auth.i: src/packages/comm/request_auth.c.i
+.PHONY : src/packages/comm/request_auth.i
+
+# target to preprocess a source file
+src/packages/comm/request_auth.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/request_auth.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/request_auth.c.i
+.PHONY : src/packages/comm/request_auth.c.i
+
+src/packages/comm/request_auth.s: src/packages/comm/request_auth.c.s
+.PHONY : src/packages/comm/request_auth.s
+
+# target to generate assembly for a file
+src/packages/comm/request_auth.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/comm/request_auth.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/comm/request_auth.c.s
+.PHONY : src/packages/comm/request_auth.c.s
 
 src/packages/comm/userMessagesApi.o: src/packages/comm/userMessagesApi.c.o
 .PHONY : src/packages/comm/userMessagesApi.o
@@ -910,6 +1051,33 @@ src/packages/sql/gossip_peers.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/init_tool.dir/build.make CMakeFiles/init_tool.dir/src/packages/sql/gossip_peers.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/docker_config_generator.dir/build.make CMakeFiles/docker_config_generator.dir/src/packages/sql/gossip_peers.c.s
 .PHONY : src/packages/sql/gossip_peers.c.s
+
+src/packages/sql/location_store.o: src/packages/sql/location_store.c.o
+.PHONY : src/packages/sql/location_store.o
+
+# target to build an object file
+src/packages/sql/location_store.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/location_store.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/location_store.c.o
+.PHONY : src/packages/sql/location_store.c.o
+
+src/packages/sql/location_store.i: src/packages/sql/location_store.c.i
+.PHONY : src/packages/sql/location_store.i
+
+# target to preprocess a source file
+src/packages/sql/location_store.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/location_store.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/location_store.c.i
+.PHONY : src/packages/sql/location_store.c.i
+
+src/packages/sql/location_store.s: src/packages/sql/location_store.c.s
+.PHONY : src/packages/sql/location_store.s
+
+# target to generate assembly for a file
+src/packages/sql/location_store.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/sql/location_store.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/sql/location_store.c.s
+.PHONY : src/packages/sql/location_store.c.s
 
 src/packages/sql/message_store.o: src/packages/sql/message_store.c.o
 .PHONY : src/packages/sql/message_store.o
@@ -1238,6 +1406,33 @@ src/packages/utils/statePaths.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/utils/statePaths.c.s
 .PHONY : src/packages/utils/statePaths.c.s
 
+src/packages/validation/client_request_validation.o: src/packages/validation/client_request_validation.c.o
+.PHONY : src/packages/validation/client_request_validation.o
+
+# target to build an object file
+src/packages/validation/client_request_validation.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/client_request_validation.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/client_request_validation.c.o
+.PHONY : src/packages/validation/client_request_validation.c.o
+
+src/packages/validation/client_request_validation.i: src/packages/validation/client_request_validation.c.i
+.PHONY : src/packages/validation/client_request_validation.i
+
+# target to preprocess a source file
+src/packages/validation/client_request_validation.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/client_request_validation.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/client_request_validation.c.i
+.PHONY : src/packages/validation/client_request_validation.c.i
+
+src/packages/validation/client_request_validation.s: src/packages/validation/client_request_validation.c.s
+.PHONY : src/packages/validation/client_request_validation.s
+
+# target to generate assembly for a file
+src/packages/validation/client_request_validation.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb.dir/build.make CMakeFiles/tinyweb.dir/src/packages/validation/client_request_validation.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/packages/validation/client_request_validation.c.s
+.PHONY : src/packages/validation/client_request_validation.c.s
+
 src/packages/validation/gossip_validation.o: src/packages/validation/gossip_validation.c.o
 .PHONY : src/packages/validation/gossip_validation.o
 
@@ -1541,6 +1736,30 @@ src/tests/httpclient_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/httpclient_test.c.s
 .PHONY : src/tests/httpclient_test.c.s
 
+src/tests/location_api_test.o: src/tests/location_api_test.c.o
+.PHONY : src/tests/location_api_test.o
+
+# target to build an object file
+src/tests/location_api_test.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/location_api_test.c.o
+.PHONY : src/tests/location_api_test.c.o
+
+src/tests/location_api_test.i: src/tests/location_api_test.c.i
+.PHONY : src/tests/location_api_test.i
+
+# target to preprocess a source file
+src/tests/location_api_test.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/location_api_test.c.i
+.PHONY : src/tests/location_api_test.c.i
+
+src/tests/location_api_test.s: src/tests/location_api_test.c.s
+.PHONY : src/tests/location_api_test.s
+
+# target to generate assembly for a file
+src/tests/location_api_test.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/tinyweb_tests.dir/build.make CMakeFiles/tinyweb_tests.dir/src/tests/location_api_test.c.s
+.PHONY : src/tests/location_api_test.c.s
+
 src/tests/message_api_test.o: src/tests/message_api_test.c.o
 .PHONY : src/tests/message_api_test.o
 
@@ -1774,6 +1993,9 @@ help:
 	@echo "... generated/api.pb-c.o"
 	@echo "... generated/api.pb-c.i"
 	@echo "... generated/api.pb-c.s"
+	@echo "... generated/client_request.pb-c.o"
+	@echo "... generated/client_request.pb-c.i"
+	@echo "... generated/client_request.pb-c.s"
 	@echo "... generated/content.pb-c.o"
 	@echo "... generated/content.pb-c.i"
 	@echo "... generated/content.pb-c.s"
@@ -1798,6 +2020,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/packages/comm/client_request_converter.o"
+	@echo "... src/packages/comm/client_request_converter.i"
+	@echo "... src/packages/comm/client_request_converter.s"
 	@echo "... src/packages/comm/envelope_dispatcher.o"
 	@echo "... src/packages/comm/envelope_dispatcher.i"
 	@echo "... src/packages/comm/envelope_dispatcher.s"
@@ -1810,12 +2035,21 @@ help:
 	@echo "... src/packages/comm/httpClient.o"
 	@echo "... src/packages/comm/httpClient.i"
 	@echo "... src/packages/comm/httpClient.s"
+	@echo "... src/packages/comm/locationApi.o"
+	@echo "... src/packages/comm/locationApi.i"
+	@echo "... src/packages/comm/locationApi.s"
+	@echo "... src/packages/comm/location_permissions.o"
+	@echo "... src/packages/comm/location_permissions.i"
+	@echo "... src/packages/comm/location_permissions.s"
 	@echo "... src/packages/comm/message_permissions.o"
 	@echo "... src/packages/comm/message_permissions.i"
 	@echo "... src/packages/comm/message_permissions.s"
 	@echo "... src/packages/comm/messagesApi.o"
 	@echo "... src/packages/comm/messagesApi.i"
 	@echo "... src/packages/comm/messagesApi.s"
+	@echo "... src/packages/comm/request_auth.o"
+	@echo "... src/packages/comm/request_auth.i"
+	@echo "... src/packages/comm/request_auth.s"
 	@echo "... src/packages/comm/userMessagesApi.o"
 	@echo "... src/packages/comm/userMessagesApi.i"
 	@echo "... src/packages/comm/userMessagesApi.s"
@@ -1846,6 +2080,9 @@ help:
 	@echo "... src/packages/sql/gossip_peers.o"
 	@echo "... src/packages/sql/gossip_peers.i"
 	@echo "... src/packages/sql/gossip_peers.s"
+	@echo "... src/packages/sql/location_store.o"
+	@echo "... src/packages/sql/location_store.i"
+	@echo "... src/packages/sql/location_store.s"
 	@echo "... src/packages/sql/message_store.o"
 	@echo "... src/packages/sql/message_store.i"
 	@echo "... src/packages/sql/message_store.s"
@@ -1879,6 +2116,9 @@ help:
 	@echo "... src/packages/utils/statePaths.o"
 	@echo "... src/packages/utils/statePaths.i"
 	@echo "... src/packages/utils/statePaths.s"
+	@echo "... src/packages/validation/client_request_validation.o"
+	@echo "... src/packages/validation/client_request_validation.i"
+	@echo "... src/packages/validation/client_request_validation.s"
 	@echo "... src/packages/validation/gossip_validation.o"
 	@echo "... src/packages/validation/gossip_validation.i"
 	@echo "... src/packages/validation/gossip_validation.s"
@@ -1915,6 +2155,9 @@ help:
 	@echo "... src/tests/httpclient_test.o"
 	@echo "... src/tests/httpclient_test.i"
 	@echo "... src/tests/httpclient_test.s"
+	@echo "... src/tests/location_api_test.o"
+	@echo "... src/tests/location_api_test.i"
+	@echo "... src/tests/location_api_test.s"
 	@echo "... src/tests/message_api_test.o"
 	@echo "... src/tests/message_api_test.i"
 	@echo "... src/tests/message_api_test.s"

@@ -13,6 +13,7 @@
 #include "packages/sql/database_gossip.h"
 #include "packages/sql/schema.h"
 #include "packages/sql/message_store.h"
+#include "packages/sql/location_store.h"
 #include "packages/sql/gossip_peers.h"
 #include "packages/utils/statePaths.h"
 #include "packages/utils/logger.h"
@@ -197,6 +198,11 @@ static int initialize_storage(const NodeConfig* config, NodeStatePaths* paths, c
 
     if (message_store_init() != 0) {
         logger_error("main", "Failed to initialize message store");
+        return -1;
+    }
+
+    if (location_store_init() != 0) {
+        logger_error("main", "Failed to initialize location store");
         return -1;
     }
 

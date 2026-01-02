@@ -8,6 +8,7 @@
 #include "packages/encryption/encryption.h"
 #include "packages/keystore/keystore.h"
 #include "packages/sql/permissions.h"
+#include "packages/sql/location_store.h"
 #include "packages/utils/logger.h"
 #include "structs/permission/permission.h"
 
@@ -208,23 +209,59 @@ static int handle_location_update(const Tinyweb__Envelope* envelope,
                                   size_t payload_len,
                                   void* context) {
     (void)context;
+    (void)payload;
+    (void)payload_len;
     
-    if (!payload) {
-        logger_error("envelope_dispatch", "handle_location_update: unable to decrypt payload (not a recipient?)");
-        return 0; // Not an error - we may not be a recipient of this message
-    }
-    
-    Tinyweb__LocationUpdate* loc = tinyweb__location_update__unpack(NULL, payload_len, payload);
-    if (!loc) {
-        logger_error("envelope_dispatch", "handle_location_update: failed to parse LocationUpdate");
+    if (!envelope || !envelope->header) {
+        logger_error("envelope_dispatch", "handle_location_update: invalid envelope");
         return -1;
     }
     
-    printf("LocationUpdate from %p: lat=%.6f, lon=%.6f, accuracy=%um\n",
-           (void*)envelope->header->sender_pubkey.data,
-           loc->lat, loc->lon, loc->accuracy_m);
+    // Store the ENCRYPTED envelope (not decrypted payload)
+    // Note: envelope_dispatch() decrypts payload IF we're a recipient (line 182-189),
+    // but we should store the ENCRYPTED envelope regardless of whether we can decrypt it
     
-    tinyweb__location_update__free_unpacked(loc, NULL);
+    // 1. Compute digest for deduplication from envelope
+    unsigned char digest[GOSSIP_SEEN_DIGEST_SIZE];
+    if (location_store_compute_digest_envelope(envelope, digest) != 0) {
+        logger_error("envelope_dispatch", "handle_location_update: failed to compute digest");
+        return -1;
+    }
+    
+    // 2. Check if already seen (deduplication)
+    int seen = 0;
+    if (location_store_has_seen(digest, &seen) == 0 && seen) {
+        logger_info("envelope_dispatch", "handle_location_update: duplicate location update (already seen)");
+        return 0; // Not an error - just a duplicate
+    }
+    
+    // 3. Calculate expires_at from envelope timestamp (use same TTL logic as messages: 7 days)
+    const uint64_t LOCATION_TTL = (7 * 24 * 60 * 60); // 7 days default TTL (same as messages)
+    uint64_t expires_at = envelope->header->timestamp + LOCATION_TTL;
+    
+    // 4. Store encrypted envelope via location_store_save_envelope()
+    if (location_store_save_envelope(envelope, expires_at) != 0) {
+        logger_error("envelope_dispatch", "handle_location_update: failed to save location update");
+        return -1;
+    }
+    
+    // 5. Mark seen with expires_at
+    location_store_mark_seen(digest, expires_at);
+    
+    // 6. Log success
+    logger_info("envelope_dispatch", "handle_location_update: stored location update from sender (timestamp=%llu)",
+                (unsigned long long)envelope->header->timestamp);
+    
+    // Optional: If we can decrypt (we're a recipient), log the location details
+    if (payload && payload_len > 0) {
+        Tinyweb__LocationUpdate* loc = tinyweb__location_update__unpack(NULL, payload_len, payload);
+        if (loc) {
+            logger_info("envelope_dispatch", "handle_location_update: lat=%.6f, lon=%.6f, accuracy=%um",
+                       loc->lat, loc->lon, loc->accuracy_m);
+            tinyweb__location_update__free_unpacked(loc, NULL);
+        }
+    }
+    
     return 0;
 }
 

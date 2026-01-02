@@ -44,6 +44,7 @@ set(GOSSIP_DB_SOURCES
     src/packages/sql/permissions.c
     src/packages/sql/schema.c
     src/packages/sql/message_store.c
+    src/packages/sql/location_store.c
 )
 
 # Messaging specific sources
@@ -52,6 +53,10 @@ set(MESSAGING_SOURCES
     src/packages/comm/request_auth.c
     src/packages/comm/message_permissions.c
     src/packages/validation/message_validation.c
+    src/packages/validation/client_request_validation.c
+    src/packages/comm/client_request_converter.c
+    src/packages/comm/locationApi.c
+    src/packages/comm/location_permissions.c
 )
 
 # Protobuf-C generation for envelope/content
@@ -69,6 +74,7 @@ set(PROTO_FILES
     ${PROTO_DIR}/content.proto
     ${PROTO_DIR}/api.proto
     ${PROTO_DIR}/message.proto
+    ${PROTO_DIR}/client_request.proto
 )
 
 set(GENERATED_SOURCES)
