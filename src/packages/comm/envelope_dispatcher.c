@@ -257,7 +257,7 @@ static int handle_location_update(const Tinyweb__Envelope* envelope,
         Tinyweb__LocationUpdate* loc = tinyweb__location_update__unpack(NULL, payload_len, payload);
         if (loc) {
             logger_info("envelope_dispatch", "handle_location_update: lat=%.6f, lon=%.6f, accuracy=%um",
-                       loc->lat, loc->lon, loc->accuracy_m);
+           loc->lat, loc->lon, loc->accuracy_m);
             tinyweb__location_update__free_unpacked(loc, NULL);
         }
     }

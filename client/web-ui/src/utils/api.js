@@ -4,6 +4,10 @@
  */
 
 import { addAuthHeaders } from './requestAuth.js';
+import sodium from 'libsodium-wrappers';
+import { decryptPayload } from './encryption.js';
+import { deserializeClientRequestFromProtobuf, loadClientRequestProtobufSchema } from './clientRequestHelper.js';
+import { deserializeEnvelopeFromProtobuf } from './envelopeHelper.js';
 
 // Get backend host from environment variable or default to localhost
 // For SSH/remote scenarios, set REACT_APP_BACKEND_HOST to the remote server's IP/hostname
@@ -450,7 +454,37 @@ export async function getLocation(nodeUrl, userPubkey) {
       throw new Error(errorMsg);
     }
     
-    return await response.json();
+    const data = await response.json();
+    if (!data || !data.data_hex) {
+      throw new Error('Invalid response (missing data_hex)');
+    }
+
+    await sodium.ready;
+    const bytes = sodium.from_hex(data.data_hex);
+
+    // Decode encrypted record
+    const decoded = data.is_envelope
+      ? await deserializeEnvelopeFromProtobuf(bytes)
+      : await deserializeClientRequestFromProtobuf(bytes);
+
+    // Convert recipients (Ed25519) -> X25519 for decryptPayload()
+    const recipientsX25519 = decoded.header.recipientsPubkey
+      ? decoded.header.recipientsPubkey.map(pk => sodium.crypto_sign_ed25519_pk_to_curve25519(pk))
+      : decoded.header.recipients_pubkey.map(pk => sodium.crypto_sign_ed25519_pk_to_curve25519(pk));
+
+    const decryptedBytes = await decryptPayload(decoded.encryptedPayload, recipientsX25519);
+
+    // Decode LocationUpdate
+    const { LocationUpdateType } = await loadClientRequestProtobufSchema();
+    const loc = LocationUpdateType.decode(decryptedBytes);
+
+    return {
+      lat: loc.lat,
+      lon: loc.lon,
+      accuracy_m: loc.accuracy_m,
+      timestamp: Number(loc.timestamp),
+      location_name: loc.location_name || '',
+    };
   } catch (error) {
     throw new Error(`Failed to get location from ${nodeUrl}: ${error.message}`);
   }
@@ -490,7 +524,42 @@ export async function getLocationHistory(nodeUrl, userPubkey, limit = 50, offset
       throw new Error(errorMsg);
     }
     
-    return await response.json();
+    const data = await response.json();
+    const updates = data.updates || [];
+    if (!Array.isArray(updates)) return [];
+
+    await sodium.ready;
+    const { LocationUpdateType } = await loadClientRequestProtobufSchema();
+
+    const out = [];
+    for (const upd of updates) {
+      if (!upd || !upd.data_hex) continue;
+      try {
+        const bytes = sodium.from_hex(upd.data_hex);
+        const decoded = upd.is_envelope
+          ? await deserializeEnvelopeFromProtobuf(bytes)
+          : await deserializeClientRequestFromProtobuf(bytes);
+
+        const recipientsEd = decoded.header.recipientsPubkey || decoded.header.recipients_pubkey || [];
+        const recipientsX25519 = recipientsEd.map(pk => sodium.crypto_sign_ed25519_pk_to_curve25519(pk));
+
+        const decryptedBytes = await decryptPayload(decoded.encryptedPayload, recipientsX25519);
+        const loc = LocationUpdateType.decode(decryptedBytes);
+
+        out.push({
+          lat: loc.lat,
+          lon: loc.lon,
+          accuracy_m: loc.accuracy_m,
+          timestamp: Number(loc.timestamp),
+          location_name: loc.location_name || '',
+        });
+      } catch (e) {
+        // If we can't decrypt one entry, skip it (still return the rest)
+        console.warn('[getLocationHistory] Failed to decrypt one entry:', e);
+      }
+    }
+
+    return out;
   } catch (error) {
     throw new Error(`Failed to get location history from ${nodeUrl}: ${error.message}`);
   }

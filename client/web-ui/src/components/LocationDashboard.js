@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import './LocationDashboard.css';
-import { detectRunningNodes, getUsers, getLocation, getLocationHistory, submitLocation, DEFAULT_NODE_URLS } from '../utils/api';
+import { getUsers, getLocation, getLocationHistory, submitLocation } from '../utils/api';
 import { createSignedClientRequest } from '../utils/clientRequestHelper';
 import { encryptPayloadMulti } from '../utils/encryption';
 import keyStore from '../utils/keystore';
+import { getNodeUrl } from '../utils/auth';
 import sodium from 'libsodium-wrappers';
 
 function LocationDashboard() {
   const [selectedNode, setSelectedNode] = useState('');
-  const [availableNodes, setAvailableNodes] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,7 +24,9 @@ function LocationDashboard() {
   });
 
   useEffect(() => {
-    loadNodes();
+    // Initialize with default node URL
+    const defaultNode = getNodeUrl();
+    setSelectedNode(defaultNode);
   }, []);
 
   useEffect(() => {
@@ -39,19 +41,6 @@ function LocationDashboard() {
       loadLocationHistory();
     }
   }, [selectedUser, selectedNode]);
-
-  const loadNodes = async () => {
-    try {
-      const nodes = await detectRunningNodes();
-      setAvailableNodes(nodes);
-      if (nodes.length > 0) {
-        setSelectedNode(nodes[0].url);
-      }
-    } catch (err) {
-      console.error('Error detecting nodes:', err);
-      setError('Failed to detect running nodes');
-    }
-  };
 
   const loadUsers = async () => {
     if (!selectedNode) return;
@@ -95,10 +84,13 @@ function LocationDashboard() {
     if (!selectedUser || !selectedNode) return;
     
     try {
+      console.log('Loading location history for user:', selectedUser.pubkey);
       const history = await getLocationHistory(selectedNode, selectedUser.pubkey, 50, 0);
-      setLocationHistory(history);
+      console.log('Location history received:', history);
+      setLocationHistory(Array.isArray(history) ? history : []);
     } catch (err) {
       console.error('Error loading location history:', err);
+      setError(`Failed to load location history: ${err.message}`);
       setLocationHistory([]);
     }
   };
@@ -176,28 +168,6 @@ function LocationDashboard() {
   return (
     <div className="location-dashboard">
       <h1>Location Tracking Dashboard</h1>
-
-      {/* Node Selection */}
-      <div className="node-selection">
-        <label>
-          Select Node:
-          <select 
-            value={selectedNode} 
-            onChange={(e) => setSelectedNode(e.target.value)}
-            disabled={loading}
-          >
-            <option value="">-- Select Node --</option>
-            {availableNodes.map((node) => (
-              <option key={node.url} value={node.url}>
-                {node.nodeId} ({node.url})
-              </option>
-            ))}
-          </select>
-        </label>
-        <button onClick={loadNodes} disabled={loading}>
-          Refresh Nodes
-        </button>
-      </div>
 
       {error && (
         <div className="error-message">

@@ -396,3 +396,62 @@ export async function serializeClientRequestToProtobufHex(clientRequest) {
   return protobufToHex(protobufBytes);
 }
 
+/**
+ * Deserialize protobuf-encoded ClientRequest bytes to a JS object compatible with decryptPayload()
+ * @param {Uint8Array|string} requestBytes - Protobuf-encoded ClientRequest (Uint8Array or hex string)
+ * @returns {Promise<Object>} { header, encryptedPayload, signature }
+ */
+export async function deserializeClientRequestFromProtobuf(requestBytes) {
+  const { ClientRequestType } = await loadClientRequestProtobufSchema();
+
+  let bytes = requestBytes;
+  if (typeof requestBytes === 'string') {
+    bytes = hexToProtobuf(requestBytes);
+  }
+
+  const req = ClientRequestType.decode(bytes);
+
+  const header = {
+    version: req.header.version,
+    content_type: req.header.content_type,
+    schema_version: req.header.schema_version,
+    timestamp: Number(req.header.timestamp),
+    sender_pubkey: new Uint8Array(req.header.sender_pubkey),
+    recipients_pubkey: (req.header.recipients_pubkey || []).map(pk => new Uint8Array(pk)),
+    group_id: req.header.group_id && req.header.group_id.length > 0 ? new Uint8Array(req.header.group_id) : new Uint8Array(0),
+  };
+
+  const { EncryptedPayload } = await import('./encryption.js');
+  const encryptedPayload = new EncryptedPayload();
+  encryptedPayload.ciphertext = new Uint8Array(req.payload_ciphertext);
+  encryptedPayload.nonce = new Uint8Array(req.payload_nonce);
+  encryptedPayload.ephemeralPubkey = new Uint8Array(req.ephemeral_pubkey);
+  encryptedPayload.numRecipients = header.recipients_pubkey.length;
+
+  // Map keywraps by recipient pubkey (ed25519) hex for stable matching
+  const keywrapMap = new Map();
+  for (const keywrap of (req.keywraps || [])) {
+    const recipientKey = new Uint8Array(keywrap.recipient_pubkey);
+    const keyHex = Array.from(recipientKey).map(b => b.toString(16).padStart(2, '0')).join('');
+    keywrapMap.set(keyHex, keywrap);
+  }
+
+  encryptedPayload.encryptedKeys = [];
+  encryptedPayload.keyNonces = [];
+  for (const recipientPubkey of header.recipients_pubkey) {
+    const keyHex = Array.from(recipientPubkey).map(b => b.toString(16).padStart(2, '0')).join('');
+    const keywrap = keywrapMap.get(keyHex);
+    if (keywrap) {
+      encryptedPayload.encryptedKeys.push(new Uint8Array(keywrap.wrapped_key));
+      encryptedPayload.keyNonces.push(new Uint8Array(keywrap.key_nonce));
+    } else {
+      encryptedPayload.encryptedKeys.push(new Uint8Array(0));
+      encryptedPayload.keyNonces.push(new Uint8Array(0));
+    }
+  }
+
+  const signature = new Uint8Array(req.signature);
+
+  return { header, encryptedPayload, signature };
+}
+
