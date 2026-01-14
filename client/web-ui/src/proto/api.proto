@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package tinyweb;
+
+// StoredEnvelope represents an envelope stored in the database
+// This is used for API responses when retrieving stored messages
+message StoredEnvelope {
+  uint64 id = 1;                    // Database ID
+  uint32 version = 2;               // Envelope version
+  uint32 content_type = 3;          // Content type (maps to ContentType enum)
+  uint32 schema_version = 4;        // Schema version
+  uint64 timestamp = 5;             // Message timestamp (seconds since epoch)
+  bytes sender = 6;                 // Sender public key (32 bytes)
+  bytes envelope = 7;                // Serialized Tinyweb__Envelope (protobuf binary)
+  uint64 expires_at = 8;             // Expiration timestamp (seconds since epoch)
+}
+
+// EnvelopeList contains a list of stored envelopes for API responses
+message EnvelopeList {
+  repeated StoredEnvelope envelopes = 1;
+  uint32 total_count = 2;           // Total count (for pagination)
+}
+
+// ConversationSummary represents a conversation between two users
+message ConversationSummary {
+  bytes partner_pubkey = 1;         // Conversation partner's public key (32 bytes)
+  uint64 last_message_timestamp = 2; // Timestamp of last message in conversation
+  uint32 unread_count = 3;          // Number of unread messages (optional, for future use)
+  bytes last_message_preview = 4;   // Preview of last message (optional, encrypted)
+}
+
+// ConversationList contains a list of conversations for a user
+message ConversationList {
+  repeated ConversationSummary conversations = 1;
+  uint32 total_count = 2;           // Total number of conversations
+}
+
