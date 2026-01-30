@@ -147,6 +147,8 @@ static void gossip_api_handler(struct mg_connection* c, int ev, void* ev_data) {
                        mg_strcmp(hm->uri, mg_str("/messages/conversations")) == 0 ||
                        mg_strcmp(hm->uri, mg_str("/users")) == 0) {
                 allowed_methods = "GET, OPTIONS";
+            } else if (mg_strcmp(hm->uri, mg_str("/users/create")) == 0) {
+                allowed_methods = "POST, OPTIONS";
             } else if (strncmp(uri_buf, "/location/", 10) == 0) {
                 // Location endpoints: GET /location/:user_id or GET /location/history/:user_id
                 allowed_methods = "GET, OPTIONS";
