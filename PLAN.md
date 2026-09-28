@@ -1,33 +1,45 @@
 # TinyWeb High-Level Plan of Action
 
+**Last verified:** 2026-09-28 against commit `9c6d4f70a350d05b7107620f6ce509f4dcc69541`
+
 ## Current State Assessment
 
 ### ✅ **Fully Implemented (MVP Core)**
-- **Gossip Protocol**: UDP transport, peer discovery (Tailscale/DNS/Static), dynamic peer addition
-- **HTTP API**: Message submission, retrieval, conversations, peer listing
-- **Cryptography**: Signing, encryption, key management, validation
-- **Storage**: SQLite with schema, message persistence, TTL cleanup
-- **Protobuf**: Complete schema definitions for all 4 phases (40+ message types)
-- **Docker**: Containerization, multi-node testing, config generation
-- **Discovery**: Tailscale, DNS pattern, static discovery modes
-- **Web UI**: Basic React client for messaging (proof of concept)
+- **Gossip Protocol**: UDP transport, peer discovery (Tailscale/DNS/Static), dynamic peer addition (`src/packages/comm/gossip/gossip.c`, `src/main.c` `discover_peer_from_source`)
+- **HTTP API**: Message submit/retrieve, conversations, peer listing, health, authenticated reads (`src/packages/comm/gossipApi.c`, `messagesApi.c`, `userMessagesApi.c`)
+- **Authentication (HTTP)**: Signed request headers (`X-User-Pubkey`, `X-Signature`, `X-Timestamp`) via `validate_request_auth()` in `request_auth.c`; `POST /auth/login` in `authApi.c`
+- **Cryptography**: Envelope and message encryption/decryption (`packages/encryption/encryption.c`), Ed25519 signing, gossip and message signature validation (`gossip_validation.c`, `message_validation.c`, `client_request_validation.c`)
+- **Storage**: SQLite schema, encrypted message persistence, location store with key wraps, TTL cleanup (`message_store.c`, `location_store.c`, `schema.c`)
+- **Protobuf**: Schemas for envelope, content, message, client request, and API (`src/proto/`); **38** `ContentType` values in `envelope.proto` (excluding `CONTENT_UNKNOWN`)
+- **Direct messaging (end-to-end)**: `Tinyweb__Message` over HTTP + gossip—not an envelope content type— with encrypted payloads; web UI encrypts/decrypts in `ConversationView.js` and `encryption.js`
+- **Location / GPS**: Encrypted `LocationUpdate` envelopes stored in SQLite; gossip handler persists ciphertext (`envelope_dispatcher.c` → `location_store_save_envelope`); HTTP `POST /location/update`, `GET /location/:user_id`, `GET /location/history/:user_id` with decryption for authorized viewers (`locationApi.c`, `location_permissions.c`)
+- **ClientRequest pipeline**: Location (and message) submission via signed `ClientRequest` protobuf converted to envelopes (`client_request_converter.c`)
+- **Docker**: Containerization, multi-node testing, config generation (`scripts/Dockerfile.node`, `scripts/docker_config_generator.c`)
+- **Discovery**: Tailscale, DNS pattern, static discovery modes (`src/packages/discovery/`)
+- **Node announcements**: `CONTENT_NODE_REGISTRATION` envelopes handled in `main.c` (`handle_node_announcement`) for peer discovery (separate from the envelope dispatcher registry)
+- **Web UI**: React admin dashboard—login with key file + `POST /auth/login`, encrypted conversations, Leaflet location map/history, key management, crypto demo (`client/web-ui/`, especially `App.js`, `Login.js`, `LocationDashboard.js`)
+- **User/role seeding (ops)**: `init_tool` / `scripts/init.c` generates keys, inserts users, seeds roles and permissions from network config (not a runtime registration API)
+- **Automated tests**: Encryption, signing, gossip validation, permissions, message/location API tests (`src/tests/`, `run_tests.sh`)
 
 ### ⚠️ **Partially Implemented**
-- **Content Handlers**: Only 2 of 40+ protobuf types have handlers (LocationUpdate, EmergencyAlert)
-- **User Management**: Database schema exists, but no HTTP API for registration/role assignment
-- **Permissions**: Structures exist, but not fully integrated with message routing
-- **GPS Tracking**: Handler exists but only prints to console (no storage/API)
-- **Proximity System**: Backend foundation exists, but not integrated into invitation flow
+- **Content handlers (envelope dispatcher)**: **2 of 38** content types registered in `envelope_dispatcher_init()`—`CONTENT_LOCATION_UPDATE` and `CONTENT_EMERGENCY_ALERT`. A third type, `CONTENT_NODE_REGISTRATION`, is handled ad hoc in `main.c`. The other **35** types have protobuf definitions but no dispatcher handler (gossip still stores raw envelopes; dispatch logs *no handler* for unregistered types).
+- **Emergency alerts**: Handler decrypts and `printf`s only—no storage, HTTP API, or UI notifications (`handle_emergency_alert` in `envelope_dispatcher.c`).
+- **User management (runtime)**: `GET /users` lists active users (`userMessagesApi.c`); database roles/permissions tables populated at init. **No** `POST /users/register`, **no** `POST /users/assign-role`, **no** gossip handler for `UserRegistration` / `RoleAssignment`.
+- **Permissions**: Full RBAC schema and `check_user_permission()` (`permissions.c`, `structs/permission/`); **enforced** for location view/submit paths. **Not** enforced for general messaging—`message_permissions_check()` currently allows any registered sender/recipient pair (`message_permissions.c`).
+- **Parental controls / content filters**: Protobuf messages defined; no handlers or enforcement logic.
+- **Admin dashboard (business-plan sense)**: Web UI covers messaging, locations, and keys; **no** extension management, app distribution, or node configuration UI described in Phase 3/4.
+- **Proximity system**: Design docs only (`ideas/proximity_*.md`); no implementation under `src/` or `client/`.
 
 ### ❌ **Not Started (Per Business Plan)**
 - **Mobile Apps**: Android apps for kids/parents (mentioned in business plan)
-- **Dashboard**: Extension management, app distribution, configuration UI
+- **Extension dashboard & ecosystem UI**: Extension start/stop, Jellyfin/Immich wiring, app push to phones (infrastructure planned, not implemented)
 - **Extensions**: Jellyfin, Immich integration (infrastructure planned, not implemented)
-- **Group Management**: Protobuf defined, but no handlers or API endpoints
-- **Parental Controls**: Protobuf defined, but no enforcement logic
-- **Media Sharing**: Protobuf defined, but no storage/retrieval system
-- **Educational Features**: Protobuf defined, but no implementation
-- **Events/Playdates**: Protobuf defined, but no implementation
+- **Group Management**: Protobuf defined; no handlers, HTTP API, or group message routing
+- **Parental Controls enforcement**: Protobuf defined; no runtime enforcement (screen time, keyword filters, usage policies)
+- **Media Sharing**: Protobuf defined; no storage/retrieval system
+- **Educational Features**: Protobuf defined; no implementation
+- **Events/Playdates**: Protobuf defined; no implementation
+- **Geofencing / usage policies / games / community features**: Phase 4 protobuf only
 
 ---
 
@@ -37,29 +49,30 @@
 **Goal**: Make the basic messaging system fully functional with user management
 
 1. **User Management API**
-   - `POST /users/register` - Register new users (parents/children)
-   - `POST /users/assign-role` - Role assignment
-   - `GET /users` - List users (already exists, verify completeness)
-   - Integrate user registration with gossip protocol (broadcast UserRegistration messages)
+   - ~~`GET /users` - List users~~ ✅ (`userMessagesApi.c`)
+   - ~~`POST /auth/login` - Authenticate registered users (signed request)~~ ✅ (`authApi.c`)
+   - `POST /users/register` - Register new users (parents/children) — **open** (today: `init_tool` / `scripts/init.c` only)
+   - `POST /users/assign-role` - Role assignment — **open**
+   - Integrate user registration with gossip protocol (broadcast `UserRegistration` messages) — **open**
 
 2. **Content Handler Expansion**
    - Implement handlers for Phase 1 MVP types:
-     - `UserRegistration` - Store in database, validate, broadcast
-     - `DirectMessage` - Already works via Message API, but add envelope handler
-     - `GroupCreate/Update/MemberAdd/Remove` - Group management logic
-     - `PermissionEdit` - Integrate with permissions system
-   - Remove "no handler" errors for core message types
+     - `UserRegistration` - Store in database, validate, broadcast — **open**
+     - Direct messaging - ✅ via `Tinyweb__Message` + HTTP/gossip (not an envelope `ContentType` handler)
+     - `GroupCreate/Update/MemberAdd/Remove` - Group management logic — **open**
+     - `PermissionEdit` - Integrate with permissions system — **open**
+   - Remove "no handler" errors for core message types — **open** (35 types still unhandled in dispatcher)
 
-3. **GPS/Location System**
-   - Store LocationUpdate messages in database
-   - `GET /location/:user_id` - Retrieve user's last known location
-   - `GET /location/history/:user_id` - Location history (for parents)
-   - Real-time location tracking for parental monitoring
+3. **GPS/Location System** — **largely complete**
+   - ~~Store `LocationUpdate` messages in database~~ ✅ (`location_store.c`, gossip + HTTP submit)
+   - ~~`GET /location/:user_id`~~ ✅ (`locationApi.c`)
+   - ~~`GET /location/history/:user_id`~~ ✅ (`locationApi.c`)
+   - ~~Real-time location tracking for parental monitoring~~ ✅ (encrypted storage + permission-gated API + web map UI); push notifications / mobile background tracking — **open**
 
 4. **Permissions Integration**
-   - Connect permission system to message routing
-   - Enforce permissions on message submission
-   - Parental controls enforcement (screen time, content filters)
+   - ~~Connect permission system to location routing~~ ✅ (`location_permissions.c`)
+   - Enforce permissions on message submission — **open** (`message_permissions.c` is permissive)
+   - Parental controls enforcement (screen time, content filters) — **open**
 
 **Timeline**: 2-3 months
 
@@ -80,7 +93,7 @@
    - Parent dashboard for monitoring
 
 3. **Emergency & Safety**
-   - Emergency alert system (handler exists, needs UI/notification)
+   - Emergency alert system (handler exists, needs storage/UI/notification)
    - Geofencing (Phase 4 protobuf, but needed for MVP)
    - Location-based alerts
 
@@ -115,6 +128,8 @@
    - App distribution to network phones
    - Network health monitoring
    - User management UI
+
+   *Note:* A **web admin UI** already exists for messaging, locations, and keys (`client/web-ui/`). Extension management, app distribution, and full node ops UI remain **not started**.
 
 **Timeline**: 4-6 months
 
@@ -176,19 +191,19 @@
 ## Critical Gaps to Address
 
 ### **Immediate (Blocking MVP)**
-1. **User Registration API** - Can't onboard users without this
-2. **Content Handler Coverage** - Most protobuf types have no handlers
-3. **GPS Storage** - Location tracking is core feature, currently just prints
-4. **Permissions Enforcement** - Security critical, currently not enforced
+1. **User Registration API** - Can't onboard users at runtime without `init_tool` / config seeding
+2. **Content Handler Coverage** - **2/38** envelope types have dispatcher handlers (+ node registration handled separately); most gossip content types still fail dispatch
+3. ~~**GPS Storage**~~ - **Resolved**: encrypted storage, HTTP API, gossip handler, and web UI map
+4. **Permissions Enforcement (messaging & controls)** - Location paths use RBAC; messaging and parental rules are not enforced
 
 ### **Short-term (Blocking Family Use)**
 1. **Group Messaging** - Families need group chats
-2. **Parental Controls UI** - Parents need to configure limits
+2. **Parental Controls UI & enforcement** - Parents need to configure and enforce limits
 3. **Mobile Apps** - Can't use web UI on phones easily
-4. **Emergency Alerts** - Handler exists, needs notification system
+4. **Emergency Alerts** - Handler exists (console only); needs persistence and notification system
 
 ### **Medium-term (Blocking Business Model)**
-1. **Dashboard** - Can't manage extensions without it
+1. **Extension / ops dashboard** - Can't manage extensions without it (distinct from current messaging/location web UI)
 2. **Extension Infrastructure** - Core to business plan
 3. **App Distribution** - Needed for phone deployment
 4. **Android Base Image** - Required for phone setup
@@ -198,8 +213,8 @@
 ## Recommendations
 
 ### **Focus Areas (Next 3 Months)**
-1. **Complete MVP Core** - User management, content handlers, GPS storage
-2. **Polish Web UI** - Make it production-ready for early adopters
+1. **Complete MVP Core** - Runtime user registration API, envelope handlers for core types, messaging permission enforcement
+2. **Polish Web UI** - Build on existing admin dashboard (messaging + locations) for early adopters
 3. **Documentation** - Setup guides, API docs, deployment instructions
 
 ### **Defer Until Later**
@@ -218,22 +233,21 @@
 ## Success Metrics
 
 ### **MVP Complete When:**
-- ✅ Parents can register themselves and children
-- ✅ Families can send messages to each other
-- ✅ GPS tracking works end-to-end (location → storage → retrieval)
-- ✅ Basic parental controls are enforceable
-- ✅ Web UI is usable for daily messaging
+- Parents can register themselves and children (self-service API, not only init seeding)
+- ✅ Families can send encrypted messages to each other (HTTP + gossip + web UI)
+- ✅ GPS tracking works end-to-end (location → encrypted storage → permission-gated retrieval → web map)
+- Basic parental controls are enforceable
+- ✅ Web UI is usable for daily messaging and location monitoring (admin dashboard; extension/ops dashboard still out of scope)
 
 ### **Beta Ready When:**
-- ✅ Mobile apps exist for parents and children
-- ✅ Group messaging works
-- ✅ Emergency alerts notify parents
-- ✅ Dashboard exists for node management
+- Mobile apps exist for parents and children
+- Group messaging works
+- Emergency alerts notify parents
+- Dashboard exists for node management (extensions, app distribution, full ops—not only the current messaging/location web UI)
 
 ### **Production Ready When:**
-- ✅ Extension system works (Jellyfin/Immich integrated)
-- ✅ App distribution works
-- ✅ Android base image is available
-- ✅ Documentation is complete
-- ✅ Security audit passed
-
+- Extension system works (Jellyfin/Immich integrated)
+- App distribution works
+- Android base image is available
+- Documentation is complete
+- Security audit passed
